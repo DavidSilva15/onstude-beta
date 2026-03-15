@@ -1,0 +1,64 @@
+{
+  "quiz": [
+    {
+      "pergunta": "Qual função do Excel é usada para somar valores em um intervalo?",
+      "opcoes": ["=MEDIA()", "=SOMA()", "=CONT()", "=SE()"],
+      "resposta_correta": 1,
+      "explicacao": "A função SOMA é utilizada para somar valores em células ou intervalos."
+    },
+    {
+      "pergunta": "Qual símbolo inicia uma fórmula no Excel?",
+      "opcoes": ["#", "@", "=", "&"],
+      "resposta_correta": 2,
+      "explicacao": "Todas as fórmulas do Excel começam com o sinal de igual (=)."
+    },
+    {
+      "pergunta": "Qual função calcula a média de um conjunto de números?",
+      "opcoes": ["=MEDIA()", "=SOMA()", "=MAX()", "=CONTAR()"],
+      "resposta_correta": 0,
+      "explicacao": "A função MEDIA calcula a média aritmética de um conjunto de valores."
+    },
+    {
+      "pergunta": "Qual função é usada para contar células que contêm números?",
+      "opcoes": ["=CONT.VALORES()", "=CONT()", "=CONTAR()", "=NUM()"],
+      "resposta_correta": 2,
+      "explicacao": "A função CONTAR conta apenas células que possuem números."
+    },
+    {
+      "pergunta": "Qual função retorna o maior valor de um intervalo?",
+      "opcoes": ["=MAX()", "=MAIOR()", "=ALTO()", "=TOP()"],
+      "resposta_correta": 0,
+      "explicacao": "A função MAX retorna o maior valor dentro de um intervalo."
+    },
+    {
+      "pergunta": "Qual função retorna o menor valor de um intervalo?",
+      "opcoes": ["=MIN()", "=MENOR()", "=BAIXO()", "=SMALL()"],
+      "resposta_correta": 0,
+      "explicacao": "A função MIN retorna o menor valor dentro de um intervalo."
+    },
+    {
+      "pergunta": "Qual recurso do Excel permite ordenar dados em ordem crescente ou decrescente?",
+      "opcoes": ["Filtro", "Classificar", "Congelar Painéis", "Validação de Dados"],
+      "resposta_correta": 1,
+      "explicacao": "O recurso Classificar organiza os dados em ordem crescente ou decrescente."
+    },
+    {
+      "pergunta": "Qual função permite realizar um teste lógico no Excel?",
+      "opcoes": ["=SE()", "=TESTE()", "=LOGICO()", "=VERDADEIRO()"],
+      "resposta_correta": 0,
+      "explicacao": "A função SE executa testes lógicos e retorna valores diferentes conforme a condição."
+    },
+    {
+      "pergunta": "Qual recurso permite filtrar informações específicas em uma tabela?",
+      "opcoes": ["Tabela Dinâmica", "Filtro", "Macro", "Formatação Condicional"],
+      "resposta_correta": 1,
+      "explicacao": "O filtro permite mostrar apenas os dados que atendem a determinados critérios."
+    },
+    {
+      "pergunta": "Qual função é usada para procurar valores em uma tabela verticalmente?",
+      "opcoes": ["=PROCV()", "=BUSCAR()", "=LOCALIZAR()", "=PROC()"],
+      "resposta_correta": 0,
+      "explicacao": "A função PROCV procura valores em uma coluna e retorna dados correspondentes."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "ignore": [
+    "public/img/*",
+    "public/uploads/*",
+    "public/img/perfil/*",
+    "sessions/*",
+    "*.json"
+  ]
+}
