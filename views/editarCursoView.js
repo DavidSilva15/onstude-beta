@@ -77,6 +77,23 @@ function renderEditarCursoView(admin, curso) {
                                         <div class="form-text">Prazo médio para o aluno concluir o curso.</div>
                                     </div>
                                 </div>
+
+                                <div class="p-3 mb-4 bg-light border rounded border-start border-success border-4">
+                                    <h6 class="fw-bold text-success mb-3">💰 Configurações de Venda (Checkout)</h6>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3 mb-md-0">
+                                            <label class="form-label fw-semibold">Preço Base (R$)</label>
+                                            <input type="number" class="form-control" name="preco" value="${curso.preco || ''}" step="0.01" min="0" placeholder="Ex: 197.00">
+                                            <div class="form-text">Deixe vazio ou 0.00 para curso gratuito.</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold">Desconto Promocional (%)</label>
+                                            <input type="number" class="form-control" name="desconto_percentual" value="${curso.desconto_percentual || 0}" min="0" max="100" placeholder="Ex: 15">
+                                            <div class="form-text">Percentagem aplicada no checkout final.</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row mb-4">
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold">Alterar Capa (Thumb)</label>
@@ -96,7 +113,7 @@ function renderEditarCursoView(admin, curso) {
                                     <label class="form-label fw-semibold">Status</label>
                                     <select class="form-select" name="status">
                                         <option value="RASCUNHO" ${curso.status === 'RASCUNHO' ? 'selected' : ''}>Rascunho (Invisível para alunos)</option>
-                                        <option value="PUBLICADO" ${curso.status === 'PUBLICADO' ? 'selected' : ''}>Publicado (Disponível para matrículas)</option>
+                                        <option value="PUBLICADO" ${curso.status === 'PUBLICADO' ? 'selected' : ''}>Publicado (Disponível para matrículas/vendas)</option>
                                         <option value="ARQUIVADO" ${curso.status === 'ARQUIVADO' ? 'selected' : ''}>Arquivado (Apenas consulta)</option>
                                     </select>
                                 </div>
@@ -121,23 +138,19 @@ function renderEditarCursoView(admin, curso) {
             </div>
         </div>
         <script>
-    // 1. Esconde o loader no carregamento normal E quando o usuário clica em "Voltar"
     window.addEventListener('pageshow', function(event) {
         const loader = document.getElementById('globalLoader');
         if (loader) {
-            // Se event.persisted for true, significa que a página veio do "cache" do botão voltar
             if (event.persisted) {
                 loader.style.display = 'none';
                 loader.style.opacity = '0';
             } else {
-                // Carregamento normal da página (fade suave)
                 loader.style.opacity = '0';
                 setTimeout(() => { loader.style.display = 'none'; }, 400);
             }
         }
     });
 
-    // 2. Mostra o loader quando a página for descarregada (clique em link ou submit)
     window.addEventListener('beforeunload', function() {
         const loader = document.getElementById('globalLoader');
         if (loader) {

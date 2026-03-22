@@ -80,6 +80,8 @@ function renderAdminDashboardView(admin, kpiGeral, cursosKpi, notifKpi, notifCur
                         <li class="nav-item"><a class="nav-link" href="/admin/cursos">Cursos</a></li>
                         <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuários</a></li>
                         <li class="nav-item"><a class="nav-link" href="/admin/notificacoes">Notificações</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/forum">Forúm</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/admin/integracoes">Integrações e API</a></li>
                     </ul>
                     <div class="d-flex align-items-center ms-auto">
                         ${admin.foto_perfil_url 

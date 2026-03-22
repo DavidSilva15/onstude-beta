@@ -6,7 +6,7 @@ function renderAdminCursosView(admin, cursos) {
     if (cursos.length === 0) {
         htmlCursos = `
             <tr>
-                <td colspan="6" class="text-center py-4 text-muted">Nenhum curso cadastrado ainda.</td>
+                <td colspan="8" class="text-center py-4 text-muted">Nenhum curso cadastrado ainda.</td>
             </tr>
         `;
     } else {
@@ -14,11 +14,28 @@ function renderAdminCursosView(admin, cursos) {
             const badgeClass = curso.status === 'PUBLICADO' ? 'bg-success' : (curso.status === 'RASCUNHO' ? 'bg-secondary' : 'bg-warning text-dark');
             const capa = curso.capa_url ? curso.capa_url : 'https://via.placeholder.com/50';
 
+            // Tratamento visual para os novos campos
+            const duracao = curso.duracao_horas ? `${curso.duracao_horas}h` : '<span class="text-muted">-</span>';
+            const conclusao = curso.conclusao_dias ? `${curso.conclusao_dias} dias` : '<span class="text-muted">-</span>';
+            
+            let precoFormatado = '<span class="text-muted">-</span>';
+            if (curso.preco !== null && curso.preco !== undefined) {
+                const valor = parseFloat(curso.preco);
+                if (valor > 0) {
+                    precoFormatado = `R$ ${valor.toFixed(2).replace('.', ',')}`;
+                } else {
+                    precoFormatado = '<span class="text-success fw-bold">Gratuito</span>';
+                }
+            }
+
             htmlCursos += `
                 <tr class="align-middle">
                     <td class="text-center"><img src="${capa}" alt="Capa" class="rounded" style="width: 50px; height: 35px; object-fit: cover;"></td>
-                    <td class="fw-bold text-secondary">${curso.codigo_unico}</td>
-                    <td class="fw-bold">${curso.titulo}</td>
+                    <td class="fw-bold text-secondary" style="font-size: 0.9rem;">${curso.codigo_unico}</td>
+                    <td class="fw-bold text-dark">${curso.titulo}</td>
+                    <td>${duracao}</td>
+                    <td>${conclusao}</td>
+                    <td class="fw-semibold">${precoFormatado}</td>
                     <td><span class="badge ${badgeClass}">${curso.status}</span></td>
                     <td class="text-end">
                         <a href="/admin/cursos/${curso.id}" class="btn btn-sm btn-outline-primary">Ver / Módulos</a>
@@ -85,12 +102,15 @@ function renderAdminCursosView(admin, cursos) {
             <div class="card shadow-sm border-0">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0">
+                        <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th class="text-center" style="width: 80px;">Capa</th>
                                     <th>Código</th>
                                     <th>Título do Curso</th>
+                                    <th>Duração</th>
+                                    <th>Conclusão</th>
+                                    <th>Preço</th>
                                     <th>Status</th>
                                     <th class="text-end">Ações</th>
                                 </tr>

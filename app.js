@@ -29,6 +29,10 @@ const renderAlunoEditarPerfilView = require('./views/alunoEditarPerfilView');
 const renderAdminCursosView = require('./views/adminCursosView');
 const renderAdminNovaNotificacaoView = require('./views/adminNovaNotificacaoView');
 const renderAdminNotificacoesView = require('./views/adminNotificacoesView');
+const renderForumIndexView = require('./views/forumIndexView');
+const renderForumNovoTopicoView = require('./views/forumNovoTopicoView');
+const renderForumTopicoView = require('./views/forumTopicoView');
+const renderAdminIntegracoesView = require('./views/renderAdminIntegracoesView');
 
 const app = express();
 const port = 3000;
@@ -74,6 +78,18 @@ const uploadPerfil = multer({ storage: storagePerfil });
 // Configuração para receber materiais complementares das aulas
 const uploadMaterialAula = multer({ dest: path.join(__dirname, 'public/uploads/materiais/') });
 
+// Configuração do Multer para os Prints do Fórum
+const storageForum = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/img/forum/'); // Lembre-se de criar esta pasta!
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'print-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const uploadForum = multer({ storage: storageForum });
+
 // Configurações do Express
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -96,13 +112,67 @@ const uploadNotificacao = multer({ dest: path.join(__dirname, 'public/img/notifi
 // ROTAS DE AUTENTICAÇÃO
 // ==========================================
 
-// GET: Renderiza a tela de login
-app.get('/', (req, res) => {
-    // Se já estiver logado, redireciona para o painel correto
+// GET: Renderiza a tela de login (Agora apanha o "/login" e o returnTo)
+app.get(['/', '/login'], (req, res) => {
+    // 1. Puxa a informação de onde o utilizador veio através do link (ex: /login?returnTo=/forum)
+    const returnTo = req.query.returnTo || '';
+
     if (req.session.usuario) {
+        // Se já tem sessão, devolve para a página que ele tentou aceder
+        if (returnTo && returnTo.startsWith('/')) {
+            return res.redirect(returnTo);
+        }
         return res.redirect(req.session.usuario.tipo === 'ADMIN' ? '/admin' : '/aluno');
     }
-    res.send(renderLoginView());
+    
+    // 2. Passa o returnTo para a view que você acabou de configurar!
+    res.send(renderLoginView(null, returnTo));
+});
+
+// POST: Processar Login
+app.post('/login', async (req, res) => {
+    // 3. AQUI ESTÁ O SEGREDO: Extrair o returnTo do body (que veio do input hidden)
+    const { email, senha, returnTo } = req.body; 
+
+    try {
+        const [usuarios] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
+
+        if (usuarios.length === 0) {
+            return res.send(renderLoginView('E-mail ou senha incorreta.', returnTo));
+        }
+
+        const usuario = usuarios[0];
+        const match = await bcrypt.compare(senha, usuario.senha_hash);
+
+        if (!match) {
+            return res.send(renderLoginView('E-mail ou senha incorreta.', returnTo));
+        }
+
+        if (usuario.status !== 'ATIVO') {
+            return res.send(renderLoginView('Sua conta está inativa ou bloqueada.', returnTo));
+        }
+
+        await db.execute('UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = ?', [usuario.id]);
+
+        usuario.ultimo_acesso = new Date();
+        req.session.usuario = usuario;
+
+        // ==========================================
+        // 4. REDIRECIONAMENTO INTELIGENTE
+        // ==========================================
+        // Se a variável returnTo existir e for um link interno (começa com /)
+        if (returnTo && returnTo.startsWith('/')) {
+            res.redirect(returnTo);
+        } else if (usuario.tipo === 'ADMIN') {
+            res.redirect('/admin');
+        } else {
+            res.redirect('/aluno');
+        }
+
+    } catch (error) {
+        console.error('Erro no login:', error);
+        res.send(renderLoginView('Erro interno ao processar o login. Tente novamente.', returnTo));
+    }
 });
 
 // GET: Tela dedicada de Gerenciamento de Cursos
@@ -113,53 +183,6 @@ app.get('/admin/cursos', verificarAdmin, async (req, res) => {
     } catch (error) {
         console.error('Erro ao listar cursos:', error);
         res.status(500).send('Erro interno do servidor.');
-    }
-});
-
-// POST: Processar Login
-app.post('/login', async (req, res) => {
-    const { email, senha } = req.body;
-
-    try {
-        const [usuarios] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
-
-        if (usuarios.length === 0) {
-            return res.send(renderLoginView('E-mail ou senha incorreta.'));
-        }
-
-        const usuario = usuarios[0];
-        const match = await bcrypt.compare(senha, usuario.senha_hash);
-
-        if (!match) {
-            return res.send(renderLoginView('E-mail ou senha incorreta.'));
-        }
-
-        if (usuario.status !== 'ATIVO') {
-            return res.send(renderLoginView('Sua conta está inativa ou bloqueada.'));
-        }
-
-        // ==========================================
-        // 1. REGISTRA O ÚLTIMO ACESSO (Para TODOS)
-        // ==========================================
-        await db.execute('UPDATE usuarios SET ultimo_acesso = NOW() WHERE id = ?', [usuario.id]);
-
-        // ==========================================
-        // 2. CONFIGURA A SESSÃO
-        // ==========================================
-        // Atualizamos o objeto em memória para a sessão ir com a data certa
-        usuario.ultimo_acesso = new Date();
-        req.session.usuario = usuario;
-
-        // 3. REDIRECIONAMENTO
-        if (usuario.tipo === 'ADMIN') {
-            res.redirect('/admin');
-        } else {
-            res.redirect('/aluno');
-        }
-
-    } catch (error) {
-        console.error('Erro no login:', error);
-        res.send(renderLoginView('Erro interno ao processar o login. Tente novamente.'));
     }
 });
 
@@ -275,6 +298,68 @@ app.get('/admin', verificarAdmin, async (req, res) => {
 });
 
 // ==========================================
+// WEBHOOK: RECEBER VAGAS DO SITE ECOCAIXAS
+// ==========================================
+
+app.post('/api/webhooks/vagas', async (req, res) => {
+    // 1. Camada de Segurança: Apenas a Ecocaixas sabe esta chave!
+    const apiKey = req.headers['x-api-key'];
+    
+    if (apiKey !== 'CHAVE_SECRETA_ONSTUDE_ECOCAIXAS_2024') {
+        return res.status(401).json({ error: 'Acesso negado. Chave API inválida.' });
+    }
+
+    // 2. Extrai os dados da vaga que a Ecocaixas enviou
+    const { titulo, mensagem, link_url, imagem_url } = req.body;
+
+    if (!titulo || !link_url) {
+        return res.status(400).json({ error: 'Título e Link da vaga são obrigatórios.' });
+    }
+
+    try {
+        // 3. Insere a vaga como uma Notificação Global no OnStude
+        const [resultNotificacao] = await db.execute(
+            `INSERT INTO notificacoes (titulo, mensagem, link_url, imagem_url, tipo_interacao, tipo_alvo, criada_por_admin_id) 
+             VALUES (?, ?, ?, ?, 'NENHUM', 'TODOS', NULL)`,
+            [
+                titulo, 
+                mensagem || 'Nova oportunidade de emprego disponível! Clique para ver os detalhes.', 
+                link_url, 
+                imagem_url || null
+            ]
+        );
+        
+        const notificacaoId = resultNotificacao.insertId;
+
+        // 4. Distribui a vaga para TODOS os alunos ativos instantaneamente
+        await db.execute(
+            `INSERT IGNORE INTO notificacao_entregas (notificacao_id, aluno_id, status)
+             SELECT ?, id, 'PENDENTE' FROM usuarios WHERE tipo = 'ALUNO' AND status = 'ATIVO'`,
+            [notificacaoId]
+        );
+
+        res.status(200).json({ success: true, message: 'Vaga processada!' });
+
+    } catch (error) {
+        console.error('Erro ao processar webhook da Ecocaixas:', error);
+        res.status(500).json({ error: 'Erro interno no servidor do OnStude.' });
+    }
+});
+
+// GET: Tela de Integrações e APIs (Admin)
+app.get('/admin/integracoes', verificarAdmin, (req, res) => {
+    // No futuro, esta chave pode vir do banco de dados ou ficheiro .env
+    const configIntegracao = {
+        webhookUrl: 'http://localhost:3000/api/webhooks/vagas', // Mude para o seu domínio em produção
+        apiKey: 'CHAVE_SECRETA_ONSTUDE_ECOCAIXAS_2024',
+        status: 'ATIVO'
+    };
+    
+    // Precisará importar a view no topo do app.js: 
+    res.send(renderAdminIntegracoesView(req.session.usuario, configIntegracao));
+});
+
+// ==========================================
 // ROTAS DE GESTÃO DE CURSOS (ADMIN)
 // ==========================================
 
@@ -283,12 +368,13 @@ app.get('/admin/cursos/novo', verificarAdmin, (req, res) => {
     res.send(renderNovoCursoView(req.session.usuario));
 });
 
+// POST: Processa a criação de um novo curso
 app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
     { name: 'capa', maxCount: 1 },
     { name: 'certificado_template', maxCount: 1 }
 ]), async (req, res) => {
-    // 1. Agora extraímos os novos campos também
-    const { titulo, descricao, status, mercado, duracao_horas, conclusao_dias } = req.body;
+    // Agora extraímos preco e desconto_percentual
+    const { titulo, descricao, status, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual } = req.body;
     const adminId = req.session.usuario.id;
 
     const arquivos = req.files || {};
@@ -298,38 +384,27 @@ app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
     const codigoAleatorio = require('crypto').randomBytes(3).toString('hex').toUpperCase();
     const codigoUnico = `ONST-${codigoAleatorio}`;
 
-    // 2. Tratamento dos novos campos para evitar erros de tipagem no banco
+    // Tratamento dos campos
     const mercadoTratado = mercado && mercado.trim() !== '' ? mercado.trim() : null;
     const duracaoTratada = duracao_horas ? parseInt(duracao_horas) : null;
     const conclusaoTratada = conclusao_dias ? parseInt(conclusao_dias) : null;
+    
+    // Tratamento Financeiro
+    const precoTratado = preco ? parseFloat(preco.replace(',', '.')) : 0.00;
+    const descontoTratado = desconto_percentual ? parseInt(desconto_percentual) : 0;
 
     try {
-        // 3. Atualizamos o INSERT para incluir as 3 novas colunas
         const [resultadoCurso] = await db.execute(
-            `INSERT INTO cursos (codigo_unico, titulo, descricao, capa_url, certificado_template_url, status, criado_por_admin_id, mercado, duracao_horas, conclusao_dias) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO cursos (codigo_unico, titulo, descricao, capa_url, certificado_template_url, status, criado_por_admin_id, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                codigoUnico, 
-                titulo, 
-                descricao || null, 
-                capa_url, 
-                certificado_template_url, 
-                status, 
-                adminId, 
-                mercadoTratado, 
-                duracaoTratada, 
-                conclusaoTratada
+                codigoUnico, titulo, descricao || null, capa_url, certificado_template_url, status, adminId, 
+                mercadoTratado, duracaoTratada, conclusaoTratada, precoTratado, descontoTratado
             ]
         );
 
-        // 4. Adicionamos os novos dados no log JSON para manter o histórico rico
         const detalhesLog = JSON.stringify({ 
-            titulo, 
-            codigo_unico: codigoUnico, 
-            status,
-            mercado: mercadoTratado,
-            duracao_horas: duracaoTratada,
-            conclusao_dias: conclusaoTratada
+            titulo, codigo_unico: codigoUnico, status, mercado: mercadoTratado, preco: precoTratado 
         });
         
         await db.execute(
@@ -403,52 +478,42 @@ app.get('/admin/cursos/:id/editar', verificarAdmin, async (req, res) => {
 });
 
 // POST: Processa a atualização do curso
+// POST: Processa a atualização do curso
 app.post('/admin/cursos/:id/editar', verificarAdmin, upload.fields([
     { name: 'capa', maxCount: 1 },
     { name: 'certificado_template', maxCount: 1 }
 ]), async (req, res) => {
     const cursoId = req.params.id;
-    // Extraímos os novos campos do req.body
-    const { titulo, descricao, status, capa_url_atual, certificado_atual, mercado, duracao_horas, conclusao_dias } = req.body;
+    // Extraímos preco e desconto_percentual
+    const { titulo, descricao, status, capa_url_atual, certificado_atual, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual } = req.body;
     const adminId = req.session.usuario.id;
 
     const arquivos = req.files || {};
     const capa_url = arquivos['capa'] ? '/img/' + arquivos['capa'][0].filename : (capa_url_atual || null);
     const certificado_template_url = arquivos['certificado_template'] ? '/img/' + arquivos['certificado_template'][0].filename : (certificado_atual || null);
 
-    // Tratamento dos novos campos
+    // Tratamento dos campos
     const mercadoTratado = mercado && mercado.trim() !== '' ? mercado.trim() : null;
     const duracaoTratada = duracao_horas ? parseInt(duracao_horas) : null;
     const conclusaoTratada = conclusao_dias ? parseInt(conclusao_dias) : null;
+    
+    // Tratamento Financeiro
+    const precoTratado = preco ? parseFloat(preco.replace(',', '.')) : 0.00;
+    const descontoTratado = desconto_percentual ? parseInt(desconto_percentual) : 0;
 
     try {
-        // Atualiza a query para incluir mercado, duracao_horas e conclusao_dias
         await db.execute(
             `UPDATE cursos 
-             SET titulo = ?, descricao = ?, capa_url = ?, certificado_template_url = ?, status = ?, mercado = ?, duracao_horas = ?, conclusao_dias = ? 
+             SET titulo = ?, descricao = ?, capa_url = ?, certificado_template_url = ?, status = ?, mercado = ?, duracao_horas = ?, conclusao_dias = ?, preco = ?, desconto_percentual = ? 
              WHERE id = ?`,
             [
-                titulo, 
-                descricao || null, 
-                capa_url, 
-                certificado_template_url, 
-                status, 
-                mercadoTratado, 
-                duracaoTratada, 
-                conclusaoTratada, 
-                cursoId
+                titulo, descricao || null, capa_url, certificado_template_url, status, 
+                mercadoTratado, duracaoTratada, conclusaoTratada, precoTratado, descontoTratado, cursoId
             ]
         );
 
-        // Adiciona ao log de auditoria as novas alterações
         const detalhesLog = JSON.stringify({ 
-            campos_alterados: { 
-                titulo, 
-                status, 
-                mercado: mercadoTratado, 
-                duracao_horas: duracaoTratada, 
-                conclusao_dias: conclusaoTratada 
-            } 
+            campos_alterados: { titulo, status, preco: precoTratado, desconto: descontoTratado } 
         });
         
         await db.execute(
@@ -1753,13 +1818,12 @@ app.get('/aluno', verificarAluno, async (req, res) => {
 // API DE NOTIFICAÇÕES (ALUNO)
 // ==========================================
 
-// GET: Verifica se o aluno tem notificações pendentes (AGORA COM VALIDADE)
+// GET: Verifica se o aluno tem notificações pendentes (Para o Pop-up automático)
 app.get('/aluno/api/notificacoes/pendente', verificarAluno, async (req, res) => {
     const alunoId = req.session.usuario.id;
     try {
-        // As linhas de (IS NULL OR ...) garantem que se não houver data, ele exibe normalmente.
         const [pendentes] = await db.execute(`
-            SELECT n.id, n.titulo, n.mensagem, n.imagem_url, n.tipo_interacao 
+            SELECT n.id, n.titulo, n.mensagem, n.imagem_url, n.tipo_interacao, 0 AS ja_respondeu
             FROM notificacao_entregas ne
             JOIN notificacoes n ON ne.notificacao_id = n.id
             WHERE ne.aluno_id = ? AND ne.status = 'PENDENTE'
@@ -1780,20 +1844,90 @@ app.get('/aluno/api/notificacoes/pendente', verificarAluno, async (req, res) => 
     }
 });
 
-// POST: Recebe a resposta do aluno e marca como LIDA
+// GET: Lista as últimas notificações para o menu dropdown do sino (Ignorando as ocultas)
+app.get('/aluno/api/notificacoes/lista', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    try {
+        const [lista] = await db.execute(`
+            SELECT n.id, n.titulo, n.mensagem, n.link_url, n.imagem_url, n.tipo_interacao, ne.status, n.criado_em,
+                   (SELECT COUNT(*) FROM notificacao_respostas nr WHERE nr.notificacao_id = n.id AND nr.aluno_id = ?) AS ja_respondeu
+            FROM notificacao_entregas ne
+            JOIN notificacoes n ON ne.notificacao_id = n.id
+            WHERE ne.aluno_id = ?
+              AND ne.oculta = FALSE
+              AND (n.data_inicio IS NULL OR n.data_inicio <= NOW())
+            ORDER BY n.criado_em DESC LIMIT 15
+        `, [alunoId, alunoId]);
+
+        // Conta quantas estão com status 'PENDENTE' (não lidas)
+        const qtdNaoLidas = lista.filter(n => n.status === 'PENDENTE').length;
+
+        res.json({ success: true, notificacoes: lista, naoLidas: qtdNaoLidas });
+    } catch (error) {
+        console.error('Erro ao listar notificações dropdown:', error);
+        res.status(500).json({ success: false });
+    }
+});
+
+// POST: Limpar (Ocultar) todas as notificações do aluno
+app.post('/aluno/api/notificacoes/limpar', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    try {
+        // Marca todas as notificações atuais deste aluno como ocultas
+        await db.execute(
+            "UPDATE notificacao_entregas SET oculta = TRUE WHERE aluno_id = ?",
+            [alunoId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false });
+    }
+});
+
+// POST: Marca todas as notificações pendentes como lidas (Usado quando o aluno clica no sino)
+app.post('/aluno/api/notificacoes/marcar-vistas', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    try {
+        await db.execute(
+            "UPDATE notificacao_entregas SET status = 'LIDA', lida_em = NOW() WHERE aluno_id = ? AND status = 'PENDENTE'",
+            [alunoId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false });
+    }
+});
+
+// POST: Marca uma notificação específica como lida (usado quando o aluno clica no sino)
+app.post('/aluno/api/notificacoes/:id/lida', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    const notificacaoId = req.params.id;
+    try {
+        await db.execute(
+            "UPDATE notificacao_entregas SET status = 'LIDA', lida_em = NOW() WHERE notificacao_id = ? AND aluno_id = ? AND status = 'PENDENTE'",
+            [notificacaoId, alunoId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false });
+    }
+});
+
+// POST: Recebe a resposta do aluno no modal
 app.post('/aluno/api/notificacoes/:id/responder', verificarAluno, async (req, res) => {
     const alunoId = req.session.usuario.id;
     const notificacaoId = req.params.id;
     const { resposta_texto, avaliacao_estrelas } = req.body;
 
     try {
-        // Marca como LIDA
         await db.execute(
             "UPDATE notificacao_entregas SET status = 'LIDA', lida_em = NOW() WHERE notificacao_id = ? AND aluno_id = ?",
             [notificacaoId, alunoId]
         );
 
-        // Se houver interação, guarda na tabela de respostas
         if (resposta_texto || avaliacao_estrelas) {
             await db.execute(
                 "INSERT INTO notificacao_respostas (notificacao_id, aluno_id, resposta_texto, avaliacao_estrelas) VALUES (?, ?, ?, ?)",
@@ -2072,6 +2206,146 @@ app.post('/admin/notificacoes/nova', verificarAdmin, uploadNotificacao.single('i
     } catch (error) {
         console.error('Erro ao disparar notificação:', error);
         res.status(500).send('Erro ao criar notificação.');
+    }
+});
+
+// ==========================================
+// ROTAS DO FÓRUM (COMUNIDADE)
+// ==========================================
+
+function usuarioOpcional(req, res, next) {
+    req.usuarioLogado = req.session.usuario || null;
+    next();
+}
+
+// GET: Lista todos os Tópicos (PÚBLICO - COM FILTROS, BUSCA E ESTATÍSTICAS DO ALUNO)
+app.get('/forum', usuarioOpcional, async (req, res) => {
+    try {
+        const categoriaFiltro = req.query.categoria || ''; 
+        const searchFiltro = req.query.search || ''; 
+
+        const [cursos] = await db.execute("SELECT titulo FROM cursos WHERE status = 'PUBLICADO' ORDER BY titulo ASC");
+
+        let queryTopicos = `
+            SELECT 
+                t.*, 
+                u.nome as autor_nome, u.foto_perfil_url, u.tipo as autor_tipo,
+                (SELECT COUNT(*) FROM forum_respostas WHERE topico_id = t.id) as total_respostas,
+                (SELECT ROUND(AVG(nota), 1) FROM avaliacao_tentativas at JOIN matriculas m ON at.matricula_id = m.id WHERE m.aluno_id = u.id AND at.aprovado = 1) AS nota_media,
+                (SELECT c.titulo FROM avaliacao_tentativas at JOIN matriculas m ON at.matricula_id = m.id JOIN cursos c ON m.curso_id = c.id WHERE m.aluno_id = u.id GROUP BY c.id ORDER BY MAX(at.nota) DESC LIMIT 1) AS melhor_curso
+            FROM forum_topicos t
+            JOIN usuarios u ON t.usuario_id = u.id
+            WHERE 1=1
+        `;
+        let queryParams = [];
+
+        if (categoriaFiltro) {
+            queryTopicos += ` AND t.categoria = ?`;
+            queryParams.push(categoriaFiltro);
+        }
+
+        if (searchFiltro) {
+            queryTopicos += ` AND (t.titulo LIKE ? OR t.conteudo LIKE ?)`;
+            queryParams.push(`%${searchFiltro}%`, `%${searchFiltro}%`);
+        }
+
+        queryTopicos += ` ORDER BY t.criado_em DESC`;
+
+        const [topicos] = await db.execute(queryTopicos, queryParams);
+
+        res.send(renderForumIndexView(req.usuarioLogado, topicos, cursos, categoriaFiltro, searchFiltro));
+    } catch (error) {
+        console.error('Erro ao carregar fórum:', error);
+        res.status(500).send('Erro interno ao carregar o fórum.');
+    }
+});
+
+// GET: Renderiza formulário de Nova Pergunta (PROTEGIDO)
+app.get('/forum/novo', async (req, res) => {
+    if (!req.session.usuario) return res.redirect('/login?returnTo=/forum/novo');
+    try {
+        const [cursos] = await db.execute("SELECT titulo FROM cursos WHERE status = 'PUBLICADO' ORDER BY titulo ASC");
+        res.send(renderForumNovoTopicoView(req.session.usuario, cursos));
+    } catch (error) {
+        console.error('Erro ao carregar nova pergunta:', error);
+        res.status(500).send('Erro interno.');
+    }
+});
+
+// POST: Processa a Nova Pergunta (PROTEGIDO)
+app.post('/forum/novo', uploadForum.single('print_imagem'), async (req, res) => {
+    if (!req.session.usuario) return res.redirect('/login');
+
+    const { titulo, conteudo, categoria } = req.body;
+    const usuarioId = req.session.usuario.id;
+    const imagem_url = req.file ? '/img/forum/' + req.file.filename : null;
+
+    try {
+        await db.execute(
+            `INSERT INTO forum_topicos (usuario_id, titulo, conteudo, imagem_url, categoria) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [usuarioId, titulo, conteudo, imagem_url, categoria || 'Geral']
+        );
+        res.redirect('/forum');
+    } catch (error) {
+        console.error('Erro ao criar tópico:', error);
+        res.status(500).send('Erro ao publicar sua dúvida.');
+    }
+});
+
+// GET: Visualizar um Tópico Específico (PÚBLICO - COM ESTATÍSTICAS)
+app.get('/forum/topico/:id', usuarioOpcional, async (req, res) => {
+    const topicoId = req.params.id;
+
+    try {
+        await db.execute('UPDATE forum_topicos SET visualizacoes = visualizacoes + 1 WHERE id = ?', [topicoId]);
+
+        // Busca o Tópico (Pergunta) com Estatísticas
+        const [topicos] = await db.execute(`
+            SELECT t.*, u.nome as autor_nome, u.foto_perfil_url, u.tipo as autor_tipo,
+                   (SELECT ROUND(AVG(nota), 1) FROM avaliacao_tentativas at JOIN matriculas m ON at.matricula_id = m.id WHERE m.aluno_id = u.id AND at.aprovado = 1) AS nota_media,
+                   (SELECT c.titulo FROM avaliacao_tentativas at JOIN matriculas m ON at.matricula_id = m.id JOIN cursos c ON m.curso_id = c.id WHERE m.aluno_id = u.id GROUP BY c.id ORDER BY MAX(at.nota) DESC LIMIT 1) AS melhor_curso
+            FROM forum_topicos t JOIN usuarios u ON t.usuario_id = u.id WHERE t.id = ?
+        `, [topicoId]);
+
+        if (topicos.length === 0) return res.status(404).send('Tópico não encontrado.');
+
+        // Busca as Respostas com Estatísticas (AQUI ESTAVA FALTANDO PARA VOCÊ)
+        const [respostas] = await db.execute(`
+            SELECT r.*, u.nome as autor_nome, u.foto_perfil_url, u.tipo as autor_tipo,
+                   (SELECT ROUND(AVG(nota), 1) FROM avaliacao_tentativas at JOIN matriculas m ON at.matricula_id = m.id WHERE m.aluno_id = u.id AND at.aprovado = 1) AS nota_media,
+                   (SELECT c.titulo FROM avaliacao_tentativas at JOIN matriculas m ON at.matricula_id = m.id JOIN cursos c ON m.curso_id = c.id WHERE m.aluno_id = u.id GROUP BY c.id ORDER BY MAX(at.nota) DESC LIMIT 1) AS melhor_curso
+            FROM forum_respostas r JOIN usuarios u ON r.usuario_id = u.id 
+            WHERE r.topico_id = ? ORDER BY r.is_solucao DESC, r.criado_em ASC
+        `, [topicoId]);
+
+        res.send(renderForumTopicoView(req.usuarioLogado, topicos[0], respostas));
+    } catch (error) {
+        console.error('Erro ao carregar tópico:', error);
+        res.status(500).send('Erro interno.');
+    }
+});
+
+// POST: Enviar Resposta (PROTEGIDO)
+app.post('/forum/topico/:id/responder', uploadForum.single('print_imagem'), async (req, res) => {
+    if (!req.session.usuario) return res.redirect(`/login?returnTo=/forum/topico/${req.params.id}`);
+
+    const topicoId = req.params.id;
+    const { conteudo } = req.body;
+    const usuarioId = req.session.usuario.id;
+    const imagem_url = req.file ? '/img/forum/' + req.file.filename : null;
+
+    try {
+        await db.execute(
+            `INSERT INTO forum_respostas (topico_id, usuario_id, conteudo, imagem_url) VALUES (?, ?, ?, ?)`,
+            [topicoId, usuarioId, conteudo, imagem_url]
+        );
+        await db.execute('UPDATE forum_topicos SET atualizado_em = NOW() WHERE id = ?', [topicoId]);
+        
+        res.redirect(`/forum/topico/${topicoId}`);
+    } catch (error) {
+        console.error('Erro ao responder:', error);
+        res.status(500).send('Erro ao enviar resposta.');
     }
 });
 

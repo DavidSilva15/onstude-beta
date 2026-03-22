@@ -1,6 +1,6 @@
 // views/loginView.js
 
-function renderLoginView(erro = null) {
+function renderLoginView(erro = null, returnTo = '') {
     return `
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -27,6 +27,9 @@ function renderLoginView(erro = null) {
             </div>
 
             <form action="/login" method="POST">
+
+                <input type="hidden" name="returnTo" value="${returnTo}">
+                
                 <div class="mb-3">
                     <label for="email" class="form-label">E-mail</label>
                     <input type="email" class="form-control" id="email" name="email" placeholder="nome@email.com" required>
