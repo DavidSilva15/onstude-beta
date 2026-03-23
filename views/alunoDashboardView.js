@@ -88,7 +88,10 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             <a class="nav-link fw-semibold" href="/aluno/certificados">Meus Certificados</a>
                         </li>
                         <li class="nav-item ms-lg-3 border-start-lg ps-lg-3">
-                            <a class="nav-link fw-bold text-warning" href="/forum">💬 Fórum de Dúvidas</a>
+                            <a class="nav-link" href="/forum">Fórum de Dúvidas</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/aluno/favoritos">Meus Favoritos</a>
                         </li>
                     </ul>
                     

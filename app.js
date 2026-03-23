@@ -33,6 +33,8 @@ const renderForumIndexView = require('./views/forumIndexView');
 const renderForumNovoTopicoView = require('./views/forumNovoTopicoView');
 const renderForumTopicoView = require('./views/forumTopicoView');
 const renderAdminIntegracoesView = require('./views/renderAdminIntegracoesView');
+const renderHomeView = require('./views/homeView');
+const renderCursoPublicoView = require('./views/cursoPublicoView')
 
 const app = express();
 const port = 3000;
@@ -90,6 +92,21 @@ const storageForum = multer.diskStorage({
 });
 const uploadForum = multer({ storage: storageForum });
 
+// ==========================================
+// Configuração do Multer para Modelos de Currículo
+// ==========================================
+const storageCV = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'public/uploads/'); // Salva no diretório correto
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        // O ficheiro ganha o nome exato do campo (Ex: 'capa-1234.png' ou 'arquivo_docx-1234.docx')
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const uploadCV = multer({ storage: storageCV });
+
 // Configurações do Express
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -108,31 +125,360 @@ const renderLoginView = require('./views/loginView');
 
 const uploadNotificacao = multer({ dest: path.join(__dirname, 'public/img/notificacoes/') });
 
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+
 // ==========================================
-// ROTAS DE AUTENTICAÇÃO
+// PÁGINA INICIAL (LANDING PAGE)
+// ==========================================
+app.get('/', async (req, res) => {
+    try {
+       // Busca até 10 cursos públicos aleatoriamente para o slider
+        const [cursos] = await db.execute(`
+            SELECT id, titulo, descricao, capa_url, duracao_horas, conclusao_dias, preco, mercado 
+            FROM cursos 
+            WHERE status = 'PUBLICADO' 
+            ORDER BY RAND() 
+            LIMIT 10
+        `);
+
+        // Certifique-se de que o require está no topo do seu app.js, ou chame-o aqui:
+        const renderHomeView = require('./views/homeView');
+        res.send(renderHomeView(req.session.usuario || null, cursos));
+    } catch (error) {
+        console.error('Erro ao carregar a página inicial:', error);
+        res.status(500).send('Erro interno ao carregar a plataforma.');
+    }
+});
+
+// ==========================================
+// PÁGINA: PLANO DE CARREIRA (GERADOR DE CV)
+// ==========================================
+app.get('/plano-de-carreira', async (req, res) => {
+    try {
+        // Busca os modelos na tabela que criámos
+        const [modelosCV] = await db.execute('SELECT * FROM curriculo_modelos ORDER BY id DESC');
+        
+        const renderPlanoCarreiraView = require('./views/planoCarreiraView');
+        // Passa os modelosCV para a view
+        res.send(renderPlanoCarreiraView(req.session.usuario || null, modelosCV));
+    } catch (error) {
+        console.error('Erro ao carregar Plano de Carreira:', error);
+        res.status(500).send('Erro interno.');
+    }
+});
+
+// ==========================================
+// PÁGINA: PLANO DE CARREIRA (GERADOR DE CV)
+// ==========================================
+// GET: Renderiza a página (AGORA BUSCANDO DO BANCO REAL)
+app.get('/plano-de-carreira', async (req, res) => {
+    try {
+        const [modelosCV] = await db.execute('SELECT * FROM curriculo_modelos ORDER BY id DESC');
+        const renderPlanoCarreiraView = require('./views/planoCarreiraView');
+        res.send(renderPlanoCarreiraView(req.session.usuario || null, modelosCV));
+    } catch (error) {
+        console.error('Erro ao carregar Plano de Carreira:', error);
+        res.status(500).send('Erro interno.');
+    }
+});
+
+// POST: Recebe os dados em JSON e devolve o PDF gerado pelo PDFKit
+app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
+    try {
+        const dados = req.body;
+        
+        // Inicializa o documento A4 com margens padrão
+        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+
+        const nomeArquivo = `Curriculo_${dados.nome.replace(/\s+/g, '_')}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${nomeArquivo}`);
+
+        doc.pipe(res);
+
+        // =================================
+        // TEMA E PALETA DE CORES (Executivo)
+        // =================================
+        const corPrimaria = '#2C3E50'; // Grafite / Azul muito escuro para títulos e destaques
+        const corTexto = '#333333';    // Cinza escuro para o texto principal
+        const corSecundaria = '#7F8C8D'; // Cinza médio para datas e informações secundárias
+        const corLinha = '#BDC3C7';    // Cinza claro para as linhas divisórias
+
+        // =================================
+        // DESENHO DO PDF (DESIGN)
+        // =================================
+
+        // 1. Cabeçalho (Nome e Contatos)
+        doc.fontSize(22).font('Helvetica-Bold').fillColor(corPrimaria).text(dados.nome.toUpperCase(), { align: 'center' });
+        doc.moveDown(0.3);
+        
+        // Organiza os contatos numa única linha elegante
+        let contatos = [];
+        if (dados.cidade) {
+            let local = dados.bairro ? `${dados.bairro}, ${dados.cidade}` : dados.cidade;
+            contatos.push(local);
+        }
+        if (dados.telefone1) {
+            let tel = dados.telefone1;
+            if (dados.telefone2) tel += ` / ${dados.telefone2}`;
+            contatos.push(tel);
+        }
+        if (dados.email) contatos.push(dados.email);
+
+        doc.fontSize(10).font('Helvetica').fillColor(corSecundaria).text(contatos.join('   |   '), { align: 'center' });
+        doc.moveDown(2.5);
+
+        // Função auxiliar para desenhar o título das seções de forma profissional
+        const desenharSessao = (titulo) => {
+            doc.fontSize(12).font('Helvetica-Bold').fillColor(corPrimaria).text(titulo.toUpperCase());
+            doc.moveDown(0.2);
+            // Linha muito fina (0.5) e clara
+            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor(corLinha).lineWidth(0.5).stroke();
+            doc.moveDown(0.8);
+        };
+
+        // 2. Apresentação
+        if (dados.resumo) {
+            desenharSessao('Resumo Profissional');
+            doc.fontSize(10).font('Helvetica').fillColor(corTexto).text(dados.resumo, { align: 'justify', lineGap: 3 });
+            doc.moveDown(1.5);
+        }
+
+        // 3. Experiências Profissionais
+        if (dados.experiencias && dados.experiencias.length > 0) {
+            desenharSessao('Experiência Profissional');
+            
+            dados.experiencias.forEach(e => {
+                // Truque: Cargo à esquerda, Período alinhado à direita na mesma linha
+                doc.fontSize(11).font('Helvetica-Bold').fillColor(corPrimaria).text(e.cargo, { continued: true });
+                if (e.periodo) {
+                    doc.font('Helvetica-Oblique').fillColor(corSecundaria).text(`     ${e.periodo}`, { align: 'right' });
+                } else {
+                    doc.text('', { align: 'right' }); // Quebra de linha de segurança
+                }
+
+                // Empresa
+                doc.fontSize(10).font('Helvetica-Bold').fillColor(corTexto).text(e.empresa);
+                doc.moveDown(0.3);
+
+                // Descrição das atividades
+                if (e.descricao) {
+                    doc.fontSize(10).font('Helvetica').fillColor(corTexto).text(e.descricao, { align: 'justify', lineGap: 2 });
+                }
+                doc.moveDown(1.2); // Espaço entre experiências
+            });
+        }
+
+        // 4. Formação Acadêmica
+        if (dados.formacao && dados.formacao.length > 0) {
+            desenharSessao('Formação Acadêmica');
+            
+            dados.formacao.forEach(f => {
+                // Monta o título dinâmico (Ex: "Graduação em ADS" ou só "Ensino Médio")
+                let tituloFormacao = f.nivel;
+                if (f.curso && f.curso.trim() !== '') {
+                    // Se for ensino médio, não precisa do "em", só um hífen. Se for graduação/técnico, usa "em"
+                    if (f.nivel === 'Ensino Fundamental' || f.nivel === 'Ensino Médio') {
+                        tituloFormacao += ` - ${f.curso}`;
+                    } else {
+                        tituloFormacao += ` em ${f.curso}`;
+                    }
+                }
+
+                // Nível e Curso do lado esquerdo, Status/Ano do lado direito
+                doc.fontSize(11).font('Helvetica-Bold').fillColor(corPrimaria).text(tituloFormacao, { continued: true });
+                
+                let compl = [];
+                if (f.status) compl.push(f.status);
+                if (f.ano) compl.push(f.ano);
+                
+                if (compl.length > 0) {
+                     doc.font('Helvetica-Oblique').fillColor(corSecundaria).text(`     ${compl.join(' - ')}`, { align: 'right' });
+                } else {
+                    doc.text('', { align: 'right' });
+                }
+
+                doc.fontSize(10).font('Helvetica').fillColor(corTexto).text(f.instituicao);
+                doc.moveDown(0.8);
+            });
+            doc.moveDown(0.5);
+        }
+
+        // 5. Cursos e Aprimorações
+        if (dados.cursos && dados.cursos.length > 0) {
+            desenharSessao('Cursos e Qualificações');
+            
+            dados.cursos.forEach(c => {
+                doc.fontSize(10).font('Helvetica-Bold').fillColor(corPrimaria).text(c.nome, { continued: true });
+                
+                let detalhes = [];
+                if (c.instituicao) detalhes.push(c.instituicao);
+                if (c.status) detalhes.push(c.status);
+                if (c.ano) detalhes.push(c.ano);
+
+                if (detalhes.length > 0) {
+                     // Adiciona os detalhes na mesma linha com cor mais suave
+                     doc.font('Helvetica').fillColor(corTexto).text(`   |   ${detalhes.join(' - ')}`);
+                } else {
+                    doc.text('');
+                }
+                doc.moveDown(0.3);
+            });
+        }
+
+        // Finaliza o documento (dispara o download para o cliente)
+        doc.end();
+
+    } catch (error) {
+        console.error('Erro ao gerar PDF do Currículo:', error);
+        res.status(500).send('Erro ao gerar o PDF.');
+    }
+});
+
+// GET: Página dedicada à Gestão de Currículos
+app.get('/admin/curriculos', verificarAdmin, async (req, res) => {
+    try {
+        const [modelosCV] = await db.execute('SELECT * FROM curriculo_modelos ORDER BY id DESC');
+        
+        const renderAdminCurriculosView = require('./views/adminCurriculosView');
+        res.send(renderAdminCurriculosView(req.session.usuario, modelosCV));
+    } catch (error) {
+        console.error('Erro ao carregar Gestão de Currículos:', error);
+        res.status(500).send('Erro interno ao carregar a página.');
+    }
+});
+
+// ==========================================
+// ADMIN: GESTÃO DE MODELOS DE CURRÍCULO
 // ==========================================
 
-// GET: Renderiza a tela de login (Agora apanha o "/login" e o returnTo)
-app.get(['/', '/login'], (req, res) => {
-    // 1. Puxa a informação de onde o utilizador veio através do link (ex: /login?returnTo=/forum)
+// POST: Criar novo Modelo de CV
+app.post('/admin/curriculos/novo', verificarAdmin, uploadCV.fields([{ name: 'capa' }, { name: 'arquivo_docx' }]), async (req, res) => {
+    try {
+        const { titulo } = req.body;
+        const capa_url = req.files['capa'] ? '/uploads/' + req.files['capa'][0].filename : '';
+        const arquivo_url = req.files['arquivo_docx'] ? '/uploads/' + req.files['arquivo_docx'][0].filename : '';
+
+        if (!capa_url || !arquivo_url) {
+            return res.status(400).send('A imagem de capa e o ficheiro .docx são obrigatórios.');
+        }
+
+        await db.execute(
+            'INSERT INTO curriculo_modelos (titulo, capa_url, arquivo_url) VALUES (?, ?, ?)',
+            [titulo, capa_url, arquivo_url]
+        );
+        res.redirect('/admin/curriculos');
+    } catch (error) {
+        console.error('Erro ao adicionar modelo CV:', error);
+        res.status(500).send('Erro interno.');
+    }
+});
+
+// POST: Editar Modelo de CV
+app.post('/admin/curriculos/:id/editar', verificarAdmin, uploadCV.fields([{ name: 'capa' }, { name: 'arquivo_docx' }]), async (req, res) => {
+    try {
+        const id = req.params.id;
+        const { titulo } = req.body;
+        
+        let query = 'UPDATE curriculo_modelos SET titulo = ?';
+        let params = [titulo];
+
+        if (req.files['capa']) {
+            query += ', capa_url = ?';
+            params.push('/uploads/' + req.files['capa'][0].filename);
+        }
+        if (req.files['arquivo_docx']) {
+            query += ', arquivo_url = ?';
+            params.push('/uploads/' + req.files['arquivo_docx'][0].filename);
+        }
+
+        query += ' WHERE id = ?';
+        params.push(id);
+
+        await db.execute(query, params);
+        res.redirect('/admin/curriculos');
+    } catch (error) {
+        console.error('Erro ao editar modelo CV:', error);
+        res.status(500).send('Erro interno.');
+    }
+});
+
+// POST: Excluir Modelo de CV
+app.post('/admin/curriculos/:id/excluir', verificarAdmin, async (req, res) => {
+    try {
+        await db.execute('DELETE FROM curriculo_modelos WHERE id = ?', [req.params.id]);
+        res.redirect('/admin?aba=curriculos');
+    } catch (error) {
+        console.error('Erro ao excluir modelo CV:', error);
+        res.status(500).send('Erro interno.');
+    }
+});
+
+// ==========================================
+// PÁGINA DE DETALHES DO CURSO (PÚBLICA / VITRINE)
+// ==========================================
+app.get('/cursos/:id', async (req, res) => {
+    const cursoId = req.params.id;
+    const usuarioLogado = req.session.usuario || null;
+
+    try {
+        const [cursos] = await db.execute('SELECT * FROM cursos WHERE id = ? AND status = "PUBLICADO"', [cursoId]);
+
+        if (cursos.length === 0) {
+            return res.status(404).send('Curso não encontrado ou indisponível.');
+        }
+
+        const curso = cursos[0];
+
+        const [modulos] = await db.execute('SELECT * FROM modulos WHERE curso_id = ? ORDER BY ordem ASC', [cursoId]);
+        const [aulas] = await db.execute(`
+            SELECT a.* FROM aulas a 
+            JOIN modulos m ON a.modulo_id = m.id 
+            WHERE m.curso_id = ? ORDER BY a.ordem ASC
+        `, [cursoId]);
+
+        const cronograma = modulos.map(mod => {
+            return {
+                ...mod,
+                aulas: aulas.filter(aula => aula.modulo_id === mod.id)
+            };
+        });
+
+        let isMatriculado = false;
+        if (usuarioLogado && usuarioLogado.tipo === 'ALUNO') {
+            const [matriculas] = await db.execute('SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ?', [usuarioLogado.id, cursoId]);
+            if (matriculas.length > 0) isMatriculado = true;
+        }
+
+        // AQUI ESTÁ A CORREÇÃO (NOVO NOME DA VIEW)
+        const renderCursoPublicoView = require('./views/cursoPublicoView');
+        res.send(renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado));
+
+    } catch (error) {
+        console.error('Erro ao carregar detalhes do curso:', error);
+        res.status(500).send('Erro interno ao carregar o curso.');
+    }
+});
+
+// GET: Renderiza a tela de login (Apenas o /login agora!)
+app.get('/login', (req, res) => {
     const returnTo = req.query.returnTo || '';
 
     if (req.session.usuario) {
-        // Se já tem sessão, devolve para a página que ele tentou aceder
-        if (returnTo && returnTo.startsWith('/')) {
-            return res.redirect(returnTo);
-        }
+        if (returnTo && returnTo.startsWith('/')) return res.redirect(returnTo);
         return res.redirect(req.session.usuario.tipo === 'ADMIN' ? '/admin' : '/aluno');
     }
-    
-    // 2. Passa o returnTo para a view que você acabou de configurar!
+
+    // O seu renderLoginView já está preparado para receber isto
+    const renderLoginView = require('./views/loginView');
     res.send(renderLoginView(null, returnTo));
 });
 
 // POST: Processar Login
 app.post('/login', async (req, res) => {
     // 3. AQUI ESTÁ O SEGREDO: Extrair o returnTo do body (que veio do input hidden)
-    const { email, senha, returnTo } = req.body; 
+    const { email, senha, returnTo } = req.body;
 
     try {
         const [usuarios] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
@@ -290,7 +636,10 @@ app.get('/admin', verificarAdmin, async (req, res) => {
             ORDER BY qtd DESC
         `);
 
+        // Renderiza a view passando APENAS as variáveis pertinentes ao Dashboard
+        const renderAdminDashboardView = require('./views/adminDashboardView');
         res.send(renderAdminDashboardView(req.session.usuario, kpiGeral, cursosKpi, notifKpi, notifCursos));
+        
     } catch (error) {
         console.error('Erro ao carregar Dashboard:', error);
         res.status(500).send('Erro interno ao carregar o painel.');
@@ -304,7 +653,7 @@ app.get('/admin', verificarAdmin, async (req, res) => {
 app.post('/api/webhooks/vagas', async (req, res) => {
     // 1. Camada de Segurança: Apenas a Ecocaixas sabe esta chave!
     const apiKey = req.headers['x-api-key'];
-    
+
     if (apiKey !== 'CHAVE_SECRETA_ONSTUDE_ECOCAIXAS_2024') {
         return res.status(401).json({ error: 'Acesso negado. Chave API inválida.' });
     }
@@ -322,13 +671,13 @@ app.post('/api/webhooks/vagas', async (req, res) => {
             `INSERT INTO notificacoes (titulo, mensagem, link_url, imagem_url, tipo_interacao, tipo_alvo, criada_por_admin_id) 
              VALUES (?, ?, ?, ?, 'NENHUM', 'TODOS', NULL)`,
             [
-                titulo, 
-                mensagem || 'Nova oportunidade de emprego disponível! Clique para ver os detalhes.', 
-                link_url, 
+                titulo,
+                mensagem || 'Nova oportunidade de emprego disponível! Clique para ver os detalhes.',
+                link_url,
                 imagem_url || null
             ]
         );
-        
+
         const notificacaoId = resultNotificacao.insertId;
 
         // 4. Distribui a vaga para TODOS os alunos ativos instantaneamente
@@ -354,7 +703,7 @@ app.get('/admin/integracoes', verificarAdmin, (req, res) => {
         apiKey: 'CHAVE_SECRETA_ONSTUDE_ECOCAIXAS_2024',
         status: 'ATIVO'
     };
-    
+
     // Precisará importar a view no topo do app.js: 
     res.send(renderAdminIntegracoesView(req.session.usuario, configIntegracao));
 });
@@ -388,7 +737,7 @@ app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
     const mercadoTratado = mercado && mercado.trim() !== '' ? mercado.trim() : null;
     const duracaoTratada = duracao_horas ? parseInt(duracao_horas) : null;
     const conclusaoTratada = conclusao_dias ? parseInt(conclusao_dias) : null;
-    
+
     // Tratamento Financeiro
     const precoTratado = preco ? parseFloat(preco.replace(',', '.')) : 0.00;
     const descontoTratado = desconto_percentual ? parseInt(desconto_percentual) : 0;
@@ -398,15 +747,15 @@ app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
             `INSERT INTO cursos (codigo_unico, titulo, descricao, capa_url, certificado_template_url, status, criado_por_admin_id, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                codigoUnico, titulo, descricao || null, capa_url, certificado_template_url, status, adminId, 
+                codigoUnico, titulo, descricao || null, capa_url, certificado_template_url, status, adminId,
                 mercadoTratado, duracaoTratada, conclusaoTratada, precoTratado, descontoTratado
             ]
         );
 
-        const detalhesLog = JSON.stringify({ 
-            titulo, codigo_unico: codigoUnico, status, mercado: mercadoTratado, preco: precoTratado 
+        const detalhesLog = JSON.stringify({
+            titulo, codigo_unico: codigoUnico, status, mercado: mercadoTratado, preco: precoTratado
         });
-        
+
         await db.execute(
             `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, detalhes_json, ip) 
              VALUES (?, 'CRIAR_CURSO', 'cursos', ?, ?, ?)`,
@@ -496,7 +845,7 @@ app.post('/admin/cursos/:id/editar', verificarAdmin, upload.fields([
     const mercadoTratado = mercado && mercado.trim() !== '' ? mercado.trim() : null;
     const duracaoTratada = duracao_horas ? parseInt(duracao_horas) : null;
     const conclusaoTratada = conclusao_dias ? parseInt(conclusao_dias) : null;
-    
+
     // Tratamento Financeiro
     const precoTratado = preco ? parseFloat(preco.replace(',', '.')) : 0.00;
     const descontoTratado = desconto_percentual ? parseInt(desconto_percentual) : 0;
@@ -507,15 +856,15 @@ app.post('/admin/cursos/:id/editar', verificarAdmin, upload.fields([
              SET titulo = ?, descricao = ?, capa_url = ?, certificado_template_url = ?, status = ?, mercado = ?, duracao_horas = ?, conclusao_dias = ?, preco = ?, desconto_percentual = ? 
              WHERE id = ?`,
             [
-                titulo, descricao || null, capa_url, certificado_template_url, status, 
+                titulo, descricao || null, capa_url, certificado_template_url, status,
                 mercadoTratado, duracaoTratada, conclusaoTratada, precoTratado, descontoTratado, cursoId
             ]
         );
 
-        const detalhesLog = JSON.stringify({ 
-            campos_alterados: { titulo, status, preco: precoTratado, desconto: descontoTratado } 
+        const detalhesLog = JSON.stringify({
+            campos_alterados: { titulo, status, preco: precoTratado, desconto: descontoTratado }
         });
-        
+
         await db.execute(
             `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, detalhes_json, ip) 
              VALUES (?, 'EDITAR_CURSO', 'cursos', ?, ?, ?)`,
@@ -652,7 +1001,7 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
     try {
         // 1. Extrair caminhos dos arquivos enviados (se existirem)
         const arquivos = req.files || {};
-        
+
         // Caminho do material complementar (.zip ou .rar)
         const arquivoAdicionalPath = arquivos['arquivo_adicional'] ? '/uploads/' + arquivos['arquivo_adicional'][0].filename : null;
 
@@ -661,10 +1010,10 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
             `INSERT INTO aulas (modulo_id, titulo, ordem, descricao, duracao_segundos, arquivo_adicional_url) 
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
-                moduloId, 
-                titulo, 
-                parseInt(ordem), 
-                descricao || null, 
+                moduloId,
+                titulo,
+                parseInt(ordem),
+                descricao || null,
                 duracao_segundos ? parseInt(duracao_segundos) : null,
                 arquivoAdicionalPath // <-- ADICIONADO
             ]
@@ -841,18 +1190,18 @@ app.post('/admin/aulas/:id/editar', verificarAdmin, uploadAula.fields([
 
         // --- NOVIDADE AQUI: Lógica do arquivo adicional ---
         // Se enviou um novo .zip, pega o caminho novo. Se não, mantém o caminho que já estava salvo.
-        const arquivoAdicionalPath = arquivos['arquivo_adicional'] 
-            ? '/uploads/' + arquivos['arquivo_adicional'][0].filename 
+        const arquivoAdicionalPath = arquivos['arquivo_adicional']
+            ? '/uploads/' + arquivos['arquivo_adicional'][0].filename
             : (arquivo_adicional_atual || null);
 
         // 2. Atualizar dados básicos da tabela 'aulas' (AGORA INCLUINDO O ARQUIVO ADICIONAL)
         await db.execute(
             `UPDATE aulas SET titulo = ?, ordem = ?, descricao = ?, duracao_segundos = ?, arquivo_adicional_url = ? WHERE id = ?`,
             [
-                titulo, 
-                parseInt(ordem), 
-                descricao || null, 
-                duracao_segundos ? parseInt(duracao_segundos) : null, 
+                titulo,
+                parseInt(ordem),
+                descricao || null,
+                duracao_segundos ? parseInt(duracao_segundos) : null,
                 arquivoAdicionalPath, // Passando a URL do arquivo
                 aulaId
             ]
@@ -1465,8 +1814,10 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
         let cursoFoiConcluidoNestaEtapa = false; // Flag de controle
 
         if (foiAprovado) {
+            // 1. Marca a aula atual como 100% concluída
             await db.execute('UPDATE progresso_aula SET progresso_percentual = 100.00, status = "CONCLUIDA", concluida_em = NOW() WHERE matricula_id = ? AND aula_id = ?', [matriculaId, aulaId]);
 
+            // 2. Conta Total de Aulas vs Aulas Concluídas
             const [totalQuery] = await db.execute('SELECT COUNT(*) as total FROM aulas a JOIN modulos m ON a.modulo_id = m.id WHERE m.curso_id = ?', [curso_id]);
             const [concluidasQuery] = await db.execute(`
                 SELECT COUNT(*) as concluidas FROM progresso_aula pa 
@@ -1478,20 +1829,46 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
             const concluidas = concluidasQuery[0].concluidas;
             const percentualGeral = totalAulas > 0 ? ((concluidas / totalAulas) * 100).toFixed(2) : 0;
 
-            await db.execute(`UPDATE progresso_curso SET percentual = ?, aulas_concluidas = ?, total_aulas = ?, atualizado_em = NOW() WHERE matricula_id = ?`, [percentualGeral, concluidas, totalAulas, matriculaId]);
+            // ==========================================
+            // 3. CORREÇÃO: INSERIR OU ATUALIZAR PROGRESSO
+            // ==========================================
+            const [progCurso] = await db.execute('SELECT id FROM progresso_curso WHERE matricula_id = ?', [matriculaId]);
 
-            // Se chegou a 100%, marca o curso como concluído e ativa a flag
+            if (progCurso.length > 0) {
+                // Já existe progresso gravado, apenas atualiza
+                await db.execute(`UPDATE progresso_curso SET percentual = ?, aulas_concluidas = ?, total_aulas = ?, atualizado_em = NOW() WHERE matricula_id = ?`, [percentualGeral, concluidas, totalAulas, matriculaId]);
+            } else {
+                // Primeira aula concluída! Inserir a linha de progresso
+                await db.execute(`INSERT INTO progresso_curso (matricula_id, percentual, aulas_concluidas, total_aulas) VALUES (?, ?, ?, ?)`, [matriculaId, percentualGeral, concluidas, totalAulas]);
+            }
+
+            // ==========================================
+            // 4. CORREÇÃO: LIBERAR CERTIFICADO
+            // ==========================================
             if (parseFloat(percentualGeral) >= 100) {
+                // Aluno concluiu 100% do curso!
                 await db.execute('UPDATE matriculas SET status = "CONCLUIDA", concluida_em = NOW() WHERE id = ?', [matriculaId]);
-                await db.execute('UPDATE certificados SET emitido_em = NOW() WHERE matricula_id = ? AND emitido_em IS NULL', [matriculaId]);
+                
+                // Verifica como está a situação do certificado
+                const [certExiste] = await db.execute('SELECT id FROM certificados WHERE matricula_id = ?', [matriculaId]);
+                
+                if (certExiste.length === 0) {
+                    // Fallback de segurança com o novo padrão de token
+                    const tokenCertificado = crypto.randomBytes(4).toString('hex').toUpperCase();
+                    await db.execute('INSERT INTO certificados (matricula_id, token, emitido_em) VALUES (?, ?, NOW())', [matriculaId, tokenCertificado]);
+                } else {
+                    // Destranca o certificado existente
+                    await db.execute('UPDATE certificados SET emitido_em = NOW() WHERE matricula_id = ? AND emitido_em IS NULL', [matriculaId]);
+                }
+                
                 cursoFoiConcluidoNestaEtapa = true;
             }
 
             // REDIRECIONAMENTOS DE SUCESSO
             if (cursoFoiConcluidoNestaEtapa) {
-                res.redirect('/aluno'); // Terminou o curso
+                res.redirect('/aluno'); // Terminou o curso (Vai ver 100% no painel)
             } else {
-                res.redirect(`/aluno/cursos/${curso_id}/aula`); // Pula pra próxima
+                res.redirect(`/aluno/cursos/${curso_id}/aula`); // Pula pra próxima aula
             }
 
         } else {
@@ -1499,11 +1876,12 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
             // LÓGICA DE REPROVAÇÃO E RESET
             // ==========================================
             const totalFalhas = tentativasAtuais + 1; // Soma a falha atual
+            // ... (mantenha o resto do código do bloco else exatamente igual)
 
             if (totalFalhas >= 3) {
                 // ESTOUROU O LIMITE! Reseta o progresso para 0
                 await db.execute('UPDATE progresso_aula SET progresso_percentual = 0.00, status = "EM_ANDAMENTO" WHERE matricula_id = ? AND aula_id = ?', [matriculaId, aulaId]);
-                
+
                 // Zera as tentativas no banco para ele poder tentar mais 3 vezes após reassistir
                 await db.execute('DELETE FROM avaliacao_tentativas WHERE matricula_id = ? AND aula_id = ?', [matriculaId, aulaId]);
 
@@ -1525,33 +1903,38 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
 // ROTAS DE CERTIFICADOS (ALUNO)
 // ==========================================
 
-// GET: Painel de Certificados do Aluno
+// ==========================================
+// TELA DE CERTIFICADOS DO ALUNO
+// ==========================================
 app.get('/aluno/certificados', verificarAluno, async (req, res) => {
     const alunoId = req.session.usuario.id;
 
     try {
-        // Traz o certificado_template_url (a thumb configurada pelo admin)
+        // O segredo está no LEFT JOIN certificados: 
+        // Mostra o curso mesmo que o certificado ainda não exista (Em Andamento)
         const [certificados] = await db.execute(`
             SELECT 
                 c.titulo AS curso_titulo,
                 c.certificado_template_url,
-                m.status AS matricula_status,
                 cert.id AS certificado_id,
-                cert.token,
-                cert.emitido_em
+                cert.emitido_em,
+                COALESCE(cert.token, 'AGUARDANDO CONCLUSÃO') AS token
             FROM matriculas m
             JOIN cursos c ON m.curso_id = c.id
-            JOIN certificados cert ON cert.matricula_id = m.id
+            LEFT JOIN certificados cert ON cert.matricula_id = m.id
             WHERE m.aluno_id = ? 
-              AND m.status != 'CANCELADA'
-            ORDER BY cert.emitido_em DESC, c.titulo ASC
+              AND m.status IN ('ATIVA', 'CONCLUIDA')
+              AND c.status = 'PUBLICADO'
+            ORDER BY m.atualizado_em DESC
         `, [alunoId]);
 
+        // Certifique-se de importar a view (pode estar no topo do ficheiro)
+        const renderAlunoCertificadosView = require('./views/alunoCertificadosView');
         res.send(renderAlunoCertificadosView(req.session.usuario, certificados));
 
     } catch (error) {
         console.error('Erro ao carregar certificados do aluno:', error);
-        res.status(500).send('<h1>Erro interno ao carregar seus certificados.</h1>');
+        res.status(500).send('Erro interno ao carregar a página de certificados.');
     }
 });
 
@@ -1621,6 +2004,92 @@ app.get('/aluno/certificados/:id/download', verificarAluno, async (req, res) => 
     } catch (error) {
         console.error('Erro ao gerar PDF:', error);
         res.status(500).send('<h1>Erro interno ao gerar o documento.</h1>');
+    }
+});
+
+// ==========================================
+// ROTAS DE FAVORITOS (ALUNO)
+// ==========================================
+
+// GET: Renderiza a tela de Favoritos do Aluno
+app.get('/aluno/favoritos', verificarAluno, async (req, res) => {
+    const aluno = req.session.usuario;
+    try {
+        // Busca os cursos que o aluno favoritou
+        const [cursosFavoritos] = await db.execute(`
+            SELECT c.id, c.titulo, c.descricao, c.capa_url, c.duracao_horas, c.conclusao_dias, c.preco
+            FROM favoritos f
+            JOIN cursos c ON f.curso_id = c.id
+            WHERE f.aluno_id = ? AND c.status = 'PUBLICADO'
+            ORDER BY f.criado_em DESC
+        `, [aluno.id]);
+
+        const renderAlunoFavoritosView = require('./views/alunoFavoritosView');
+        res.send(renderAlunoFavoritosView(aluno, cursosFavoritos));
+    } catch (error) {
+        console.error('Erro ao carregar favoritos:', error);
+        res.status(500).send('Erro interno ao carregar a página de favoritos.');
+    }
+});
+
+// POST: API para Adicionar/Remover dos Favoritos (Toggle)
+app.post('/aluno/api/favoritos/toggle', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    const { curso_id } = req.body;
+
+    try {
+        // Verifica se já existe nos favoritos
+        const [existente] = await db.execute('SELECT * FROM favoritos WHERE aluno_id = ? AND curso_id = ?', [alunoId, curso_id]);
+
+        if (existente.length > 0) {
+            // Se já tem, REMOVE (Desfavoritar)
+            await db.execute('DELETE FROM favoritos WHERE aluno_id = ? AND curso_id = ?', [alunoId, curso_id]);
+            res.json({ success: true, acao: 'removido' });
+        } else {
+            // Se não tem, ADICIONA (Favoritar)
+            await db.execute('INSERT INTO favoritos (aluno_id, curso_id) VALUES (?, ?)', [alunoId, curso_id]);
+            res.json({ success: true, acao: 'adicionado' });
+        }
+    } catch (error) {
+        console.error('Erro ao favoritar curso:', error);
+        res.status(500).json({ success: false, error: 'Erro ao atualizar favoritos.' });
+    }
+});
+
+// ==========================================
+// MATRÍCULA EM CURSOS GRATUITOS
+// ==========================================
+app.post('/aluno/matricula/gratis', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    const { curso_id } = req.body;
+
+    try {
+        const [cursos] = await db.execute('SELECT id, preco, titulo FROM cursos WHERE id = ? AND status = "PUBLICADO"', [curso_id]);
+        if (cursos.length === 0) return res.status(404).send('Curso não encontrado ou indisponível.');
+
+        const curso = cursos[0];
+        if (parseFloat(curso.preco) > 0) return res.status(403).send('Tentativa inválida. Este curso não é gratuito.');
+
+        const [matriculaExistente] = await db.execute('SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ?', [alunoId, curso_id]);
+        if (matriculaExistente.length > 0) return res.redirect(`/aluno/cursos/${curso_id}/aula`);
+
+        // 1. Efetua a matrícula
+        const [novaMatricula] = await db.execute('INSERT INTO matriculas (aluno_id, curso_id) VALUES (?, ?)', [alunoId, curso_id]);
+        const matriculaId = novaMatricula.insertId;
+
+        // 2. GERA O CÓDIGO DO CERTIFICADO (Padrão 8 caracteres Hex)
+        const tokenCertificado = crypto.randomBytes(4).toString('hex').toUpperCase();
+        await db.execute('INSERT INTO certificados (matricula_id, token, emitido_em) VALUES (?, ?, NULL)', [matriculaId, tokenCertificado]);
+
+        // Remove dos favoritos
+        await db.execute('DELETE FROM favoritos WHERE aluno_id = ? AND curso_id = ?', [alunoId, curso_id]);
+
+        console.log(`Sucesso: Aluno ID ${alunoId} matriculado no curso gratuito ID ${curso_id}. Certificado pendente: ${tokenCertificado}`);
+        res.redirect('/aluno');
+
+    } catch (error) {
+        console.error('Erro ao processar matrícula gratuita:', error);
+        res.status(500).send('Erro interno ao processar a matrícula.');
     }
 });
 
@@ -1731,19 +2200,19 @@ app.get('/aluno', verificarAluno, async (req, res) => {
     const alunoId = req.session.usuario.id;
 
     try {
-        // 1. Query principal buscando Cursos, Matrículas e Progresso (AGORA COM AULAS CONCLUÍDAS E TOTAL)
+        // 1. Query principal: Calcula o TOTAL DE AULAS em tempo real direto da fonte
         const [cursosMatriculados] = await db.execute(`
             SELECT 
                 c.id AS curso_id, 
                 c.codigo_unico, 
                 c.titulo, 
                 c.capa_url, 
-                p.percentual,
-                p.aulas_concluidas,
-                p.total_aulas
+                COALESCE(p.percentual, 0) AS percentual,
+                COALESCE(p.aulas_concluidas, 0) AS aulas_concluidas,
+                (SELECT COUNT(a.id) FROM aulas a JOIN modulos m ON a.modulo_id = m.id WHERE m.curso_id = c.id) AS total_aulas
             FROM matriculas m
             JOIN cursos c ON m.curso_id = c.id
-            JOIN progresso_curso p ON p.matricula_id = m.id
+            LEFT JOIN progresso_curso p ON p.matricula_id = m.id
             WHERE m.aluno_id = ? 
               AND m.status IN ('ATIVA', 'CONCLUIDA') 
               AND c.status = 'PUBLICADO'
@@ -1754,19 +2223,19 @@ app.get('/aluno', verificarAluno, async (req, res) => {
         // LÓGICA DOS INDICADORES (KPIs) DO ALUNO
         // ==========================================
 
-        // 2. Aulas Concluídas vs Total Geral (Somando todos os cursos matriculados)
+        // 2. Aulas Concluídas vs Total Geral (Calculando o total real de todos os cursos que o aluno tem)
         const [aulasQuery] = await db.execute(`
             SELECT 
-                SUM(p.aulas_concluidas) AS concluidas_geral,
-                SUM(p.total_aulas) AS total_geral
+                SUM(COALESCE(p.aulas_concluidas, 0)) AS concluidas_geral,
+                SUM((SELECT COUNT(a.id) FROM aulas a JOIN modulos m ON a.modulo_id = m.id WHERE m.curso_id = c.id)) AS total_geral
             FROM matriculas m
-            JOIN progresso_curso p ON p.matricula_id = m.id
             JOIN cursos c ON m.curso_id = c.id
+            LEFT JOIN progresso_curso p ON p.matricula_id = m.id
             WHERE m.aluno_id = ? 
               AND m.status IN ('ATIVA', 'CONCLUIDA') 
               AND c.status = 'PUBLICADO'
         `, [alunoId]);
-        
+
         const concluidasGeral = aulasQuery[0].concluidas_geral || 0;
         const totalGeral = aulasQuery[0].total_geral || 0;
         const stringAulasKpi = `${concluidasGeral} / ${totalGeral}`;
@@ -1781,7 +2250,7 @@ app.get('/aluno', verificarAluno, async (req, res) => {
                 GROUP BY at.aula_id
             ) AS subquery
         `, [alunoId]);
-        
+
         const notaMediaRaw = notaQuery[0].nota_media;
         const notaMedia = notaMediaRaw ? parseFloat(notaMediaRaw).toFixed(1) : '0.0';
 
@@ -1796,7 +2265,7 @@ app.get('/aluno', verificarAluno, async (req, res) => {
             ORDER BY media_curso DESC 
             LIMIT 1
         `, [alunoId]);
-        
+
         const melhoresCursos = melhorCursoQuery.length > 0 ? melhorCursoQuery[0].titulo : 'Ainda sem notas';
 
         // 5. Objeto final que será enviado para a View
@@ -2064,7 +2533,7 @@ app.get('/admin/notificacoes/:id/exportar', verificarAdmin, async (req, res) => 
         const nomeArquivo = `Relatorio_Notificacao_${notificacaoId}.csv`;
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
-        
+
         // Envia o arquivo finalizado
         res.send(csvContent);
 
@@ -2078,7 +2547,7 @@ app.get('/admin/notificacoes/:id/exportar', verificarAdmin, async (req, res) => 
 app.post('/admin/notificacoes/:id/editar', verificarAdmin, async (req, res) => {
     const { titulo, mensagem, data_inicio, data_fim } = req.body;
     const notificacaoId = req.params.id;
-    
+
     const dInicio = data_inicio && data_inicio.trim() !== '' ? data_inicio : null;
     const dFim = data_fim && data_fim.trim() !== '' ? data_fim : null;
 
@@ -2180,7 +2649,7 @@ app.post('/admin/notificacoes/nova', verificarAdmin, uploadNotificacao.single('i
         const notificacaoId = resultNotificacao.insertId;
 
         // ... O resto do código (a distribuição inteligente) CONTINUA IGUAL ...
-        
+
         if (tipo_alvo === 'TODOS') {
             await db.execute(
                 `INSERT IGNORE INTO notificacao_entregas (notificacao_id, aluno_id, status)
@@ -2221,8 +2690,8 @@ function usuarioOpcional(req, res, next) {
 // GET: Lista todos os Tópicos (PÚBLICO - COM FILTROS, BUSCA E ESTATÍSTICAS DO ALUNO)
 app.get('/forum', usuarioOpcional, async (req, res) => {
     try {
-        const categoriaFiltro = req.query.categoria || ''; 
-        const searchFiltro = req.query.search || ''; 
+        const categoriaFiltro = req.query.categoria || '';
+        const searchFiltro = req.query.search || '';
 
         const [cursos] = await db.execute("SELECT titulo FROM cursos WHERE status = 'PUBLICADO' ORDER BY titulo ASC");
 
@@ -2341,7 +2810,7 @@ app.post('/forum/topico/:id/responder', uploadForum.single('print_imagem'), asyn
             [topicoId, usuarioId, conteudo, imagem_url]
         );
         await db.execute('UPDATE forum_topicos SET atualizado_em = NOW() WHERE id = ?', [topicoId]);
-        
+
         res.redirect(`/forum/topico/${topicoId}`);
     } catch (error) {
         console.error('Erro ao responder:', error);

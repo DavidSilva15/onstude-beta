@@ -1,6 +1,11 @@
 // views/adminNovaNotificacaoView.js
 
+const renderAdminMenuLateral = require('./adminMenuLateral');
+
 function renderAdminNovaNotificacaoView(admin, cursos) {
+
+    const htmlSidebar = renderAdminMenuLateral(admin, 'admin/notificacoes/nova');
+
     let checkboxesCursos = cursos.map(c => `
         <div class="form-check">
             <input class="form-check-input" type="checkbox" name="cursos_alvo" value="${c.id}" id="curso_${c.id}">
@@ -15,14 +20,22 @@ function renderAdminNovaNotificacaoView(admin, cursos) {
         <meta charset="UTF-8">
         <title>Nova Notificação - Admin OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            /* Ajuste da área de conteúdo principal para rolar independentemente do menu */
+            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            @media (max-width: 991.98px) {
+                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+            }
+        </style>
     </head>
     <body class="bg-light">
-        <nav class="navbar navbar-dark bg-dark shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-bold text-primary" href="/admin">OnStude <span class="text-white fw-light">Admin</span></a>
-                <a href="/admin" class="btn btn-outline-light btn-sm">Voltar ao Dashboard</a>
-            </div>
-        </nav>
+        <div class="d-flex flex-column flex-lg-row w-100 h-100">
+            
+            ${htmlSidebar}
+
+            <div class="flex-grow-1 main-content bg-light">
+                <div class="container-fluid p-4 p-md-5">
 
         <div class="container mt-5 mb-5">
             <div class="row justify-content-center">
@@ -104,6 +117,10 @@ function renderAdminNovaNotificacaoView(admin, cursos) {
                 </div>
             </div>
         </div>
+
+        </div> </div> </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
         <script>
             // Alterna a exibição dos Cursos

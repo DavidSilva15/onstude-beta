@@ -1,6 +1,11 @@
 // views/adminCursosView.js
+const renderAdminMenuLateral = require('./adminMenuLateral');
 
 function renderAdminCursosView(admin, cursos) {
+    
+    // Injeta o menu passando os dados do admin e marcando 'cursos' como ativo
+    const htmlSidebar = renderAdminMenuLateral(admin, 'cursos');
+
     let htmlCursos = '';
 
     if (cursos.length === 0) {
@@ -53,8 +58,17 @@ function renderAdminCursosView(admin, cursos) {
         <meta charset="UTF-8">
         <title>Gerenciar Cursos - Admin OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <style>
+            /* Ajuste da área de conteúdo principal para rolar independentemente do menu */
+            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            @media (max-width: 991.98px) {
+                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+            }
+        </style>
     </head>
-    <body class="bg-light">
+    <body>
 
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
             <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
@@ -63,95 +77,73 @@ function renderAdminCursosView(admin, cursos) {
             <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
         </div>
 
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-bold text-primary" href="/admin">OnStude <span class="text-white fw-light">Admin</span></a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navAdmin">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navAdmin">
-                    <ul class="navbar-nav me-auto">
-                        <li class="nav-item"><a class="nav-link" href="/admin">Dashboard</a></li>
-                        <li class="nav-item"><a class="nav-link active fw-bold" href="/admin/cursos">Cursos</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuários</a></li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/admin/notificacoes">Notificações</a>
-                        </li>
-                    </ul>
-                    <div class="d-flex align-items-center">
-                        ${admin.foto_perfil_url 
-                            ? `<img src="${admin.foto_perfil_url}" alt="Foto" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover; border: 2px solid #fff;">` 
-                            : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width: 36px; height: 36px; border: 2px solid #fff; font-size: 14px;">${admin.nome.charAt(0).toUpperCase()}</div>`
-                        }
-                        <span class="text-light me-3">Olá, <strong>${admin.nome.split(' ')[0]}</strong></span>
-                        <a href="/logout" class="btn btn-outline-danger btn-sm">Sair</a>
+        <div class="d-flex flex-column flex-lg-row w-100 h-100">
+            
+            ${htmlSidebar}
+
+            <div class="flex-grow-1 main-content bg-light">
+                <div class="container-fluid p-4 p-md-5">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h2 class="fw-bold text-dark mb-0">Gerenciar Cursos</h2>
+                            <p class="text-muted">Crie, edite e organize os cursos da plataforma.</p>
+                        </div>
+                        <a href="/admin/cursos/novo" class="btn btn-primary rounded-pill fw-bold shadow-sm px-4">
+                            <i class="bi bi-plus-lg me-1"></i> Novo Curso
+                        </a>
                     </div>
-                </div>
-            </div>
-        </nav>
 
-        <div class="container mt-5 mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2 class="fw-bold text-dark mb-0">Gerenciar Cursos</h2>
-                    <p class="text-muted">Crie, edite e organize os cursos da plataforma.</p>
-                </div>
-                <a href="/admin/cursos/novo" class="btn btn-primary fw-bold shadow-sm">+ Novo Curso</a>
-            </div>
-
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-center" style="width: 80px;">Capa</th>
-                                    <th>Código</th>
-                                    <th>Título do Curso</th>
-                                    <th>Duração</th>
-                                    <th>Conclusão</th>
-                                    <th>Preço</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${htmlCursos}
-                            </tbody>
-                        </table>
+                    <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-5">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center ps-3" style="width: 80px;">Capa</th>
+                                            <th>Código</th>
+                                            <th>Título do Curso</th>
+                                            <th>Duração</th>
+                                            <th>Conclusão</th>
+                                            <th>Preço</th>
+                                            <th>Status</th>
+                                            <th class="text-end pe-4">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${htmlCursos}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+                </div> </div> </div>
         
         <script>
-    // 1. Esconde o loader no carregamento normal E quando o usuário clica em "Voltar"
-    window.addEventListener('pageshow', function(event) {
-        const loader = document.getElementById('globalLoader');
-        if (loader) {
-            // Se event.persisted for true, significa que a página veio do "cache" do botão voltar
-            if (event.persisted) {
-                loader.style.display = 'none';
-                loader.style.opacity = '0';
-            } else {
-                // Carregamento normal da página (fade suave)
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 400);
-            }
-        }
-    });
+            // 1. Esconde o loader no carregamento normal E quando o usuário clica em "Voltar"
+            window.addEventListener('pageshow', function(event) {
+                const loader = document.getElementById('globalLoader');
+                if (loader) {
+                    if (event.persisted) {
+                        loader.style.display = 'none';
+                        loader.style.opacity = '0';
+                    } else {
+                        loader.style.opacity = '0';
+                        setTimeout(() => { loader.style.display = 'none'; }, 400);
+                    }
+                }
+            });
 
-    // 2. Mostra o loader quando a página for descarregada (clique em link ou submit)
-    window.addEventListener('beforeunload', function() {
-        const loader = document.getElementById('globalLoader');
-        if (loader) {
-            loader.style.display = 'flex';
-            setTimeout(() => { loader.style.opacity = '1'; }, 10); 
-        }
-    });
-</script>
+            // 2. Mostra o loader quando a página for descarregada (clique em link ou submit)
+            window.addEventListener('beforeunload', function() {
+                const loader = document.getElementById('globalLoader');
+                if (loader) {
+                    loader.style.display = 'flex';
+                    setTimeout(() => { loader.style.opacity = '1'; }, 10); 
+                }
+            });
+        </script>
     </body>
     </html>
     `;

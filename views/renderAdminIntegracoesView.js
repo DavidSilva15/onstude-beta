@@ -1,6 +1,11 @@
 // views/adminIntegracoesView.js
 
+const renderAdminMenuLateral = require('./adminMenuLateral');
+
 function renderAdminIntegracoesView(admin, config) {
+
+    const htmlSidebar = renderAdminMenuLateral(admin, 'integracoes');
+
     const statusBadge = config.status === 'ATIVO' 
         ? '<span class="badge bg-success rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Escutando (Ativo)</span>' 
         : '<span class="badge bg-danger rounded-pill"><i class="bi bi-x-circle-fill me-1"></i> Inativo</span>';
@@ -17,6 +22,13 @@ function renderAdminIntegracoesView(admin, config) {
             .kpi-icon-box { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
             .bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
             pre { background-color: #212529; color: #f8f9fa; border-radius: 8px; padding: 15px; font-size: 0.85rem; }
+
+            /* Ajuste da área de conteúdo principal para rolar independentemente do menu */
+            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            @media (max-width: 991.98px) {
+                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+            }
         </style>
     </head>
     <body class="bg-light">
@@ -25,29 +37,12 @@ function renderAdminIntegracoesView(admin, config) {
             <h5 class="mt-3 text-secondary fw-bold">Carregando painel...</h5>
         </div>
 
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-bold text-primary" href="/admin">OnStude <span class="text-white fw-light">Admin</span></a>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto">
-                        <li class="nav-item"><a class="nav-link" href="/admin">Dashboard</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/cursos">Cursos</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/usuarios">Usuários</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/admin/notificacoes">Notificações</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/forum">Fórum</a></li>
-                        <li class="nav-item"><a class="nav-link active fw-bold" href="/admin/integracoes">Integrações e API</a></li>
-                    </ul>
-                    <div class="d-flex align-items-center ms-auto">
-                        ${admin.foto_perfil_url 
-                            ? `<img src="${admin.foto_perfil_url}" alt="Foto" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover; border: 2px solid #fff;">` 
-                            : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width: 36px; height: 36px; border: 2px solid #fff; font-size: 14px;">${admin.nome.charAt(0).toUpperCase()}</div>`
-                        }
-                        <span class="text-light me-3">Olá, <strong>${admin.nome}</strong></span>
-                        <a href="/logout" class="btn btn-outline-danger btn-sm">Sair</a>
-                    </div>
-                </div>
-            </div>
-        </nav>
+        <div class="d-flex flex-column flex-lg-row w-100 h-100">
+            
+            ${htmlSidebar}
+
+            <div class="flex-grow-1 main-content bg-light">
+                <div class="container-fluid p-4 p-md-5">
 
         <div class="container mt-4 mb-5">
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -130,7 +125,8 @@ function renderAdminIntegracoesView(admin, config) {
                 </div>
             </div>
         </div>
-
+</div> </div> </div>
+        
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         
         <script>
@@ -184,6 +180,8 @@ function renderAdminIntegracoesView(admin, config) {
                 }
             });
         </script>
+
+        
     </body>
     </html>
     `;

@@ -81,6 +81,13 @@ function renderAlunoCertificadosView(aluno, certificados) {
             .transition { transition: all .3s ease; }
             .transition:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
             .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
+
+            /* Ajuste da área de conteúdo principal para rolar independentemente do menu */
+            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            @media (max-width: 991.98px) {
+                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+            }
         </style>
     </head>
     <body>

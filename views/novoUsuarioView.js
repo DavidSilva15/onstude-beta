@@ -1,6 +1,11 @@
 // views/novoUsuarioView.js
 
+const renderAdminMenuLateral = require('./adminMenuLateral');
+
 function renderNovoUsuarioView(admin, cursosDisponiveis) {
+
+    const htmlSidebar = renderAdminMenuLateral(admin, 'admin/usuario/novo');
+
     // Monta as opções de cursos (checkboxes)
     let htmlCursos = '';
     if (cursosDisponiveis && cursosDisponiveis.length > 0) {
@@ -25,6 +30,15 @@ function renderNovoUsuarioView(admin, cursosDisponiveis) {
         <meta charset="UTF-8">
         <title>Novo Usuário - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+        <style>
+            /* Ajuste da área de conteúdo principal para rolar independentemente do menu */
+            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            @media (max-width: 991.98px) {
+                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+            }
+        </style>
     </head>
     <body class="bg-light">
     <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
@@ -34,19 +48,13 @@ function renderNovoUsuarioView(admin, cursosDisponiveis) {
     <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
 </div>
 
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-bold text-primary" href="/admin">OnStude <span class="text-white fw-light">Admin</span></a>
-                <div class="d-flex align-items-center ms-auto">
-                    ${admin.foto_perfil_url 
-                        ? `<img src="${admin.foto_perfil_url}" alt="Foto" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover; border: 2px solid #fff;">` 
-                        : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-secondary text-white fw-bold" style="width: 36px; height: 36px; border: 2px solid #fff; font-size: 14px;">${admin.nome.charAt(0).toUpperCase()}</div>`
-                    }
-                    <span class="text-light me-3">Olá, <strong>${admin.nome}</strong></span>
-                    <a href="/logout" class="btn btn-outline-danger btn-sm">Sair</a>
-                </div>
-            </div>
-        </nav>
+        <body>
+        <div class="d-flex flex-column flex-lg-row w-100 h-100">
+            
+            ${htmlSidebar}
+
+            <div class="flex-grow-1 main-content bg-light">
+                <div class="container-fluid p-4 p-md-5">
 
         <div class="container mt-5 mb-5">
             <div class="row justify-content-center">
@@ -132,7 +140,8 @@ function renderNovoUsuarioView(admin, cursosDisponiveis) {
             </div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        </div> </div> </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         <script>
             // Script simples para esconder a secção de matrícula se o tipo for ADMIN
             const selectTipo = document.getElementById('tipoUsuario');
@@ -174,6 +183,8 @@ function renderNovoUsuarioView(admin, cursosDisponiveis) {
         }
     });
 </script>
+
+
     </body>
     </html>
     `;
