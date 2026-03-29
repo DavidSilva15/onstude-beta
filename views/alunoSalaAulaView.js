@@ -1,48 +1,117 @@
 // views/alunoSalaAulaView.js
 
-function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtual, imagensApostila, matricula, progressoPercentual, tentativasUsadas, avaliacaoData) {
-    // ==========================================
-    // 1. MONTAR O MENU LATERAL (AULAS E PROGRESSO)
-    // ==========================================
-    let htmlMenuLateral = '<div class="accordion accordion-flush" id="accordionModulos">';
+function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtual, imagensApostila, matricula, progressoPercentual, tentativasUsadas, avaliacaoData, notasSalvas = []) {
     
+    // Configuração do Aluno para o Cabeçalho Lateral
+    const nomeAluno = aluno ? aluno.nome.split(' ')[0] : 'Aluno';
+    const fotoAluno = aluno && aluno.foto_perfil_url 
+        ? `<img src="${aluno.foto_perfil_url}" class="rounded-circle shadow-sm border border-2 border-primary" style="width: 48px; height: 48px; object-fit: cover;">` 
+        : `<div class="rounded-circle shadow-sm border border-2 border-primary bg-primary text-white d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px;">${nomeAluno.charAt(0).toUpperCase()}</div>`;
+
+    // ==========================================
+    // 1. MONTAR O NOVO CABEÇALHO LATERAL
+    // ==========================================
+    let htmlMenuLateral = `
+        <div class="p-4 bg-white sticky-top border-bottom" style="z-index: 10;">
+            <div class="d-none d-lg-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold text-primary mb-0">OnStude<span class="text-dark">.</span></h3>
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 shadow-sm">Sala de Aula</span>
+            </div>
+            
+            <div class="d-flex align-items-center mb-4 p-3 bg-light rounded-4 border border-secondary border-opacity-10">
+                ${fotoAluno}
+                <div class="ms-3 overflow-hidden">
+                    <small class="text-muted d-block lh-1 mb-1" style="font-size: 0.7rem;">Estudando agora</small>
+                    <strong class="text-dark d-block text-truncate" title="${nomeAluno}">${nomeAluno}</strong>
+                </div>
+            </div>
+
+            <a href="/aluno" class="btn btn-outline-danger w-100 fw-bold rounded-pill shadow-sm d-flex align-items-center justify-content-center">
+                <i class="bi bi-box-arrow-left me-2"></i> Sair da Sala
+                <i class="bi bi-info-circle ms-2 text-danger opacity-50" data-bs-toggle="tooltip" data-bs-placement="top" title="Seu progresso é salvo automaticamente ao sair."></i>
+            </a>
+        </div>
+        <div class="accordion accordion-flush p-2 pb-5" id="accordionModulos">
+    `;
+
+    // ==========================================
+    // 2. MONTAR A LISTA DE MÓDULOS E AULAS
+    // ==========================================
+    const fallbackThumb = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22150%22%20height%3D%2284%22%20viewBox%3D%220%200%20150%2084%22%3E%3Crect%20fill%3D%22%23343a40%22%20width%3D%22100%25%22%20height%3D%22100%25%22%2F%3E%3Ctext%20fill%3D%22%236c757d%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3EAula%3C%2Ftext%3E%3C%2Fsvg%3E';
+
     modulos.forEach(modulo => {
         let htmlAulas = '';
         modulo.aulas.forEach(aula => {
             const isConcluida = aula.progresso_status === 'CONCLUIDA';
+            const isBloqueada = !aula.isLiberada;
             const isAtual = aulaAtual && aula.id === aulaAtual.id;
-            
+
             const progressoAula = parseFloat(aula.progresso_percentual) || 0;
             const progressoFormatado = Math.round(progressoAula);
             const corBarra = progressoAula >= 100 ? 'bg-success' : 'bg-primary';
-            
-            const icone = isConcluida ? '✅' : (aula.isLiberada ? '▶️' : '🔒');
-            const corFundo = isAtual ? 'bg-primary-subtle border-start border-primary border-4' : '';
-            const corTexto = isAtual ? 'fw-bold text-primary' : (isConcluida ? 'text-success' : (aula.isLiberada ? 'text-dark' : 'text-muted'));
-            const estiloClique = aula.isLiberada ? '' : 'pointer-events: none; opacity: 0.7;';
 
-            // NOVIDADE: Lógica para exibir a nota no card lateral
+            const corFundo = isAtual ? 'bg-primary-subtle border-primary border-2 shadow-sm z-1' : 'bg-white border-transparent';
+            const corTexto = isAtual ? 'text-primary' : (isConcluida ? 'text-dark' : (isBloqueada ? 'text-muted' : 'text-dark'));
+            const estiloClique = isBloqueada ? 'pointer-events: none; opacity: 0.6;' : '';
+
+            const duracaoTotalSegundos = aula.duracao_segundos || 0;
+
+            const formatSegundos = (s) => {
+                const min = Math.floor(s / 60);
+                const sec = Math.floor(s % 60);
+                return min + ':' + (sec < 10 ? '0' : '') + sec;
+            };
+
+            const tempoTotalFormatado = formatSegundos(duracaoTotalSegundos);
+            const thumbUrl = aula.video_thumb_path ? aula.video_thumb_path : fallbackThumb;
+
+            let badgeStatusAula = '';
+            if (isConcluida) {
+                badgeStatusAula = '<span class="badge bg-success border border-success px-2 py-1 shadow-sm" style="font-size: 0.55rem;"><i class="bi bi-check-circle-fill me-1"></i>Concluída</span>';
+            } else if (isBloqueada) {
+                badgeStatusAula = '<span class="badge bg-secondary border border-secondary px-2 py-1 shadow-sm" style="font-size: 0.55rem;"><i class="bi bi-lock-fill me-1"></i>Bloqueada</span>';
+            } else {
+                badgeStatusAula = '<span class="badge bg-warning text-dark border border-warning px-2 py-1 shadow-sm" style="font-size: 0.55rem;"><i class="bi bi-play-circle-fill me-1"></i>Em Andamento</span>';
+            }
+
             let badgeNota = '';
             if (isConcluida && aula.nota_avaliacao !== undefined && aula.nota_avaliacao !== null) {
-                // Formata a nota para ter sempre 1 casa decimal (ex: 8.5)
                 const notaFormatada = parseFloat(aula.nota_avaliacao).toFixed(1);
-                badgeNota = `<span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 ms-2" style="font-size: 0.7rem;">Nota: ${notaFormatada}</span>`;
+                badgeNota = `<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 shadow-sm" style="font-size: 0.55rem;">Nota: ${notaFormatada}</span>`;
             }
 
             htmlAulas += `
-                <a href="/aluno/cursos/${curso.id}/aula/${aula.id}" class="list-group-item list-group-item-action ${corFundo} d-flex flex-column py-3" style="${estiloClique}">
-                    <div class="d-flex align-items-center mb-2">
-                        <span class="me-2">${icone}</span>
-                        <span class="small ${corTexto} flex-grow-1 text-truncate" title="${aula.titulo}">
-                            Aula ${aula.ordem}: ${aula.titulo}
-                        </span>
-                    </div>
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="small fw-bold text-muted" style="font-size: 0.75rem;">${progressoFormatado}%</span>
-                        ${badgeNota}
-                    </div>
-                    <div class="progress" style="height: 6px; width: 100%;">
-                        <div class="progress-bar ${corBarra}" role="progressbar" style="width: ${progressoAula}%;" aria-valuenow="${progressoAula}" aria-valuemin="0" aria-valuemax="100"></div>
+                <a href="/aluno/cursos/${curso.id}/aula/${aula.id}" class="list-group-item list-group-item-action ${corFundo} mb-2 rounded-4 transition-all" style="${estiloClique} border-style: solid;">
+                    <div class="d-flex gap-3">
+                        <div class="position-relative flex-shrink-0 rounded-3 overflow-hidden shadow-sm" style="width: 100px; height: 60px; background-color: #000;">
+                            <img src="${thumbUrl}" onerror="this.onerror=null;this.src='${fallbackThumb}';" class="w-100 h-100" style="object-fit: cover; opacity: ${isBloqueada ? '0.4' : '1'};" alt="Thumb">
+                            
+                            <div class="position-absolute bottom-0 end-0 bg-dark text-white px-1 m-1 rounded" style="font-size: 0.55rem; opacity: 0.9;">
+                                ${tempoTotalFormatado}
+                            </div>
+                            
+                            ${isAtual ? '<div class="position-absolute top-0 start-0 w-100 h-100 bg-primary opacity-25"></div>' : ''}
+                        </div>
+                        
+                        <div class="flex-grow-1 d-flex flex-column justify-content-center overflow-hidden">
+                            <div class="mb-1">
+                                <span class="d-block small ${corTexto} text-truncate fw-bold lh-sm" title="${aula.titulo}">
+                                    ${aula.ordem}. ${aula.titulo}
+                                </span>
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
+                                ${badgeStatusAula}
+                                ${badgeNota}
+                            </div>
+                            
+                            <div class="d-flex align-items-center mt-auto">
+                                <div class="progress flex-grow-1 me-2 bg-secondary bg-opacity-15 rounded-pill" style="height: 4px;">
+                                    <div class="progress-bar ${corBarra} rounded-pill" role="progressbar" style="width: ${progressoAula}%;" aria-valuenow="${progressoAula}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <span class="small fw-bold ${progressoAula >= 100 ? 'text-success' : 'text-muted'}" style="font-size: 0.65rem;">${progressoFormatado}%</span>
+                            </div>
+                        </div>
                     </div>
                 </a>
             `;
@@ -53,15 +122,16 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
         const btnCollapsed = isModuloAberto ? '' : 'collapsed';
 
         htmlMenuLateral += `
-            <div class="accordion-item border-bottom">
+            <div class="accordion-item bg-transparent border-0 mb-3">
                 <h2 class="accordion-header" id="headingMod${modulo.id}">
-                    <button class="accordion-button ${btnCollapsed} fw-bold bg-light text-secondary shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMod${modulo.id}">
-                        Módulo ${modulo.ordem}: ${modulo.titulo}
+                    <button class="accordion-button ${btnCollapsed} fw-bold bg-white text-dark shadow-sm rounded-4 border-0 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMod${modulo.id}">
+                        <i class="bi bi-folder2-open text-primary me-2 fs-5"></i>
+                        <span class="text-truncate">Módulo ${modulo.ordem}: ${modulo.titulo}</span>
                     </button>
                 </h2>
                 <div id="collapseMod${modulo.id}" class="accordion-collapse collapse ${collapseClass}" data-bs-parent="#accordionModulos">
-                    <div class="list-group list-group-flush">
-                        ${htmlAulas.length > 0 ? htmlAulas : '<div class="p-3 small text-muted">Nenhuma aula.</div>'}
+                    <div class="list-group list-group-flush p-0 m-0 bg-transparent ps-2">
+                        ${htmlAulas.length > 0 ? htmlAulas : '<div class="p-3 small text-muted text-center bg-white rounded-4 shadow-sm">Nenhuma aula neste módulo.</div>'}
                     </div>
                 </div>
             </div>
@@ -70,75 +140,118 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
     htmlMenuLateral += '</div>';
 
     // ==========================================
-    // 2. LÓGICA DAS ETAPAS DA AULA ATUAL
+    // 3. LÓGICA DAS ETAPAS DA AULA ATUAL E NOTAS (Lado a Lado)
     // ==========================================
     let htmlConteudo = '';
-    
+
     if (!aulaAtual) {
         htmlConteudo = `<div class="text-center py-5 mt-5"><h4 class="text-muted">Nenhuma aula disponível.</h4></div>`;
     } else {
         const percent = parseFloat(progressoPercentual) || 0;
-        
-        // --- ETAPA 1: VÍDEO (CUSTOM PLAYER) ---
+        const isApostilaLiberada = percent >= 33.33;
+        const isAvaliacaoLiberada = percent >= 66.66;
+
+        // --- COMPONENTE DAS NOTAS DA AULA ---
+        const htmlNotasCard = `
+            <div class="card shadow-sm border-0 rounded-4 bg-white h-100 d-flex flex-column">
+                <div class="card-body p-4 d-flex flex-column h-100">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                        <h6 class="fw-bold text-dark mb-0">
+                            <i class="bi bi-journal-bookmark-fill text-warning me-2"></i>Minhas Notas
+                            <i class="bi bi-info-circle ms-1 text-muted cursor-pointer" data-bs-toggle="tooltip" title="Clique no tempo de uma nota para pular o vídeo exatamente para aquele instante."></i>
+                        </h6>
+                        <span class="badge bg-light text-muted border" id="contadorNotas">0 notas</span>
+                    </div>
+                    
+                    <div class="input-group mb-4 shadow-sm rounded-pill overflow-hidden border flex-shrink-0">
+                        <span class="input-group-text bg-light text-primary fw-bold border-0 px-3" id="badgeTempoNota" style="min-width: 60px; text-align: center;">0:00</span>
+                        <input type="text" id="inputNotaTexto" class="form-control border-0 bg-light shadow-none" placeholder="O que deseja lembrar?">
+                        <button class="btn btn-primary fw-bold px-3 border-0" id="btnSalvarNota" type="button">Salvar</button>
+                    </div>
+                    
+                    <div id="listaNotas" class="list-group list-group-flush flex-grow-1" style="max-height: 400px; overflow-y: auto;">
+                        </div>
+                </div>
+            </div>
+        `;
+
+        // --- ETAPA 1: VÍDEO (Layout Dividido no Desktop) ---
         const temVideo = conteudosAtual && conteudosAtual.video_path;
         let htmlVideo = '';
         if (temVideo) {
             htmlVideo = `
-                <div id="customVideoContainer" class="position-relative w-100 rounded shadow-sm bg-dark overflow-hidden d-flex justify-content-center align-items-center" style="height: 500px;">
-                    <video id="videoPlayer" class="w-100 h-100" style="object-fit: contain;">
-                        <source src="${conteudosAtual.video_path}" type="video/mp4">
-                    </video>
-                    
-                    <div id="centerPlayBtn" class="position-absolute" style="cursor: pointer; opacity: 0.8; transition: opacity 0.2s;">
-                        <svg width="80" height="80" viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                            <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"/>
-                        </svg>
-                    </div>
+                <div class="row g-4">
+                    <div class="col-xl-8 col-lg-12">
+                        <div id="customVideoContainer" class="position-relative w-100 rounded-4 shadow-sm bg-dark overflow-hidden d-flex justify-content-center align-items-center video-container-h">
+                            <video id="videoPlayer" class="w-100 h-100" style="object-fit: contain;">
+                                <source src="${conteudosAtual.video_path}" type="video/mp4">
+                            </video>
+                            
+                            <div id="centerPlayBtn" class="position-absolute" style="cursor: pointer; opacity: 0.8; transition: opacity 0.2s;">
+                                <svg width="80" height="80" viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="M6.271 5.055a.5.5 0 0 1 .52.038l3.5 2.5a.5.5 0 0 1 0 .814l-3.5 2.5A.5.5 0 0 1 6 10.5v-5a.5.5 0 0 1 .271-.445z"/>
+                                </svg>
+                            </div>
 
-                    <div id="videoControls" class="position-absolute bottom-0 w-100 p-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(transparent, rgba(0,0,0,0.9)); transition: opacity 0.3s; opacity: 1;">
-                        <button id="btnPlayPause" class="btn btn-link text-white text-decoration-none p-0 me-3" style="font-size: 1.5rem;">▶️</button>
-                        <span id="videoCurrentTime" class="text-white small fw-bold" style="min-width: 45px; text-align: right;">0:00</span>
-                        
-                        <div id="progressContainer" class="progress flex-grow-1 mx-3 bg-secondary rounded-pill" style="height: 8px; cursor: not-allowed; position: relative; overflow: visible;">
-                            <div id="progressBar" class="progress-bar bg-primary rounded-pill" role="progressbar" style="width: 0%; transition: width 0.1s linear;"></div>
-                            <div id="progressThumb" class="bg-white rounded-circle position-absolute" style="width: 14px; height: 14px; top: -3px; left: 0%; margin-left: -7px; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>
+                            <div id="videoControls" class="position-absolute bottom-0 w-100 p-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(transparent, rgba(0,0,0,0.9)); transition: opacity 0.3s; opacity: 1;">
+                                <button id="btnPlayPause" class="btn btn-link text-white text-decoration-none p-0 me-3" style="font-size: 1.5rem;">▶️</button>
+                                <span id="videoCurrentTime" class="text-white small fw-bold" style="min-width: 45px; text-align: right;">0:00</span>
+                                
+                                <div id="progressContainer" class="progress flex-grow-1 mx-3 bg-secondary rounded-pill" style="height: 8px; cursor: ${percent >= 33.33 ? 'pointer' : 'not-allowed'}; position: relative; overflow: visible;">
+                                    <div id="progressBar" class="progress-bar bg-primary rounded-pill" role="progressbar" style="width: 0%; transition: width 0.1s linear;"></div>
+                                    <div id="progressThumb" class="bg-white rounded-circle position-absolute" style="width: 14px; height: 14px; top: -3px; left: 0%; margin-left: -7px; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>
+                                </div>
+
+                                <span id="videoDuration" class="text-white small fw-bold me-3" style="min-width: 45px;">0:00</span>
+                                <button id="btnFullscreen" class="btn btn-link text-white text-decoration-none p-0" style="font-size: 1.5rem;" title="Tela Cheia">⛶</button>
+                            </div>
                         </div>
 
-                        <span id="videoDuration" class="text-white small fw-bold me-3" style="min-width: 45px;">0:00</span>
-                        <button id="btnFullscreen" class="btn btn-link text-white text-decoration-none p-0" style="font-size: 1.5rem;" title="Tela Cheia">⛶</button>
+                        <div id="video-feedback" class="mt-4 text-center">
+                            ${percent >= 33.33 ? `
+                                <button class="btn btn-success rounded-pill px-4 py-2 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalVideoConcluido">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Vídeo Concluído (Ver Status)
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
-                </div>
 
-                <div id="video-feedback" class="mt-3">
-                    ${percent >= 33.33 ? '<div class="alert alert-success text-center">✅ Vídeo concluído. A Apostila está liberada.</div>' : ''}
+                    <div class="col-xl-4 col-lg-12">
+                        ${htmlNotasCard}
+                    </div>
                 </div>
             `;
         } else {
             htmlVideo = `
-                <div class="p-5 text-center bg-light border rounded text-muted mb-3">Esta aula não possui vídeo gravado.</div>
+                <div class="p-4 p-md-5 text-center bg-light border rounded-4 text-muted mb-3 shadow-sm">
+                    <i class="bi bi-camera-video-off fs-1 d-block mb-3 opacity-50"></i>
+                    Esta aula não possui vídeo gravado.
+                </div>
                 ${percent < 33.33 ? `
                     <div id="video-feedback" class="text-center">
-                        <button id="btnPularVideo" class="btn btn-primary px-4">Avançar para Apostila</button>
-                    </div>` : '<div class="alert alert-success text-center">✅ Etapa concluída. A Apostila está liberada.</div>'
+                        <button id="btnPularVideo" class="btn btn-primary px-4 px-md-5 py-2 rounded-pill fw-bold shadow-sm">Avançar para Atividade Prática</button>
+                    </div>` : `
+                    <div class="text-center">
+                        <button class="btn btn-success rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalVideoConcluido">
+                            <i class="bi bi-check-circle-fill me-1"></i> Etapa Concluída (Ver Status)
+                        </button>
+                    </div>`
                 }
             `;
         }
 
         // --- ETAPA 2: APOSTILA E MATERIAL ADICIONAL ---
-        const isApostilaLiberada = percent >= 33.33;
-        
-        // 2.1 Lógica do Material Adicional
         let htmlMaterialAdicional = '';
         if (aulaAtual.arquivo_adicional_url) {
             htmlMaterialAdicional = `
-                <div class="card bg-white border shadow-sm mb-4 rounded-3 border-start border-info border-4">
-                    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center p-3">
+                <div class="card bg-white border shadow-sm mb-4 rounded-4 border-start border-info border-4">
+                    <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center p-4">
                         <div class="mb-3 mb-md-0 text-center text-md-start">
                             <h6 class="fw-bold mb-1 text-dark">📦 Material Complementar</h6>
                             <p class="text-muted small mb-0">Baixe os arquivos de apoio e exercícios desta aula.</p>
                         </div>
-                        <a href="${aulaAtual.arquivo_adicional_url}" target="_blank" download class="btn btn-info text-white fw-bold shadow-sm px-4">
+                        <a href="${aulaAtual.arquivo_adicional_url}" target="_blank" download class="btn btn-info text-white fw-bold shadow-sm px-4 rounded-pill">
                             📥 Baixar Arquivo
                         </a>
                     </div>
@@ -146,8 +259,8 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
             `;
         } else {
             htmlMaterialAdicional = `
-                <div class="card bg-light border-0 shadow-sm mb-4 rounded-3 border-start border-secondary border-4">
-                    <div class="card-body p-3">
+                <div class="card bg-light border-0 shadow-sm mb-4 rounded-4 border-start border-secondary border-4">
+                    <div class="card-body p-4">
                         <h6 class="fw-bold mb-1 text-secondary">📦 Material Complementar</h6>
                         <p class="text-muted small mb-0">Esta aula não necessita de materiais ou arquivos adicionais para download.</p>
                     </div>
@@ -155,30 +268,37 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
             `;
         }
 
-        // 2.2 Lógica dos Slides da Apostila
         let htmlApostilaConteudo = '';
         const totalSlides = imagensApostila ? imagensApostila.length : 0;
 
         if (totalSlides === 0) {
             htmlApostilaConteudo = `
-                <div class="p-5 text-center bg-light border rounded text-muted mb-3">Não há slides de apostila nesta aula.</div>
-                <div id="apostila-feedback" class="text-center">
-                    <button id="btnPularApostila" class="btn btn-primary px-4" style="${percent >= 66.66 ? 'display:none;' : ''}">Avançar para Avaliação</button>
-                    ${percent >= 66.66 ? '<div class="alert alert-success text-center">✅ Etapa concluída. A Avaliação está liberada.</div>' : ''}
+                <div class="p-4 p-md-5 text-center bg-light border rounded-4 text-muted mb-3 shadow-sm">Não há slides de atividade prática nesta aula.</div>
+                <div id="apostila-feedback" class="text-center mt-4">
+                    <button id="btnPularApostila" class="btn btn-primary rounded-pill px-4 px-md-5 fw-bold shadow-sm" style="${percent >= 66.66 ? 'display:none;' : ''}">Avançar para Avaliação</button>
+                    ${percent >= 66.66 ? `
+                        <button class="btn btn-success rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalApostilaConcluida">
+                            <i class="bi bi-check-circle-fill me-1"></i> Atividade Prática Concluída (Ver Status)
+                        </button>
+                    ` : ''}
                 </div>
             `;
         } else if (totalSlides === 1) {
             htmlApostilaConteudo = `
-                <div class="position-relative bg-white p-2 border rounded shadow-sm mb-3" id="apostilaContainer">
-                    <button class="btn btn-dark btn-sm position-absolute top-0 end-0 m-2 opacity-75" onclick="toggleApostilaFullscreen()" style="z-index: 10;">
-                        ⛶ Tela Cheia
+                <div class="position-relative bg-white p-2 border rounded-4 shadow-sm mb-3" id="apostilaContainer">
+                    <button class="btn btn-dark btn-sm rounded-pill px-3 position-absolute top-0 end-0 m-3 shadow-sm opacity-75 hover-opacity-100" onclick="toggleApostilaFullscreen()" style="z-index: 10;">
+                        <i class="bi bi-arrows-fullscreen me-1"></i> Tela Cheia
                     </button>
-                    <div class="text-center" id="apostilaUnica">
-                        <img src="${imagensApostila[0].imagem_path}" class="img-fluid rounded" style="max-width: 100%;">
+                    <div class="text-center p-2" id="apostilaUnica">
+                        <img src="${imagensApostila[0].imagem_path}" class="img-fluid rounded-3" style="max-width: 100%;">
                     </div>
                 </div>
-                <div id="apostila-feedback" class="text-center">
-                    ${percent >= 66.66 ? '<div class="alert alert-success text-center">✅ Etapa concluída. A Avaliação está liberada.</div>' : ''}
+                <div id="apostila-feedback" class="text-center mt-4">
+                    ${percent >= 66.66 ? `
+                        <button class="btn btn-success rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalApostilaConcluida">
+                            <i class="bi bi-check-circle-fill me-1"></i> Atividade Prática Concluída (Ver Status)
+                        </button>
+                    ` : ''}
                 </div>
             `;
         } else {
@@ -186,40 +306,45 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
             let items = '';
             imagensApostila.forEach((img, idx) => {
                 const active = idx === 0 ? 'active' : '';
-                indicators += `<button type="button" data-bs-target="#carouselApostila" data-bs-slide-to="${idx}" class="${active}" aria-label="Slide ${idx+1}"></button>`;
+                indicators += `<button type="button" data-bs-target="#carouselApostila" data-bs-slide-to="${idx}" class="${active}" aria-label="Slide ${idx + 1}"></button>`;
                 items += `
-                    <div class="carousel-item ${active}">
-                        <img src="${img.imagem_path}" class="d-block w-100 rounded" alt="Página ${idx+1}">
+                    <div class="carousel-item ${active} p-2">
+                        <img src="${img.imagem_path}" class="d-block w-100 rounded-3 shadow-sm" alt="Página ${idx + 1}">
                     </div>
                 `;
             });
             htmlApostilaConteudo = `
-                <div class="position-relative bg-white p-2 border rounded shadow-sm mb-3" id="apostilaContainer">
-                    <button class="btn btn-dark btn-sm position-absolute top-0 end-0 m-2 opacity-75" onclick="toggleApostilaFullscreen()" style="z-index: 10;">
-                        ⛶ Tela Cheia
+                <div class="position-relative bg-white p-2 border rounded-4 shadow-sm mb-3" id="apostilaContainer">
+                    <button class="btn btn-dark btn-sm rounded-pill px-3 position-absolute top-0 end-0 m-3 shadow-sm opacity-75 hover-opacity-100" onclick="toggleApostilaFullscreen()" style="z-index: 10;">
+                        <i class="bi bi-arrows-fullscreen me-1"></i> Tela Cheia
                     </button>
                     <div id="carouselApostila" class="carousel slide" data-bs-ride="false">
-                        <div class="carousel-indicators bg-dark rounded p-1 opacity-75">${indicators}</div>
+                        <div class="carousel-indicators bg-dark rounded-pill p-1 opacity-75 mb-2">${indicators}</div>
                         <div class="carousel-inner">${items}</div>
                         <button class="carousel-control-prev" type="button" data-bs-target="#carouselApostila" data-bs-slide="prev">
-                            <span class="carousel-control-prev-icon bg-dark rounded p-3" aria-hidden="true"></span>
+                            <span class="carousel-control-prev-icon bg-dark rounded-circle p-3 shadow" aria-hidden="true"></span>
                         </button>
                         <button class="carousel-control-next" type="button" data-bs-target="#carouselApostila" data-bs-slide="next">
-                            <span class="carousel-control-next-icon bg-dark rounded p-3" aria-hidden="true"></span>
+                            <span class="carousel-control-next-icon bg-dark rounded-circle p-3 shadow" aria-hidden="true"></span>
                         </button>
                     </div>
                 </div>
-                <div id="apostila-feedback" class="text-center mt-3">
-                    ${percent >= 66.66 ? '<div class="alert alert-success text-center">✅ Apostila finalizada. A Avaliação está liberada.</div>' : '<p class="text-muted small">Deslize até ao último slide para liberar a Avaliação.</p>'}
+                <div id="apostila-feedback" class="text-center mt-4">
+                    ${percent >= 66.66 ? `
+                        <button class="btn btn-success rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalApostilaConcluida">
+                            <i class="bi bi-check-circle-fill me-1"></i> Atividade Prática Concluída (Ver Status)
+                        </button>
+                    ` : '<p class="text-muted small border rounded-pill d-inline-block px-4 py-2 bg-light"><i class="bi bi-info-circle text-primary me-2"></i>Deslize até ao último slide para liberar a Avaliação.</p>'}
                 </div>
             `;
         }
 
         const htmlApostila = `
             <div id="apostila-locked" style="${isApostilaLiberada ? 'display: none;' : 'display: block;'}">
-                <div class="p-5 text-center bg-light border rounded text-muted shadow-sm">
-                    <h5 class="text-danger">🔒 Atividade prática bloqueada</h5>
-                    <p>Assista ao vídeo até ao final para liberar os <strong>arquivos de apoio</strong> e a <strong>atividade prática</strong>.</p>
+                <div class="p-4 p-md-5 text-center bg-light border rounded-4 text-muted shadow-sm">
+                    <i class="bi bi-lock-fill text-danger fs-1 d-block mb-3"></i>
+                    <h5 class="text-danger fw-bold">Atividade prática bloqueada</h5>
+                    <p class="mb-0">Assista ao vídeo até ao final para liberar os <strong>arquivos de apoio</strong> e a <strong>atividade prática</strong>.</p>
                 </div>
             </div>
             
@@ -229,58 +354,67 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
         `;
 
         // --- ETAPA 3: AVALIAÇÃO (QUIZ DINÂMICO) ---
-        const isAvaliacaoLiberada = percent >= 66.66;
         let htmlAvaliacaoConteudo = '';
-        
+
         if (percent >= 100) {
-            htmlAvaliacaoConteudo = `<div class="p-5 text-center bg-success text-white border rounded shadow-sm"><h5>🎉 Parabéns! Você foi aprovado nesta aula.</h5><p>A próxima aula já está liberada no menu lateral.</p></div>`;
+            htmlAvaliacaoConteudo = `
+                <div class="p-4 p-md-5 text-center bg-white border rounded-4 shadow-sm">
+                    <i class="bi bi-trophy-fill text-warning mb-3 d-block" style="font-size: 4rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));"></i>
+                    <h4 class="fw-bold text-dark mb-2">Aula Concluída com Sucesso!</h4>
+                    <p class="text-muted mb-4">Você completou todas as etapas desta aula.</p>
+                    <button class="btn btn-success rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalAulaConcluida">
+                        <i class="bi bi-star-fill me-1"></i> Visualizar Conquista
+                    </button>
+                </div>
+            `;
         } else if (tentativasUsadas >= 3) {
-            htmlAvaliacaoConteudo = `<div class="p-5 text-center bg-danger text-white border rounded shadow-sm"><h5>❌ Limite de Tentativas Excedido</h5><p>Você utilizou as suas 3 tentativas e não atingiu a nota mínima. Entre em contato com o suporte.</p></div>`;
+            htmlAvaliacaoConteudo = `<div class="p-4 p-md-5 text-center bg-danger text-white border rounded-4 shadow-sm"><i class="bi bi-x-circle-fill fs-1 d-block mb-3"></i><h5 class="fw-bold">Limite de Tentativas Excedido</h5><p class="mb-0">Você utilizou as suas 3 tentativas e não atingiu a nota mínima. Entre em contato com o suporte.</p></div>`;
         } else {
             if (avaliacaoData && avaliacaoData.quiz && avaliacaoData.quiz.length > 0) {
                 htmlAvaliacaoConteudo = `
-                    <div class="p-4 bg-white border rounded shadow-sm">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="text-primary fw-bold mb-0">Avaliação da Aula</h5>
-                            <span class="badge bg-secondary">Tentativa ${tentativasUsadas + 1} de 3</span>
+                    <div class="p-4 p-md-5 bg-white border rounded-4 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom flex-wrap gap-2">
+                            <h5 class="text-primary fw-bold mb-0"><i class="bi bi-ui-checks me-2"></i>Avaliação da Aula</h5>
+                            <span class="badge bg-secondary rounded-pill px-3 py-2">Tentativa ${tentativasUsadas + 1} de 3</span>
                         </div>
                         
-                        <div class="progress mb-4" style="height: 10px;">
+                        <div class="progress mb-4 rounded-pill" style="height: 12px;">
                             <div id="quizProgressBar" class="progress-bar bg-info" role="progressbar" style="width: 0%; transition: width 0.3s;"></div>
                         </div>
 
                         <div id="quizQuestionContainer">
-                            <h4 id="quizQuestionText" class="text-dark fw-bold mb-4">Carregando pergunta...</h4>
+                            <h4 id="quizQuestionText" class="text-dark fw-bold mb-4 fs-5 fs-md-4">Carregando pergunta...</h4>
                             <div id="quizOptions" class="d-grid gap-3"></div>
                         </div>
 
                         <div id="quizFeedbackContainer" class="mt-4" style="display: none;">
-                            <div id="quizExplanation" class="alert alert-info"></div>
-                            <button id="quizNextBtn" class="btn btn-primary fw-bold px-4">Próxima Pergunta ➡️</button>
+                            <div id="quizExplanation" class="alert alert-info rounded-3 border-info shadow-sm"></div>
+                            <button id="quizNextBtn" class="btn btn-primary rounded-pill fw-bold px-4 px-md-5 mt-2 w-100 w-md-auto">Próxima Pergunta <i class="bi bi-arrow-right ms-2"></i></button>
                         </div>
 
-                        <div id="quizResultContainer" class="text-center p-4 border rounded mt-4" style="display: none;">
-                            <h3 id="quizResultTitle" class="fw-bold mb-3"></h3>
-                            <p class="fs-5 mb-4">Você acertou <strong id="quizResultScore"></strong> de <strong id="quizResultTotal"></strong> questões.</p>
+                        <div id="quizResultContainer" class="text-center p-4 p-md-5 border rounded-4 mt-4 bg-light shadow-sm" style="display: none;">
+                            <h3 id="quizResultTitle" class="fw-bold mb-3 fs-4 fs-md-3"></h3>
+                            <p class="fs-6 fs-md-5 mb-4">Você acertou <strong id="quizResultScore"></strong> de <strong id="quizResultTotal"></strong> questões.</p>
                             
                             <form action="/aluno/aulas/${aulaAtual.id}/avaliacao" method="POST">
                                 <input type="hidden" name="curso_id" value="${curso.id}">
                                 <input type="hidden" id="quizFinalResultInput" name="resultado" value="">
                                 <input type="hidden" id="quizScoreInput" name="score" value="0">
                                 <input type="hidden" id="quizTotalInput" name="total_questions" value="0">
-                                <button type="submit" id="quizSubmitBtn" class="btn btn-lg fw-bold px-5"></button>
+                                <button type="submit" id="quizSubmitBtn" class="btn btn-lg rounded-pill fw-bold px-4 px-md-5 shadow-sm w-100 w-md-auto"></button>
                             </form>
                         </div>
                     </div>
                 `;
             } else {
                 htmlAvaliacaoConteudo = `
-                    <div class="p-5 text-center bg-warning border rounded shadow-sm">
-                        <h5 class="text-dark">⚠️ Avaliação Indisponível</h5>
+                    <div class="p-4 p-md-5 text-center bg-warning border rounded-4 shadow-sm">
+                        <i class="bi bi-exclamation-triangle-fill text-dark fs-1 d-block mb-3 opacity-75"></i>
+                        <h5 class="text-dark fw-bold">Avaliação Indisponível</h5>
                         <p class="text-dark">O arquivo de avaliação não foi encontrado ou está formatado incorretamente. Comunique o administrador.</p>
                         <form action="/aluno/aulas/${aulaAtual.id}/avaliacao" method="POST">
                             <input type="hidden" name="curso_id" value="${curso.id}">
-                            <button type="submit" name="resultado" value="aprovado" class="btn btn-dark mt-3">Pular Avaliação (Bypass)</button>
+                            <button type="submit" name="resultado" value="aprovado" class="btn btn-dark rounded-pill fw-bold px-4 mt-3 shadow-sm">Pular Avaliação (Bypass)</button>
                         </form>
                     </div>
                 `;
@@ -289,9 +423,10 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
 
         const htmlAvaliacao = `
             <div id="avaliacao-locked" style="${isAvaliacaoLiberada ? 'display: none;' : 'display: block;'}">
-                <div class="p-5 text-center bg-light border rounded text-muted shadow-sm">
-                    <h5 class="text-danger">🔒 Avaliação Bloqueada</h5>
-                    <p>Leia todos os slides da apostila para liberar o teste de conhecimento.</p>
+                <div class="p-4 p-md-5 text-center bg-light border rounded-4 text-muted shadow-sm">
+                    <i class="bi bi-lock-fill text-danger fs-1 d-block mb-3"></i>
+                    <h5 class="text-danger fw-bold">Avaliação Bloqueada</h5>
+                    <p class="mb-0">Leia todos os slides da atividade prática para liberar o teste de conhecimento.</p>
                 </div>
             </div>
             <div id="avaliacao-unlocked" style="${isAvaliacaoLiberada ? 'display: block;' : 'display: none;'}">
@@ -300,23 +435,27 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
         `;
 
         htmlConteudo = `
-            <div class="mb-4">
-                <h3 class="fw-bold text-dark mb-1">${aulaAtual.titulo}</h3>
-                ${aulaAtual.descricao ? `<p class="text-secondary">${aulaAtual.descricao}</p>` : ''}
+            <div class="mb-4 bg-white p-3 p-md-4 rounded-4 border shadow-sm">
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-1 rounded-pill mb-2">Aula ${aulaAtual.ordem}</span>
+                <h2 class="fw-bold text-dark mb-2 fs-4 fs-md-2">${aulaAtual.titulo}</h2>
+                ${aulaAtual.descricao ? `<p class="text-secondary mb-0 fs-6">${aulaAtual.descricao}</p>` : ''}
             </div>
 
-            <ul class="nav nav-tabs mb-4 border-bottom-0" id="aulaTabs" role="tablist">
+            <ul class="nav nav-tabs mb-4 border-bottom-0 gap-2" id="aulaTabs" role="tablist">
                 <li class="nav-item">
-                    <button class="nav-link active fw-semibold" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-pane" type="button">🎥 Vídeo</button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link fw-semibold ${isApostilaLiberada ? '' : 'text-muted'}" id="apostila-tab" data-bs-toggle="tab" data-bs-target="#apostila-pane" type="button">
-                        📚 Atividade prática <span id="cadeado-apostila">${isApostilaLiberada ? '' : '🔒'}</span>
+                    <button class="nav-link active fw-bold rounded-pill px-3 px-md-4 shadow-sm border" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-pane" type="button">
+                        <i class="bi bi-play-circle-fill me-1"></i> Vídeo 
+                        <i class="bi bi-info-circle text-muted ms-1 d-none d-md-inline-block" data-bs-toggle="tooltip" title="Assista o vídeo até o fim para desbloquear a próxima etapa."></i>
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link fw-semibold ${isAvaliacaoLiberada ? '' : 'text-muted'}" id="avaliacao-tab" data-bs-toggle="tab" data-bs-target="#avaliacao-pane" type="button">
-                        📝 Avaliação <span id="cadeado-avaliacao">${isAvaliacaoLiberada ? '' : '🔒'}</span>
+                    <button class="nav-link fw-bold rounded-pill px-3 px-md-4 shadow-sm border ${isApostilaLiberada ? '' : 'text-muted bg-light'}" id="apostila-tab" data-bs-toggle="tab" data-bs-target="#apostila-pane" type="button">
+                        <i class="bi bi-book-fill me-1"></i> Atividade prática <span id="cadeado-apostila">${isApostilaLiberada ? '' : '<i class="bi bi-lock-fill ms-1"></i>'}</span>
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold rounded-pill px-3 px-md-4 shadow-sm border ${isAvaliacaoLiberada ? '' : 'text-muted bg-light'}" id="avaliacao-tab" data-bs-toggle="tab" data-bs-target="#avaliacao-pane" type="button">
+                        <i class="bi bi-ui-checks me-1"></i> Avaliação <span id="cadeado-avaliacao">${isAvaliacaoLiberada ? '' : '<i class="bi bi-lock-fill ms-1"></i>'}</span>
                     </button>
                 </li>
             </ul>
@@ -327,39 +466,102 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                 <div class="tab-pane fade" id="avaliacao-pane" role="tabpanel">${htmlAvaliacao}</div>
             </div>
 
+            <div class="modal fade" id="modalVideoConcluido" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-4">
+                        <div class="modal-header border-0 pb-0">
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center p-4 p-md-5 pt-0">
+                            <i class="bi bi-play-circle-fill text-primary mb-3 d-block" style="font-size: 4rem;"></i>
+                            <h4 class="fw-bold mb-3 text-dark">Vídeo Concluído!</h4>
+                            <p class="text-muted mb-4 fs-6">Você finalizou a etapa de vídeo com sucesso. A Atividade Prática já está liberada para você acessar.</p>
+                            <button type="button" class="btn btn-primary rounded-pill px-4 px-md-5 py-2 fw-bold shadow-sm w-100 w-md-auto" data-bs-dismiss="modal" onclick="document.getElementById('apostila-tab').click()">Acessar Atividade Prática</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="modalApostilaConcluida" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-4">
+                        <div class="modal-header border-0 pb-0">
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center p-4 p-md-5 pt-0">
+                            <i class="bi bi-file-earmark-check-fill text-info mb-3 d-block" style="font-size: 4rem;"></i>
+                            <h4 class="fw-bold mb-3 text-dark">Atividade Prática Concluída!</h4>
+                            <p class="text-muted mb-4 fs-6">Você revisou o material complementar com sucesso. A Avaliação desta aula já está liberada.</p>
+                            <button type="button" class="btn btn-info text-white rounded-pill px-4 px-md-5 py-2 fw-bold shadow-sm w-100 w-md-auto" data-bs-dismiss="modal" onclick="document.getElementById('avaliacao-tab').click()">Ir para Avaliação</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="modalAulaConcluida" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-4">
+                        <div class="modal-header border-0 pb-0">
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center p-4 p-md-5 pt-0">
+                            <i class="bi bi-trophy-fill text-warning mb-3 d-block" style="font-size: 5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));"></i>
+                            <h3 class="fw-bold mb-3 text-dark">Parabéns! Aula Concluída!</h3>
+                            <p class="text-muted mb-4 fs-6">Você foi aprovado nesta aula com sucesso. A próxima aula já está liberada no seu menu lateral para você continuar a sua jornada.</p>
+                            <button type="button" class="btn btn-success rounded-pill px-4 px-md-5 py-2 fw-bold shadow-sm w-100 w-md-auto" data-bs-dismiss="modal">Continuar Jornada</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <script>
                 document.addEventListener('DOMContentLoaded', function() {
+                    // Inicializar Tooltips do Bootstrap (Apenas para Desktop/dispositivos com hover)
+                    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
                     const aulaId = ${aulaAtual.id};
                     const cursoId = ${curso.id};
                     let percentualAtual = ${percent};
                     const totalSlides = ${totalSlides};
 
                     // ==========================================
-                    // ALERTAS DE FEEDBACK DA AVALIAÇÃO (RESET E ERRO)
+                    // ALERTAS DE FEEDBACK DA AVALIAÇÃO
                     // ==========================================
                     const urlParams = new URLSearchParams(window.location.search);
                     if (urlParams.has('resetado')) {
                         const alertDiv = document.createElement('div');
-                        alertDiv.className = 'alert alert-danger alert-dismissible fade show shadow-sm mb-4';
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show shadow-sm mb-4 rounded-4';
                         alertDiv.innerHTML = \`
-                            <h5 class="alert-heading fw-bold mb-1">🔄 Progresso Reiniciado!</h5>
+                            <h5 class="alert-heading fw-bold mb-1"><i class="bi bi-arrow-counterclockwise me-2"></i>Progresso Reiniciado!</h5>
                             <p class="mb-0">Você esgotou as suas 3 tentativas e não atingiu a nota mínima. Como resultado, o seu progresso nesta aula foi cancelado. Você precisará <strong>assistir ao vídeo novamente</strong> para liberar as etapas seguintes.</p>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         \`;
                         document.getElementById('aulaTabs').parentNode.insertBefore(alertDiv, document.getElementById('aulaTabs'));
                         window.history.replaceState({}, document.title, window.location.pathname);
                     } else if (urlParams.has('erro')) {
                         const alertDiv = document.createElement('div');
-                        alertDiv.className = 'alert alert-warning alert-dismissible fade show shadow-sm mb-4';
+                        alertDiv.className = 'alert alert-warning alert-dismissible fade show shadow-sm mb-4 rounded-4';
                         alertDiv.innerHTML = \`
-                            <h6 class="fw-bold mb-0">⚠️ Nota insuficiente. Estude a apostila e tente novamente!</h6>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-circle me-2"></i>Nota insuficiente. Estude a apostila e tente novamente!</h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         \`;
                         document.getElementById('aulaTabs').parentNode.insertBefore(alertDiv, document.getElementById('aulaTabs'));
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
 
-                    // Sincronização Ajax e Reload
+                    // ==========================================
+                    // ABAS (TABS) DESIGN LOGIC
+                    // ==========================================
+                    const tabs = document.querySelectorAll('#aulaTabs .nav-link');
+                    tabs.forEach(tab => {
+                        tab.addEventListener('show.bs.tab', function() {
+                            tabs.forEach(t => { t.classList.remove('active', 'border-primary', 'text-primary'); t.classList.add('border'); });
+                            this.classList.add('active', 'border-primary', 'text-primary');
+                        });
+                    });
+                    const activeTab = document.querySelector('#aulaTabs .nav-link.active');
+                    if(activeTab) activeTab.classList.add('border-primary', 'text-primary');
+
                     function salvarProgressoEReload(etapa) {
                         fetch('/aluno/aulas/' + aulaId + '/etapa', {
                             method: 'POST',
@@ -372,12 +574,14 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                     }
 
                     // ==========================================
-                    // LÓGICA DO CUSTOM PLAYER DE VÍDEO
+                    // LÓGICA DO CUSTOM PLAYER E NOTAS
                     // ==========================================
                     const video = document.getElementById('videoPlayer');
                     const container = document.getElementById('customVideoContainer');
                     
                     if (video) {
+                        window.notasArray = ${JSON.stringify(notasSalvas)};
+
                         const btnPlayPause = document.getElementById('btnPlayPause');
                         const centerPlayBtn = document.getElementById('centerPlayBtn');
                         const progressContainer = document.getElementById('progressContainer');
@@ -388,9 +592,23 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         const btnFullscreen = document.getElementById('btnFullscreen');
                         const controlsOverlay = document.getElementById('videoControls');
                         
-                        let isSeekingAllowed = false; // Bloqueio padrão de avanço
+                        let isSeekingAllowed = percentualAtual >= 33.33; 
                         let isHovering = false;
                         let hideControlsTimeout;
+
+                        const tempoSalvo = ${aulaAtual.tempo_assistido || 0};
+
+                        const iniciarTempoVideo = () => {
+                            durationDisplay.innerText = formatTime(video.duration);
+                            if (tempoSalvo > 0 && percentualAtual < 33.33) {
+                                video.currentTime = tempoSalvo;
+                            }
+                            renderizarListaNotas();
+                            renderizarMarcadoresNotas();
+                        };
+
+                        if (video.readyState >= 1) iniciarTempoVideo();
+                        else video.addEventListener('loadedmetadata', iniciarTempoVideo);
 
                         function formatTime(seconds) {
                             if (isNaN(seconds)) return "0:00";
@@ -402,11 +620,11 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         function togglePlay() {
                             if (video.paused) {
                                 video.play();
-                                btnPlayPause.innerText = '⏸️';
+                                btnPlayPause.innerHTML = '<i class="bi bi-pause-fill"></i>';
                                 centerPlayBtn.style.display = 'none';
                             } else {
                                 video.pause();
-                                btnPlayPause.innerText = '▶️';
+                                btnPlayPause.innerHTML = '<i class="bi bi-play-fill"></i>';
                                 centerPlayBtn.style.display = 'block';
                             }
                         }
@@ -414,10 +632,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         btnPlayPause.addEventListener('click', togglePlay);
                         centerPlayBtn.addEventListener('click', togglePlay);
                         video.addEventListener('click', togglePlay);
-
-                        video.addEventListener('loadedmetadata', () => {
-                            durationDisplay.innerText = formatTime(video.duration);
-                        });
+                        btnPlayPause.innerHTML = '<i class="bi bi-play-fill"></i>';
 
                         video.addEventListener('timeupdate', () => {
                             timeDisplay.innerText = formatTime(video.currentTime);
@@ -425,6 +640,21 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             progressBar.style.width = perc + '%';
                             progressThumb.style.left = perc + '%';
                         });
+
+                        function salvarTempoAtualNoBanco() {
+                            if (percentualAtual < 33.33) {
+                                fetch('/aluno/aulas/' + aulaId + '/tempo', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    keepalive: true, 
+                                    body: JSON.stringify({ curso_id: cursoId, tempo_assistido: Math.floor(video.currentTime) })
+                                }).catch(console.error);
+                            }
+                        }
+
+                        setInterval(() => { if (!video.paused) salvarTempoAtualNoBanco(); }, 5000);
+                        video.addEventListener('pause', salvarTempoAtualNoBanco);
+                        window.addEventListener('beforeunload', salvarTempoAtualNoBanco);
 
                         progressContainer.addEventListener('click', (e) => {
                             if (!isSeekingAllowed) {
@@ -436,6 +666,9 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             const pos = (e.clientX - rect.left) / rect.width;
                             video.currentTime = pos * video.duration;
                         });
+
+                        // Suporte para mobile (touch) para mostrar controles
+                        container.addEventListener('touchstart', () => { showControls(); hideControlsDelay(); });
 
                         container.addEventListener('mouseenter', () => { isHovering = true; showControls(); });
                         container.addEventListener('mouseleave', () => { isHovering = false; hideControlsDelay(); });
@@ -467,18 +700,18 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         if (percentualAtual < 33.33) {
                             video.addEventListener('ended', function() {
                                 showControls();
-                                btnPlayPause.innerText = '▶️';
+                                btnPlayPause.innerHTML = '<i class="bi bi-play-fill"></i>';
                                 centerPlayBtn.style.display = 'block';
                                 salvarProgressoEReload('VIDEO');
                             });
                         }
 
-                        // SHORTCUT PARA LIBERAR AVANÇO (Shift + A)
                         document.addEventListener('keydown', (e) => {
                             if (e.shiftKey && e.key.toLowerCase() === 'a') {
                                 isSeekingAllowed = !isSeekingAllowed;
                                 if (isSeekingAllowed) {
                                     progressContainer.style.cursor = 'pointer';
+                                    progressContainer.classList.remove('not-allowed');
                                     progressThumb.style.background = '#ffc107'; 
                                     alert('MODO ADMIN: Avanço do vídeo liberado!');
                                 } else {
@@ -488,18 +721,153 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                 }
                             }
                         });
+
+                        // ------------------------------------------
+                        // NOTAS 
+                        // ------------------------------------------
+                        const inputNotaTexto = document.getElementById('inputNotaTexto');
+                        const badgeTempoNota = document.getElementById('badgeTempoNota');
+                        const btnSalvarNota = document.getElementById('btnSalvarNota');
+                        const listaNotas = document.getElementById('listaNotas');
+                        const contadorNotas = document.getElementById('contadorNotas');
+                        let tempoPrestesASalvar = 0;
+
+                        inputNotaTexto.addEventListener('focus', () => {
+                            if (!video.paused) togglePlay();
+                            tempoPrestesASalvar = Math.floor(video.currentTime);
+                            badgeTempoNota.innerText = formatTime(tempoPrestesASalvar);
+                        });
+
+                        btnSalvarNota.addEventListener('click', () => {
+                            const textoNota = inputNotaTexto.value.trim();
+                            if (textoNota === '') return;
+                            
+                            btnSalvarNota.disabled = true;
+                            btnSalvarNota.innerText = '...';
+
+                            fetch('/aluno/aulas/' + aulaId + '/notas', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ curso_id: cursoId, tempo_segundos: tempoPrestesASalvar, texto: textoNota })
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    window.notasArray.push({ id: data.id, tempo_segundos: tempoPrestesASalvar, texto: textoNota });
+                                    window.notasArray.sort((a, b) => a.tempo_segundos - b.tempo_segundos);
+                                    inputNotaTexto.value = '';
+                                    renderizarListaNotas();
+                                    renderizarMarcadoresNotas();
+                                } else {
+                                    alert('Erro ao salvar nota.');
+                                }
+                            })
+                            .catch(console.error)
+                            .finally(() => {
+                                btnSalvarNota.disabled = false;
+                                btnSalvarNota.innerText = 'Salvar';
+                            });
+                        });
+
+                        window.irParaTempo = function(segundos) {
+                            const originalSeeking = isSeekingAllowed;
+                            isSeekingAllowed = true;
+                            video.currentTime = segundos;
+                            isSeekingAllowed = originalSeeking;
+
+                            if(video.paused) togglePlay();
+                            document.getElementById('customVideoContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        };
+
+                        window.excluirNota = function(event, notaId) {
+                            event.stopPropagation();
+                            if (!confirm('Deseja excluir esta nota?')) return;
+
+                            fetch('/aluno/aulas/notas/' + notaId + '/excluir', { method: 'POST' })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        window.notasArray = window.notasArray.filter(n => n.id !== notaId);
+                                        renderizarListaNotas();
+                                        renderizarMarcadoresNotas();
+                                    } else {
+                                        alert('Não autorizado ou erro ao excluir.');
+                                    }
+                                })
+                                .catch(console.error);
+                        };
+
+                        function renderizarListaNotas() {
+                            contadorNotas.innerText = window.notasArray.length + (window.notasArray.length === 1 ? ' nota' : ' notas');
+                            
+                            if (window.notasArray.length === 0) {
+                                listaNotas.innerHTML = '<div class="text-center text-muted p-4 small">Nenhuma anotação feita. Suas notas aparecerão aqui e marcarão a barra de progresso.</div>';
+                                return;
+                            }
+                            
+                            let htmlList = '';
+                            window.notasArray.forEach(nota => {
+                                const textoSeguro = nota.texto.replace(/"/g, '&quot;');
+                                htmlList += '<div class="list-group-item list-group-item-action d-flex align-items-center p-3 border-0 border-bottom rounded-3 mb-1">' +
+                                                '<button class="btn btn-sm btn-warning text-dark me-3 rounded-pill fw-bold shadow-sm" onclick="irParaTempo(' + nota.tempo_segundos + ')">' +
+                                                    formatTime(nota.tempo_segundos) +
+                                                '</button>' +
+                                                '<span class="text-secondary fw-semibold text-truncate flex-grow-1" onclick="irParaTempo(' + nota.tempo_segundos + ')" style="cursor:pointer;" title="' + textoSeguro + '">' +
+                                                    nota.texto +
+                                                '</span>' +
+                                                '<button class="btn btn-sm btn-outline-danger border-0 ms-2 rounded-circle" onclick="excluirNota(event, ' + nota.id + ')" title="Excluir nota">' +
+                                                    '<i class="bi bi-trash3"></i>' +
+                                                '</button>' +
+                                            '</div>';
+                            });
+                            listaNotas.innerHTML = htmlList;
+                        }
+
+                        function renderizarMarcadoresNotas() {
+                            document.querySelectorAll('.video-marker').forEach(m => m.remove());
+                            if (!video.duration || isNaN(video.duration)) return;
+
+                            window.notasArray.forEach(nota => {
+                                const perc = (nota.tempo_segundos / video.duration) * 100;
+                                const marker = document.createElement('div');
+                                marker.className = 'video-marker position-absolute rounded-circle shadow-sm d-none d-md-block'; // Oculta a bolinha no mobile pq é mt pequeno para clicar
+                                marker.style.width = '14px';
+                                marker.style.height = '14px';
+                                marker.style.top = '-3px';
+                                marker.style.left = 'calc(' + perc + '% - 7px)';
+                                marker.style.backgroundColor = '#ffc107'; 
+                                marker.style.border = '2px solid white';
+                                marker.style.zIndex = '5';
+                                marker.style.cursor = 'pointer';
+                                marker.title = nota.texto + ' (' + formatTime(nota.tempo_segundos) + ')';
+                                
+                                // Inicializa tooltip do Bootstrap no marcador
+                                marker.setAttribute('data-bs-toggle', 'tooltip');
+                                marker.setAttribute('data-bs-placement', 'top');
+                                if (window.innerWidth >= 768) {
+                                    new bootstrap.Tooltip(marker);
+                                }
+                                
+                                marker.onclick = (e) => {
+                                    e.stopPropagation(); 
+                                    irParaTempo(nota.tempo_segundos);
+                                };
+                                
+                                progressContainer.appendChild(marker);
+                            });
+                        }
                     }
 
                     const btnPularVideo = document.getElementById('btnPularVideo');
                     if (btnPularVideo && percentualAtual < 33.33) {
                         btnPularVideo.addEventListener('click', function() {
-                            this.disabled = true; this.innerText = 'Atualizando...';
+                            this.disabled = true; this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Atualizando...';
                             salvarProgressoEReload('VIDEO');
                         });
                     }
 
                     // ==========================================
-                    // GATILHOS DA APOSTILA
+                    // GATILHOS DA APOSTILA E AVALIAÇÃO
                     // ==========================================
                     const carousel = document.getElementById('carouselApostila');
                     if (carousel && percentualAtual >= 33.33 && percentualAtual < 66.66) {
@@ -518,16 +886,12 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                     const btnPularApostila = document.getElementById('btnPularApostila');
                     if (btnPularApostila && percentualAtual >= 33.33 && percentualAtual < 66.66) {
                         btnPularApostila.addEventListener('click', function() {
-                            this.disabled = true; this.innerText = 'Atualizando...';
+                            this.disabled = true; this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Atualizando...';
                             salvarProgressoEReload('APOSTILA');
                         });
                     }
 
-                    // ==========================================
-                    // LÓGICA DO QUIZ INTERATIVO (AVALIAÇÃO)
-                    // ==========================================
                     const quizDataRaw = ${avaliacaoData ? JSON.stringify(avaliacaoData) : 'null'};
-                    
                     if (quizDataRaw && quizDataRaw.quiz && quizDataRaw.quiz.length > 0 && percentualAtual >= 66.66 && percentualAtual < 100 && ${tentativasUsadas} < 3) {
                         const quiz = quizDataRaw.quiz;
                         const totalQuestions = quiz.length;
@@ -555,7 +919,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
 
                             q.opcoes.forEach((opcao, index) => {
                                 const btn = document.createElement('button');
-                                btn.className = 'btn btn-outline-secondary text-start p-3 fw-semibold';
+                                btn.className = 'btn btn-outline-secondary rounded-4 text-start p-3 p-md-4 fw-semibold border-2 shadow-sm';
                                 btn.innerText = opcao;
                                 btn.onclick = () => handleAnswer(btn, index, q.resposta_correta, q.explicacao);
                                 optionsContainer.appendChild(btn);
@@ -582,17 +946,14 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                 selectedBtn.classList.add('btn-danger', 'text-white');
                             }
 
-                            explanationText.innerHTML = "<strong>Explicação:</strong> " + explanation;
+                            explanationText.innerHTML = "<strong><i class='bi bi-info-circle me-1'></i> Explicação:</strong> " + explanation;
                             feedbackContainer.style.display = 'block';
                         }
 
                         nextBtn.onclick = () => {
                             currentQuestionIndex++;
-                            if (currentQuestionIndex < totalQuestions) {
-                                renderQuestion();
-                            } else {
-                                showResults();
-                            }
+                            if (currentQuestionIndex < totalQuestions) renderQuestion();
+                            else showResults();
                         };
 
                         function showResults() {
@@ -615,7 +976,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             const submitBtn = document.getElementById('quizSubmitBtn');
 
                             if (foiAprovado) {
-                                title.innerText = 'Excelente!';
+                                title.innerText = 'Excelente! Você atingiu a nota.';
                                 title.classList.add('text-success');
                                 resultContainer.classList.add('bg-success-subtle', 'border-success');
                                 inputResult.value = 'aprovado';
@@ -635,7 +996,6 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                     }
                 });
 
-                // Função global para ativar o modo ecrã inteiro na Apostila
                 window.toggleApostilaFullscreen = function() {
                     const elem = document.getElementById('apostilaContainer');
                     if (!document.fullscreenElement) {
@@ -653,82 +1013,126 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
     }
 
     // ==========================================
-    // 3. HTML FINAL DA PÁGINA
+    // 4. HTML FINAL DA PÁGINA (Com Offcanvas Menu)
     // ==========================================
     return `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${curso.titulo} - Sala de Aula</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
-            body { background-color: #f8f9fa; overflow-x: hidden; }
-            .sidebar { height: calc(100vh - 56px); overflow-y: auto; background-color: #fff; border-right: 1px solid #dee2e6; }
-            .content-area { height: calc(100vh - 56px); overflow-y: auto; padding-bottom: 50px; }
-            .sidebar::-webkit-scrollbar { width: 6px; }
-            .sidebar::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 4px; }
+            /* CSS Desktop Padrão */
+            body { background-color: #f8f9fa; overflow: hidden; height: 100vh; }
+            .sidebar { height: 100vh; overflow-y: auto; background-color: #f8f9fa; border-right: 1px solid #dee2e6; }
+            .content-area { height: 100vh; overflow-y: auto; padding-bottom: 50px; background-color: #f3f4f6; }
+            .video-container-h { height: 500px; }
+            
+            /* Custom Scrollbars */
+            ::-webkit-scrollbar { width: 8px; height: 6px; }
+            ::-webkit-scrollbar-track { background: transparent; }
+            ::-webkit-scrollbar-thumb { background-color: #ced4da; border-radius: 4px; }
+            ::-webkit-scrollbar-thumb:hover { background-color: #adb5bd; }
+            
             video::-webkit-media-controls { display: none !important; }
             
-            /* Ajustes para o ecrã inteiro da apostila */
             #apostilaContainer:-webkit-full-screen { width: 100vw; height: 100vh; background: #222; display: flex; align-items: center; justify-content: center; padding: 20px;}
             #apostilaContainer:fullscreen { width: 100vw; height: 100vh; background: #222; display: flex; align-items: center; justify-content: center; padding: 20px;}
             #apostilaContainer:fullscreen img { max-height: 90vh; width: auto; margin: 0 auto; }
             #apostilaContainer:fullscreen .carousel { width: 100%; }
+
+            .cursor-pointer { cursor: pointer; }
+            .hover-opacity-100:hover { opacity: 1 !important; }
+            .transition-all { transition: all 0.2s ease-in-out; }
+            .transition-all:hover { transform: translateX(4px); }
+            
+            .nav-tabs .nav-link { background-color: #fff; color: #495057; white-space: nowrap;}
+            .nav-tabs .nav-link:hover { background-color: #e9ecef; }
+
+            /* =======================================
+               CSS RESPONSIVO (MOBILE/TABLET)
+               ======================================= */
+            @media (max-width: 991.98px) {
+                body { overflow: auto; height: auto; }
+                .sidebar { height: auto; border-right: none; }
+                .content-area { height: auto; overflow: visible; padding-bottom: 20px; }
+                .video-container-h { height: 350px; }
+            }
+            
+            @media (max-width: 575.98px) {
+                .video-container-h { height: 230px; }
+                
+                /* Menu de abas deslizável (horizontal scroll) em telas muito pequenas */
+                #aulaTabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; }
+                #aulaTabs .nav-item { display: inline-block; }
+            }
         </style>
     </head>
     <body>
-    <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
-    <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
-        <span class="visually-hidden">Carregando...</span>
-    </div>
-    <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
-</div>
-        <nav class="navbar navbar-dark bg-dark shadow-sm" style="height: 56px;">
-            <div class="container-fluid">
-                <div class="d-flex align-items-center">
-                    <a href="/aluno" class="btn btn-sm btn-outline-light me-3">⬅ Sair da Sala</a>
-                    <span class="navbar-brand mb-0 h1 fs-6 d-none d-sm-block">${curso.titulo}</span>
-                </div>
+        <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
+            <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
+                <span class="visually-hidden">Carregando...</span>
             </div>
-        </nav>
+            <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
+        </div>
+
+        <div class="d-lg-none bg-white border-bottom p-3 d-flex justify-content-between align-items-center sticky-top" style="z-index: 1040;">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-light border shadow-sm me-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu">
+                    <i class="bi bi-list fs-4"></i>
+                </button>
+                <h4 class="fw-bold text-primary mb-0">OnStude<span class="text-dark">.</span></h4>
+            </div>
+            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 shadow-sm">Sala de Aula</span>
+        </div>
+
         <div class="container-fluid p-0">
-            <div class="row g-0">
-                <div class="col-lg-3 col-md-4 sidebar">
-                    ${htmlMenuLateral}
+            <div class="row g-0 h-100">
+                
+                <div class="col-xl-3 col-lg-4 offcanvas-lg offcanvas-start sidebar shadow-sm p-0" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+                    <div class="offcanvas-header d-lg-none border-bottom bg-light">
+                        <h5 class="offcanvas-title fw-bold text-primary" id="sidebarMenuLabel">OnStude<span class="text-dark">.</span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
+                    </div>
+                    <div class="offcanvas-body p-0 d-block h-100">
+                        ${htmlMenuLateral}
+                    </div>
                 </div>
-                <div class="col-lg-9 col-md-8 content-area p-4 p-md-5">
-                    <div class="container" style="max-width: 900px;">
+
+                <div class="col-xl-9 col-lg-8 content-area p-3 p-md-4 p-lg-5">
+                    <div class="container-fluid px-0" style="max-width: 1400px;">
                         ${htmlConteudo}
                     </div>
                 </div>
             </div>
         </div>
+
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         <script>
-    // 1. Esconde o loader no carregamento normal E quando o usuário clica em "Voltar"
-    window.addEventListener('pageshow', function(event) {
-        const loader = document.getElementById('globalLoader');
-        if (loader) {
-            if (event.persisted) {
-                loader.style.display = 'none';
-                loader.style.opacity = '0';
-            } else {
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 400);
-            }
-        }
-    });
+            window.addEventListener('pageshow', function(event) {
+                const loader = document.getElementById('globalLoader');
+                if (loader) {
+                    if (event.persisted) {
+                        loader.style.display = 'none';
+                        loader.style.opacity = '0';
+                    } else {
+                        loader.style.opacity = '0';
+                        setTimeout(() => { loader.style.display = 'none'; }, 400);
+                    }
+                }
+            });
 
-    // 2. Mostra o loader quando a página for descarregada (clique em link ou submit)
-    window.addEventListener('beforeunload', function() {
-        const loader = document.getElementById('globalLoader');
-        if (loader) {
-            loader.style.display = 'flex';
-            setTimeout(() => { loader.style.opacity = '1'; }, 10); 
-        }
-    });
-</script>
+            window.addEventListener('beforeunload', function() {
+                const loader = document.getElementById('globalLoader');
+                if (loader) {
+                    loader.style.display = 'flex';
+                    setTimeout(() => { loader.style.opacity = '1'; }, 10); 
+                }
+            });
+        </script>
     </body>
     </html>
     `;

@@ -5,8 +5,13 @@ const db = require('./db'); // Importando a conexão com o banco
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const ffmpeg = require('fluent-ffmpeg');
 const PDFDocument = require('pdfkit');
 // Lembre-se que você já tem o 'fs' e 'path' importados das etapas anteriores.
+
+// Configuração forçada dos caminhos para o ambiente Windows
+ffmpeg.setFfmpegPath('C:/ffmpeg/bin/ffmpeg.exe');
+ffmpeg.setFfprobePath('C:/ffmpeg/bin/ffprobe.exe');
 
 const renderCadastroView = require('./views/cadastroView');
 const renderAdminDashboardView = require('./views/adminDashboardView');
@@ -128,26 +133,28 @@ const uploadNotificacao = multer({ dest: path.join(__dirname, 'public/img/notifi
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
-// ==========================================
-// PÁGINA INICIAL (LANDING PAGE)
-// ==========================================
 app.get('/', async (req, res) => {
     try {
-       // Busca até 10 cursos públicos aleatoriamente para o slider
+        // Query para listar cursos na home page, com a duração total em segundos calculada
         const [cursos] = await db.execute(`
-            SELECT id, titulo, descricao, capa_url, duracao_horas, conclusao_dias, preco, mercado 
-            FROM cursos 
-            WHERE status = 'PUBLICADO' 
-            ORDER BY RAND() 
+            SELECT 
+                c.*,
+                (SELECT SUM(a.duracao_segundos) 
+                 FROM aulas a 
+                 JOIN modulos mo ON a.modulo_id = mo.id 
+                 WHERE mo.curso_id = c.id
+                ) AS duracao_total_segundos
+            FROM cursos c 
+            WHERE c.status = 'PUBLICADO' 
+            ORDER BY c.criado_em DESC 
             LIMIT 10
         `);
 
-        // Certifique-se de que o require está no topo do seu app.js, ou chame-o aqui:
-        const renderHomeView = require('./views/homeView');
+        // Renderiza a homeView
         res.send(renderHomeView(req.session.usuario || null, cursos));
     } catch (error) {
         console.error('Erro ao carregar a página inicial:', error);
-        res.status(500).send('Erro interno ao carregar a plataforma.');
+        res.status(500).send('Erro interno do servidor.');
     }
 });
 
@@ -521,11 +528,61 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// GET: Tela dedicada de Gerenciamento de Cursos
+// GET: Tela dedicada de Gerenciamento de Cursos (Com Paginação e Busca)
 app.get('/admin/cursos', verificarAdmin, async (req, res) => {
     try {
-        const [cursos] = await db.execute('SELECT * FROM cursos ORDER BY criado_em DESC');
-        res.send(renderAdminCursosView(req.session.usuario, cursos));
+        const limit = 12; // 12 cards por página fecha um grid perfeito (3 ou 4 colunas)
+        const currentPage = parseInt(req.query.page) || 1;
+        const offset = (currentPage - 1) * limit;
+        const search = req.query.search || '';
+
+        let queryParams = [];
+        let whereClause = '';
+
+        if (search.trim() !== '') {
+            const searchTerm = `%${search}%`;
+            whereClause = ' WHERE c.titulo LIKE ? OR c.codigo_unico LIKE ? ';
+            queryParams.push(searchTerm, searchTerm);
+        }
+
+        // Conta o total de cursos para a paginação
+        const countQuery = `SELECT COUNT(id) AS total FROM cursos c ${whereClause}`;
+        const [totalQuery] = await db.execute(countQuery, queryParams);
+        const totalCursos = totalQuery[0].total;
+        const totalPages = Math.ceil(totalCursos / limit) || 1;
+
+        // Query principal com limites, subconsultas, busca e a DURAÇÃO TOTAL corrigida
+        const mainQuery = `
+            SELECT 
+                c.*,
+                (SELECT COUNT(m.id) 
+                 FROM matriculas m 
+                 WHERE m.curso_id = c.id AND m.status IN ('ATIVA', 'CONCLUIDA')
+                ) AS quantidade_alunos,
+                
+                (SELECT AVG(at.nota) 
+                 FROM avaliacao_tentativas at 
+                 JOIN matriculas m ON at.matricula_id = m.id 
+                 WHERE m.curso_id = c.id
+                ) AS nota_media,
+                
+                -- CORREÇÃO: Mudamos o alias 'mod' para 'mo' para evitar conflito com a função matemática MOD() do MySQL
+                (SELECT SUM(a.duracao_segundos) 
+                 FROM aulas a 
+                 JOIN modulos mo ON a.modulo_id = mo.id 
+                 WHERE mo.curso_id = c.id
+                ) AS duracao_total_segundos
+
+            FROM cursos c
+            ${whereClause}
+            ORDER BY c.criado_em DESC
+            LIMIT ${limit} OFFSET ${offset}
+        `;
+        
+        const [cursos] = await db.execute(mainQuery, queryParams);
+
+        res.send(renderAdminCursosView(req.session.usuario, cursos, currentPage, totalPages, search));
+        
     } catch (error) {
         console.error('Erro ao listar cursos:', error);
         res.status(500).send('Erro interno do servidor.');
@@ -985,13 +1042,11 @@ app.get('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, async (req, res) 
     }
 });
 
-// POST: Processa a criação da aula e os uploads múltiplos
-// Utilizamos .fields() porque os arquivos vêm de inputs diferentes
 app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.fields([
     { name: 'video', maxCount: 1 },
     { name: 'avaliacao', maxCount: 1 },
-    { name: 'apostila', maxCount: 20 }, // Permite até 20 imagens de uma vez
-    { name: 'arquivo_adicional', maxCount: 1 } // <-- ADICIONADO: Campo para o arquivo .zip/.rar
+    { name: 'apostila', maxCount: 20 },
+    { name: 'arquivo_adicional', maxCount: 1 }
 ]), async (req, res) => {
 
     const moduloId = req.params.moduloId;
@@ -999,64 +1054,105 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
     const adminId = req.session.usuario.id;
 
     try {
-        // 1. Extrair caminhos dos arquivos enviados (se existirem)
         const arquivos = req.files || {};
+        const videoFile = arquivos['video'] ? arquivos['video'][0] : null;
 
-        // Caminho do material complementar (.zip ou .rar)
-        const arquivoAdicionalPath = arquivos['arquivo_adicional'] ? '/uploads/' + arquivos['arquivo_adicional'][0].filename : null;
+        let duracaoFinal = duracao_segundos ? parseInt(duracao_segundos) : 0;
+        let thumbPathPublic = null;
 
-        // 2. Inserir na tabela 'aulas' (agora com a coluna arquivo_adicional_url)
-        const [resultadoAula] = await db.execute(
-            `INSERT INTO aulas (modulo_id, titulo, ordem, descricao, duracao_segundos, arquivo_adicional_url) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [
-                moduloId,
-                titulo,
-                parseInt(ordem),
-                descricao || null,
-                duracao_segundos ? parseInt(duracao_segundos) : null,
-                arquivoAdicionalPath // <-- ADICIONADO
-            ]
-        );
-        const aulaId = resultadoAula.insertId;
+        if (videoFile) {
+            const videoPathPhysical = videoFile.path;
+            const thumbFilename = `thumb-${Date.now()}.jpg`;
+            const thumbFolder = path.join(__dirname, 'public', 'uploads');
 
-        // 3. Extrair os outros caminhos
-        const videoPath = arquivos['video'] ? '/uploads/' + arquivos['video'][0].filename : null;
-        const avaliacaoPath = arquivos['avaliacao'] ? '/uploads/' + arquivos['avaliacao'][0].filename : null;
+            try {
+                // 1. Extração da duração real via ffprobe
+                const metadata = await new Promise((resolve, reject) => {
+                    ffmpeg.ffprobe(videoPathPhysical, (err, data) => {
+                        if (err) return reject(err);
+                        resolve(data);
+                    });
+                });
+                
+                if (metadata && metadata.format && metadata.format.duration) {
+                    duracaoFinal = Math.round(metadata.format.duration);
+                    console.log(`Duração extraída: ${duracaoFinal}s`);
+                }
 
-        // 4. Inserir na tabela 'aula_conteudos' (Relação 1:1 com a aula)
-        await db.execute(
-            `INSERT INTO aula_conteudos (aula_id, video_path, avaliacao_json_path) 
-             VALUES (?, ?, ?)`,
-            [aulaId, videoPath, avaliacaoPath]
-        );
+                // ==========================================
+                // LÓGICA DA THUMB ALEATÓRIA INTELIGENTE
+                // ==========================================
+                let segundoAleatorio = 2; // Padrão seguro
+                if (duracaoFinal > 10) {
+                    // Ignora os primeiros 10% e os últimos 10% do vídeo (evita telas pretas)
+                    const min = Math.floor(duracaoFinal * 0.10);
+                    const max = Math.floor(duracaoFinal * 0.90);
+                    segundoAleatorio = Math.floor(Math.random() * (max - min + 1)) + min;
+                } else if (duracaoFinal > 0) {
+                    segundoAleatorio = Math.floor(Math.random() * duracaoFinal);
+                }
 
-        // 5. Inserir na tabela 'apostila_imagens' (Múltiplas imagens)
-        if (arquivos['apostila'] && arquivos['apostila'].length > 0) {
-            let ordemImagem = 1;
-            for (const img of arquivos['apostila']) {
-                const imgPath = '/uploads/' + img.filename;
-                await db.execute(
-                    `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
-                    [aulaId, imgPath, ordemImagem]
-                );
-                ordemImagem++;
+                console.log(`Sorteado o segundo ${segundoAleatorio} para a Thumbnail.`);
+
+                // 2. Geração da Thumbnail no segundo sorteado
+                await new Promise((resolve, reject) => {
+                    ffmpeg(videoPathPhysical)
+                        .on('end', () => {
+                            thumbPathPublic = '/uploads/' + thumbFilename;
+                            console.log("Thumbnail gerada com sucesso!");
+                            resolve();
+                        })
+                        .on('error', (err) => {
+                            console.error("Erro ao gerar thumbnail:", err.message);
+                            reject(err);
+                        })
+                        .screenshots({
+                            timestamps: [segundoAleatorio], // <-- Usa o segundo aleatório aqui!
+                            filename: thumbFilename,
+                            folder: thumbFolder,
+                            size: '400x225'
+                        });
+                });
+            } catch (mediaError) {
+                console.error("Erro no processamento de mídia:", mediaError.message);
             }
         }
 
-        // 6. Auditoria
+        const arquivoAdicionalPath = arquivos['arquivo_adicional'] ? '/uploads/' + arquivos['arquivo_adicional'][0].filename : null;
+        const videoPath = videoFile ? '/uploads/' + videoFile.filename : null;
+        const avaliacaoPath = arquivos['avaliacao'] ? '/uploads/' + arquivos['avaliacao'][0].filename : null;
+
+        // Salva na tabela 'aulas' com os dados extraídos
+        const [resultadoAula] = await db.execute(
+            `INSERT INTO aulas (modulo_id, titulo, ordem, descricao, duracao_segundos, video_thumb_path, arquivo_adicional_url) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [moduloId, titulo, parseInt(ordem), descricao || null, duracaoFinal, thumbPathPublic, arquivoAdicionalPath]
+        );
+        
+        const aulaId = resultadoAula.insertId;
+
+        // Salva na tabela 'aula_conteudos'
         await db.execute(
-            `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, ip) VALUES (?, 'CRIAR_AULA', 'aulas', ?, ?)`,
-            [adminId, aulaId, req.ip || req.socket.remoteAddress]
+            `INSERT INTO aula_conteudos (aula_id, video_path, avaliacao_json_path) VALUES (?, ?, ?)`,
+            [aulaId, videoPath, avaliacaoPath]
         );
 
-        // 7. Para redirecionar de volta, precisamos descobrir o ID do curso
+        // Processa apostila se houver imagens
+        if (arquivos['apostila']) {
+            for (let i = 0; i < arquivos['apostila'].length; i++) {
+                await db.execute(
+                    `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
+                    [aulaId, '/uploads/' + arquivos['apostila'][i].filename, i + 1]
+                );
+            }
+        }
+
         const [moduloData] = await db.execute('SELECT curso_id FROM modulos WHERE id = ?', [moduloId]);
         res.redirect(`/admin/cursos/${moduloData[0].curso_id}`);
 
     } catch (error) {
-        console.error('Erro ao criar aula e conteúdos:', error);
-        res.status(500).send('Erro ao salvar a aula e os arquivos.');
+        console.error('Erro geral na criação da aula:', error);
+        res.status(500).send('Erro ao salvar aula.');
     }
 });
 
@@ -1072,8 +1168,8 @@ app.get('/admin/modulos/:id/editar', verificarAdmin, async (req, res) => {
         }
         const modulo = modulos[0];
 
-        // 2. Busca os dados do curso associado (para o breadcrumb)
-        const [cursos] = await db.execute('SELECT id, codigo_unico FROM cursos WHERE id = ?', [modulo.curso_id]);
+        // 2. Busca os dados do curso associado (AGORA TRAZENDO O TÍTULO)
+        const [cursos] = await db.execute('SELECT id, codigo_unico, titulo FROM cursos WHERE id = ?', [modulo.curso_id]);
 
         res.send(renderEditarModuloView(req.session.usuario, cursos[0], modulo));
 
@@ -1259,13 +1355,44 @@ app.post('/admin/cursos/:id/excluir', verificarAdmin, async (req, res) => {
     const adminId = req.session.usuario.id;
 
     try {
-        // Registra no log ANTES de excluir (para termos o ID garantido)
+        // 1. Registra no log ANTES de excluir (para termos o ID garantido)
         await db.execute(
             `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, ip) VALUES (?, 'EXCLUIR_CURSO', 'cursos', ?, ?)`,
             [adminId, cursoId, req.ip || req.socket.remoteAddress]
         );
 
-        // O MySQL vai apagar Módulos, Aulas e Conteúdos em cascata automaticamente!
+        // 2. Limpar os Favoritos (se algum aluno favoritou este curso)
+        await db.execute('DELETE FROM cursos_favoritos WHERE curso_id = ?', [cursoId]).catch(() => {});
+
+        // 3. Limpar os dados dos Alunos Matriculados (Progresso, Avaliações, Certificados)
+        const [matriculas] = await db.execute('SELECT id FROM matriculas WHERE curso_id = ?', [cursoId]);
+        
+        for (let mat of matriculas) {
+            // Apaga tudo o que o aluno fez dentro deste curso
+            await db.execute('DELETE FROM progresso_aula WHERE matricula_id = ?', [mat.id]).catch(() => {});
+            await db.execute('DELETE FROM avaliacao_tentativas WHERE matricula_id = ?', [mat.id]).catch(() => {});
+            await db.execute('DELETE FROM certificados WHERE matricula_id = ?', [mat.id]).catch(() => {});
+            
+            // ADICIONADO: Apaga o progresso geral do curso amarrado a esta matrícula
+            await db.execute('DELETE FROM progresso_curso WHERE matricula_id = ?', [mat.id]).catch(() => {});
+        }
+        
+        // Agora podemos excluir as matrículas em si, pois não têm mais dependências
+        await db.execute('DELETE FROM matriculas WHERE curso_id = ?', [cursoId]);
+
+        // 4. (Segurança extra) Limpar dependências de aulas caso o seu CASCADE falhe
+        const [modulos] = await db.execute('SELECT id FROM modulos WHERE curso_id = ?', [cursoId]);
+        for (let mod of modulos) {
+            const [aulas] = await db.execute('SELECT id FROM aulas WHERE modulo_id = ?', [mod.id]);
+            for (let aula of aulas) {
+                await db.execute('DELETE FROM aula_conteudos WHERE aula_id = ?', [aula.id]).catch(() => {});
+                await db.execute('DELETE FROM apostila_imagens WHERE aula_id = ?', [aula.id]).catch(() => {});
+            }
+            await db.execute('DELETE FROM aulas WHERE modulo_id = ?', [mod.id]).catch(() => {});
+        }
+        await db.execute('DELETE FROM modulos WHERE curso_id = ?', [cursoId]).catch(() => {});
+
+        // 5. O Comando Final: Exclui o curso (agora o MySQL vai permitir!)
         await db.execute('DELETE FROM cursos WHERE id = ?', [cursoId]);
 
         res.redirect('/admin');
@@ -1333,10 +1460,10 @@ app.post('/admin/aulas/:id/excluir', verificarAdmin, async (req, res) => {
 // ROTAS DE GESTÃO DE USUÁRIOS (ADMIN)
 // ==========================================
 
-// GET: Renderiza a lista de todos os Usuários (Admin) com Paginação e Busca
+// GET: Renderiza a lista de todos os Usuários (Admin) com Paginação, Busca e Cards Interativos
 app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
     try {
-        const limit = 12;
+        const limit = 12; 
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
         const search = req.query.search || '';
@@ -1350,8 +1477,6 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             const searchTerm = `%${search}%`;
             whereClauseCount = ' WHERE u.nome LIKE ? OR c.titulo LIKE ?';
 
-            // Subquery no WHERE garante que o aluno seja encontrado, mas a query principal
-            // continua a trazer a lista completa de TODOS os cursos que esse aluno tem
             whereClauseMain = ` WHERE u.id IN (
                 SELECT DISTINCT u2.id FROM usuarios u2 
                 LEFT JOIN matriculas m2 ON u2.id = m2.aluno_id 
@@ -1373,11 +1498,11 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
         const totalUsuarios = totalQuery[0].total;
         const totalPages = Math.ceil(totalUsuarios / limit) || 1;
 
-        // Query principal com Busca e Paginação
-        // Query principal com Busca, Paginação e Contagem de Conclusões
+        // Query principal (Traz dados base do usuário e quantidade de cursos)
         const mainQuery = `
             SELECT 
                 u.id, u.nome, u.email, u.tipo, u.status, u.criado_em, u.data_nascimento, u.ultimo_acesso,
+                
                 (SELECT CONCAT(a.titulo, '|||', cur.titulo) 
                  FROM progresso_aula pa 
                  JOIN aulas a ON pa.aula_id = a.id 
@@ -1386,6 +1511,7 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
                  WHERE mat.aluno_id = u.id 
                  ORDER BY pa.id DESC LIMIT 1
                 ) AS ultima_aula_info,
+
                 COUNT(DISTINCT m.curso_id) AS total_cursos,
                 SUM(CASE WHEN m.status = 'CONCLUIDA' THEN 1 ELSE 0 END) AS concluidos_count,
                 GROUP_CONCAT(DISTINCT c.titulo SEPARATOR ', ') AS cursos_lista
@@ -1397,10 +1523,75 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             ORDER BY u.ultimo_acesso DESC, u.id DESC
             LIMIT ${limit} OFFSET ${offset}
         `;
-        const [usuarios] = await db.execute(mainQuery, queryParams);
+        const [usuariosRaw] = await db.execute(mainQuery, queryParams);
 
-        // Enviamos o termo de busca (search) para a view manter o input preenchido
-        res.send(renderAdminUsuariosView(req.session.usuario, usuarios, currentPage, totalPages, search));
+        // ==========================================
+        // LÓGICA DE KPIs (Mesma da view do Aluno)
+        // ==========================================
+        // Faz um loop paralelo extremamente rápido apenas nos 12 usuários da página atual
+        const usuariosComKPIs = await Promise.all(usuariosRaw.map(async (u) => {
+            
+            // Se for ADMIN, não precisa calcular notas, retorna zerado
+            if (u.tipo === 'ADMIN') {
+                return { ...u, aulas_concluidas: '0 / 0', nota_media_geral: '-', melhor_curso: '-' };
+            }
+
+            const alunoId = u.id;
+
+            // 1. Aulas Concluídas vs Total
+            const [aulasQuery] = await db.execute(`
+                SELECT 
+                    SUM(COALESCE(p.aulas_concluidas, 0)) AS concluidas_geral,
+                    SUM((SELECT COUNT(a.id) FROM aulas a JOIN modulos m ON a.modulo_id = m.id WHERE m.curso_id = c.id)) AS total_geral
+                FROM matriculas m
+                JOIN cursos c ON m.curso_id = c.id
+                LEFT JOIN progresso_curso p ON p.matricula_id = m.id
+                WHERE m.aluno_id = ? AND m.status IN ('ATIVA', 'CONCLUIDA') AND c.status = 'PUBLICADO'
+            `, [alunoId]);
+
+            const concluidasGeral = aulasQuery[0]?.concluidas_geral || 0;
+            const totalGeral = aulasQuery[0]?.total_geral || 0;
+            const stringAulasKpi = `${concluidasGeral} / ${totalGeral}`;
+
+            // 2. Nota Média Geral
+            const [notaQuery] = await db.execute(`
+                SELECT AVG(max_nota) AS nota_media FROM (
+                    SELECT MAX(at.nota) AS max_nota 
+                    FROM avaliacao_tentativas at 
+                    JOIN matriculas m ON at.matricula_id = m.id 
+                    WHERE m.aluno_id = ? 
+                    GROUP BY at.aula_id
+                ) AS subquery
+            `, [alunoId]);
+
+            const notaMediaRaw = notaQuery[0]?.nota_media;
+            const notaMedia = notaMediaRaw ? parseFloat(notaMediaRaw).toFixed(1) : '-';
+
+            // 3. Melhor Desempenho (Curso)
+            const [melhorCursoQuery] = await db.execute(`
+                SELECT c.titulo, AVG(at.nota) AS media_curso 
+                FROM avaliacao_tentativas at 
+                JOIN matriculas m ON at.matricula_id = m.id 
+                JOIN cursos c ON m.curso_id = c.id 
+                WHERE m.aluno_id = ? 
+                GROUP BY c.id 
+                ORDER BY media_curso DESC 
+                LIMIT 1
+            `, [alunoId]);
+
+            const melhorCurso = melhorCursoQuery.length > 0 ? melhorCursoQuery[0].titulo : '-';
+
+            // Junta os dados originais do usuário com os novos KPIs
+            return {
+                ...u,
+                aulas_concluidas: stringAulasKpi,
+                nota_media_geral: notaMedia,
+                melhor_curso: melhorCurso
+            };
+        }));
+
+        // Renderiza a View passando os usuários já com os KPIs processados
+        res.send(renderAdminUsuariosView(req.session.usuario, usuariosComKPIs, currentPage, totalPages, search));
     } catch (error) {
         console.error('Erro ao listar usuários:', error);
         res.status(500).send('Erro interno do servidor.');
@@ -1498,7 +1689,7 @@ app.get('/admin/usuarios/:id/editar', verificarAdmin, async (req, res) => {
         const usuario = usuarios[0];
 
         // 2. Busca todos os cursos publicados disponíveis
-        const [cursosDisponiveis] = await db.execute("SELECT id, codigo_unico, titulo FROM cursos WHERE status = 'PUBLICADO' ORDER BY titulo ASC");
+        const [cursosDisponiveis] = await db.execute("SELECT id, codigo_unico, titulo, capa_url FROM cursos WHERE status = 'PUBLICADO' ORDER BY titulo ASC");
 
         // 3. Busca os cursos em que o usuário já possui matrícula ATIVA
         const [matriculasAtivas] = await db.execute("SELECT curso_id FROM matriculas WHERE aluno_id = ? AND status = 'ATIVA'", [usuarioId]);
@@ -1627,14 +1818,14 @@ app.post('/admin/usuarios/:id/excluir', verificarAdmin, async (req, res) => {
 // ROTAS DO PLAYER DA SALA DE AULA (ALUNO)
 // ==========================================
 
-// GET: Sala de Aula (Calcula o bloqueio linear entre as aulas e busca as Notas)
+// GET: Sala de Aula (Calcula o bloqueio linear entre as aulas e busca as Notas e Tempos)
 app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], verificarAluno, async (req, res) => {
     const alunoId = req.session.usuario.id;
     const cursoId = req.params.cursoId;
     let aulaParamId = req.params.aulaId;
 
     try {
-        // 1. Verifica a Matrícula (Permite ATIVA ou CONCLUIDA para revisão)
+        // 1. Verifica a Matrícula
         const [matriculas] = await db.execute(
             'SELECT id, status FROM matriculas WHERE aluno_id = ? AND curso_id = ? AND status IN ("ATIVA", "CONCLUIDA")',
             [alunoId, cursoId]
@@ -1650,38 +1841,39 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
 
         const [modulos] = await db.execute('SELECT * FROM modulos WHERE curso_id = ? ORDER BY ordem ASC', [cursoId]);
 
-        // 2. Busca Aulas, Progresso E a Nota Máxima alcançada (Subquery adicionada)
+        // 2. Busca Aulas, Progresso, Nota Máxima, Thumb Real e Tempo Assistido
+        // Query atualizada para puxar todas as novas colunas que criámos.
         const [aulas] = await db.execute(`
             SELECT 
                 a.*, 
                 m.ordem as mod_ordem, 
                 pa.status as progresso_status, 
                 pa.progresso_percentual,
+                pa.tempo_assistido,
                 (SELECT MAX(nota) FROM avaliacao_tentativas at WHERE at.aula_id = a.id AND at.matricula_id = ?) AS nota_avaliacao
             FROM aulas a 
             JOIN modulos m ON a.modulo_id = m.id 
             LEFT JOIN progresso_aula pa ON pa.aula_id = a.id AND pa.matricula_id = ?
             WHERE m.curso_id = ? 
             ORDER BY m.ordem ASC, a.ordem ASC
-        `, [matriculaId, matriculaId, cursoId]); // <-- matriculaId passado duas vezes (uma pra nota, uma pro progresso)
+        `, [matriculaId, matriculaId, cursoId]); 
 
-        // LÓGICA DE BLOQUEIO LINEAR (INTER-AULAS)
-        let anteriorConcluida = true; // A primeira aula começa sempre liberada
+        // LÓGICA DE BLOQUEIO LINEAR (INTER-AULAS) - Mantida
+        let anteriorConcluida = true; 
         aulas.forEach(aula => {
             aula.isLiberada = anteriorConcluida;
             if (aula.progresso_status !== 'CONCLUIDA') {
-                anteriorConcluida = false; // Bloqueia todas as próximas se esta não estiver concluída
+                anteriorConcluida = false;
             }
         });
 
         modulos.forEach(modulo => modulo.aulas = aulas.filter(aula => aula.modulo_id === modulo.id));
 
-        // Determinar a Aula Atual
+        // Determinar a Aula Atual - Mantida
         let aulaAtual = null;
         if (aulas.length > 0) {
             if (aulaParamId) {
                 aulaAtual = aulas.find(a => a.id === parseInt(aulaParamId));
-                // Se tentou aceder a uma aula bloqueada pela URL, devolve para a última permitida
                 if (aulaAtual && !aulaAtual.isLiberada) {
                     aulaAtual = aulas.find(a => a.isLiberada && a.progresso_status !== 'CONCLUIDA') || aulas[aulas.length - 1];
                 }
@@ -1694,7 +1886,7 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
         let imagensApostila = [];
         let tentativasUsadas = 0;
         let progressoPercentual = aulaAtual ? (aulaAtual.progresso_percentual || 0) : 0;
-        let avaliacaoData = null; // Nova variável para guardar o conteúdo do JSON
+        let avaliacaoData = null;
 
         if (aulaAtual) {
             const [cont] = await db.execute('SELECT * FROM aula_conteudos WHERE aula_id = ?', [aulaAtual.id]);
@@ -1706,14 +1898,11 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
             const [tentativasQuery] = await db.execute('SELECT COUNT(*) as qtd FROM avaliacao_tentativas WHERE matricula_id = ? AND aula_id = ?', [matriculaId, aulaAtual.id]);
             tentativasUsadas = tentativasQuery[0].qtd || 0;
 
-            // ==========================================
-            // LER O ARQUIVO JSON DA AVALIAÇÃO
-            // ==========================================
+            // LER O ARQUIVO JSON DA AVALIAÇÃO - Mantida
             if (conteudosAtual && conteudosAtual.avaliacao_json_path) {
                 try {
                     const fs = require('fs');
                     const path = require('path');
-                    // O caminho no banco é salvo como '/uploads/arquivo.json'. Precisamos mapear para a pasta public.
                     const filePath = path.join(__dirname, 'public', conteudosAtual.avaliacao_json_path);
                     if (fs.existsSync(filePath)) {
                         const fileContent = fs.readFileSync(filePath, 'utf-8');
@@ -1725,12 +1914,136 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
             }
         }
 
-        // Passamos o avaliacaoData para a View!
-        res.send(renderAlunoSalaAulaView(req.session.usuario, curso, modulos, aulaAtual, conteudosAtual, imagensApostila, matriculas[0], progressoPercentual, tentativasUsadas, avaliacaoData));
+        let notasSalvas = [];
+        if (aulaAtual) {
+            // Busca as notas que o aluno fez nesta aula específica
+            const [notasQuery] = await db.execute(
+                'SELECT id, tempo_segundos, texto FROM aula_notas WHERE matricula_id = ? AND aula_id = ? ORDER BY tempo_segundos ASC',
+                [matriculaId, aulaAtual.id]
+            );
+            notasSalvas = notasQuery;
+        }
+
+        // Atualizamos o render para enviar o notasSalvas no final
+        res.send(renderAlunoSalaAulaView(req.session.usuario, curso, modulos, aulaAtual, conteudosAtual, imagensApostila, matriculas[0], progressoPercentual, tentativasUsadas, avaliacaoData, notasSalvas));
 
     } catch (error) {
         console.error('Erro ao carregar sala de aula:', error);
         res.status(500).send('Erro interno ao carregar o curso.');
+    }
+});
+
+// ==========================================
+// ROTAS DE NOTAS DA AULA (ANOTAÇÕES EM VÍDEO)
+// ==========================================
+
+// POST: Salvar nova anotação do vídeo
+app.post('/aluno/aulas/:aulaId/notas', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    const aulaId = req.params.aulaId;
+    const { curso_id, tempo_segundos, texto } = req.body;
+
+    try {
+        // 1. Verifica se a matrícula é válida
+        const [matriculas] = await db.execute(
+            'SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ? AND status IN ("ATIVA", "CONCLUIDA")',
+            [alunoId, curso_id]
+        );
+        
+        if (matriculas.length === 0) {
+            return res.status(403).json({ success: false, message: 'Acesso negado' });
+        }
+
+        const matriculaId = matriculas[0].id;
+
+        // 2. Insere a nota no banco
+        const [result] = await db.execute(
+            'INSERT INTO aula_notas (matricula_id, aula_id, tempo_segundos, texto) VALUES (?, ?, ?, ?)',
+            [matriculaId, aulaId, tempo_segundos, texto]
+        );
+
+        // Devolve o ID da nota inserida para o frontend conseguir apagá-la depois se quiser
+        res.json({ success: true, id: result.insertId });
+    } catch (error) {
+        console.error('Erro ao salvar nota da aula:', error);
+        res.status(500).json({ success: false });
+    }
+});
+
+
+// POST: Excluir uma anotação específica
+app.post('/aluno/aulas/notas/:notaId/excluir', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    const notaId = req.params.notaId;
+
+    try {
+        // 1. Segurança: Verifica se a nota existe e se pertence a uma matrícula deste aluno
+        const [nota] = await db.execute(`
+            SELECT n.id 
+            FROM aula_notas n
+            JOIN matriculas m ON n.matricula_id = m.id
+            WHERE n.id = ? AND m.aluno_id = ?`, 
+            [notaId, alunoId]
+        );
+
+        if (nota.length === 0) {
+            return res.status(403).json({ success: false, message: 'Nota não encontrada ou acesso negado' });
+        }
+
+        // 2. Exclui a nota
+        await db.execute('DELETE FROM aula_notas WHERE id = ?', [notaId]);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Erro ao excluir nota da aula:', error);
+        res.status(500).json({ success: false });
+    }
+});
+
+// POST: Salvar o tempo assistido do vídeo em tempo real
+app.post('/aluno/aulas/:aulaId/tempo', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    const aulaId = req.params.aulaId;
+    const { curso_id, tempo_assistido } = req.body;
+
+    try {
+        // 1. Verifica se a matrícula é válida
+        const [matriculas] = await db.execute(
+            'SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ? AND status IN ("ATIVA", "CONCLUIDA")',
+            [alunoId, curso_id]
+        );
+        
+        if (matriculas.length === 0) {
+            return res.status(403).json({ success: false, message: 'Acesso negado' });
+        }
+
+        const matriculaId = matriculas[0].id;
+
+        // 2. Verifica se a linha de progresso JÁ EXISTE
+        const [progressoExistente] = await db.execute(
+            'SELECT id FROM progresso_aula WHERE matricula_id = ? AND aula_id = ?',
+            [matriculaId, aulaId]
+        );
+
+        if (progressoExistente.length > 0) {
+            // Se já existe, apenas atualiza
+            await db.execute(
+                'UPDATE progresso_aula SET tempo_assistido = ? WHERE matricula_id = ? AND aula_id = ?',
+                [tempo_assistido, matriculaId, aulaId]
+            );
+        } else {
+            // Se não existe, cria a linha pela primeira vez
+            // AQUI ESTÁ A CORREÇÃO: Trocamos "PENDENTE" por "EM_ANDAMENTO"
+            await db.execute(
+                'INSERT INTO progresso_aula (matricula_id, aula_id, status, tempo_assistido) VALUES (?, ?, "EM_ANDAMENTO", ?)',
+                [matriculaId, aulaId, tempo_assistido]
+            );
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Erro ao salvar tempo do vídeo:', error);
+        res.status(500).json({ success: false });
     }
 });
 
@@ -2415,11 +2728,33 @@ app.post('/aluno/api/notificacoes/:id/responder', verificarAluno, async (req, re
 // GERENCIAMENTO DE NOTIFICAÇÕES (ADMIN)
 // ==========================================
 
-// GET: Listar Notificações, Estatísticas e Respostas
+// GET: Listar Notificações, Estatísticas e Respostas (Com Paginação e Busca)
 app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
     try {
-        // 1. Busca todas as notificações + contagens + nomes dos cursos (se houver)
-        const [notificacoes] = await db.execute(`
+        const limit = 12; // Exibe até 12 notificações por página (encaixa perfeito no grid)
+        const currentPage = parseInt(req.query.page) || 1;
+        const offset = (currentPage - 1) * limit;
+        const search = req.query.search || '';
+
+        let queryParams = [];
+        let whereClause = '';
+
+        // Se o admin usou a barra de busca
+        if (search.trim() !== '') {
+            const searchTerm = `%${search}%`;
+            // Busca tanto pelo título da notificação quanto por alguma palavra dentro da mensagem
+            whereClause = ' WHERE n.titulo LIKE ? OR n.mensagem LIKE ? ';
+            queryParams.push(searchTerm, searchTerm);
+        }
+
+        // Conta o total de notificações para a Paginação
+        const countQuery = `SELECT COUNT(id) AS total FROM notificacoes n ${whereClause}`;
+        const [totalQuery] = await db.execute(countQuery, queryParams);
+        const totalNotificacoes = totalQuery[0].total;
+        const totalPages = Math.ceil(totalNotificacoes / limit) || 1;
+
+        // 1. Busca as notificações paginadas + contagens + nomes dos cursos
+        const mainQuery = `
             SELECT n.*, 
                    (SELECT COUNT(*) FROM notificacao_entregas WHERE notificacao_id = n.id) AS total_enviados,
                    (SELECT COUNT(*) FROM notificacao_entregas WHERE notificacao_id = n.id AND status = 'LIDA') AS total_lidos,
@@ -2428,11 +2763,15 @@ app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
                     JOIN cursos c ON nc.curso_id = c.id 
                     WHERE nc.notificacao_id = n.id) AS cursos_alvo_nomes
             FROM notificacoes n
+            ${whereClause}
             ORDER BY n.criado_em DESC
-        `);
+            LIMIT ${limit} OFFSET ${offset}
+        `;
+        
+        const [notificacoesRaw] = await db.execute(mainQuery, queryParams);
 
-        // 2. Para cada notificação que permite interação, busca as respostas
-        for (let notif of notificacoes) {
+        // 2. Busca as respostas (Usando Promise.all para carregar todas simultaneamente de forma rápida)
+        const notificacoes = await Promise.all(notificacoesRaw.map(async (notif) => {
             if (notif.tipo_interacao !== 'NENHUM') {
                 const [respostas] = await db.execute(`
                     SELECT nr.*, u.nome AS nome_aluno 
@@ -2441,11 +2780,13 @@ app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
                     WHERE nr.notificacao_id = ?
                     ORDER BY nr.respondido_em DESC
                 `, [notif.id]);
-                notif.respostas = respostas;
+                return { ...notif, respostas };
             }
-        }
+            // Se for do tipo NENHUM, devolve com array vazio para a view não quebrar
+            return { ...notif, respostas: [] };
+        }));
 
-        res.send(renderAdminNotificacoesView(req.session.usuario, notificacoes));
+        res.send(renderAdminNotificacoesView(req.session.usuario, notificacoes, currentPage, totalPages, search));
     } catch (error) {
         console.error('Erro ao listar notificações:', error);
         res.status(500).send('Erro interno do servidor.');

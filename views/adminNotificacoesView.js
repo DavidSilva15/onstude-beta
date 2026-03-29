@@ -2,41 +2,85 @@
 
 const renderAdminMenuLateral = require('./adminMenuLateral');
 
-function renderAdminNotificacoesView(admin, notificacoes) {
+function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, totalPages = 1, searchQuery = '') {
     
     const htmlSidebar = renderAdminMenuLateral(admin, 'notificacoes');
 
     let htmlNotificacoes = '';
+    let htmlModais = '';
+    const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
 
-    if (notificacoes.length === 0) {
-        htmlNotificacoes = '<div class="alert alert-light text-center text-muted border py-4">Nenhuma notificação disparada ainda.</div>';
+    if (!notificacoes || notificacoes.length === 0) {
+        htmlNotificacoes = `
+            <div class="col-12 text-center text-muted py-5">
+                <i class="bi bi-bell-slash fs-1 opacity-50 mb-3 d-block"></i>
+                Nenhuma notificação encontrada ${searchQuery ? 'para "' + searchQuery + '"' : 'ainda'}.
+            </div>`;
     } else {
-        notificacoes.forEach((n, index) => {
-            const collapseId = `collapse_${n.id}`;
+        notificacoes.forEach((n) => {
+            const modalDetalhesId = `modalDetalhes_${n.id}`;
             const modalEditId = `modalEdit_${n.id}`;
             
-            const dataDisparo = new Date(n.criado_em).toLocaleDateString('pt-BR') + ' às ' + new Date(n.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             const dInicio = n.data_inicio ? new Date(n.data_inicio).toLocaleDateString('pt-BR') + ' ' + new Date(n.data_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Imediato';
             const dFim = n.data_fim ? new Date(n.data_fim).toLocaleDateString('pt-BR') + ' ' + new Date(n.data_fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Sem validade';
             
-            let alvoVisual = n.tipo_alvo === 'TODOS' 
-                ? 'Todos os Alunos' 
-                : `<span title="${n.cursos_alvo_nomes}">Cursos: ${n.cursos_alvo_nomes}</span>`;
+            // ==========================================
+            // LÓGICA DOS BADGES DE CURSOS ALVO
+            // ==========================================
+            let alvoVisual = '';
+            if (n.tipo_alvo === 'TODOS') {
+                alvoVisual = '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 shadow-sm">Todos os Alunos</span>';
+            } else {
+                if (n.cursos_alvo_nomes) {
+                    // Divide a string separada por vírgulas que vem do BD e cria um badge para cada curso
+                    const cursosArray = n.cursos_alvo_nomes.split(',');
+                    alvoVisual = cursosArray.map(c => `<span class="badge bg-secondary bg-opacity-10 text-dark border border-secondary border-opacity-25 shadow-sm me-1 mb-1">${c.trim()}</span>`).join('');
+                } else {
+                    alvoVisual = '<span class="badge bg-secondary shadow-sm">Cursos Específicos</span>';
+                }
+            }
 
             const formatForInput = (dataObj) => dataObj ? new Date(dataObj.getTime() - dataObj.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
             const valInicio = formatForInput(n.data_inicio ? new Date(n.data_inicio) : null);
             const valFim = formatForInput(n.data_fim ? new Date(n.data_fim) : null);
 
-            const taxaLeitura = n.total_enviados > 0 ? Math.round((n.total_lidos / n.total_enviados) * 100) : 0;
+            // Cálculos de Leitura
+            const totalEnviados = n.total_enviados || 0;
+            const totalLidos = n.total_lidos || 0;
+            const faltamLer = Math.max(0, totalEnviados - totalLidos);
+            const taxaLeitura = totalEnviados > 0 ? Math.round((totalLidos / totalEnviados) * 100) : 0;
 
+            // ==========================================
+            // LÓGICA DO STATUS E CORES DOS CARDS
+            // ==========================================
+            let statusVisual = 'EM ANDAMENTO';
+            let badgeStatus = 'bg-warning text-dark';
+            let cardCustomClass = 'bg-white border-0';
+
+            // Alterado de 'CONCLUÍDO' para 'PÚBLICO ALCANÇADO'
+            if (totalEnviados > 0 && totalLidos >= totalEnviados) {
+                statusVisual = 'PÚBLICO ALCANÇADO';
+                badgeStatus = 'bg-success';
+                cardCustomClass = 'bg-success bg-opacity-10 border border-success border-opacity-25';
+            } else if (totalEnviados === 0) {
+                statusVisual = 'SEM ALVOS';
+                badgeStatus = 'bg-secondary';
+            }
+
+            let imagemUrlTratada = '';
+            if (n.imagem_url) {
+                const partes = n.imagem_url.split('/uploads/');
+                imagemUrlTratada = partes.length > 1 ? '/uploads/' + partes[1] : n.imagem_url;
+            }
+
+            // Respostas
             let htmlRespostas = '';
-            let btnExportar = ''; // Variável para o botão de download
+            let btnExportar = ''; 
 
             if (n.tipo_interacao === 'NENHUM') {
-                htmlRespostas = '<div class="alert alert-secondary text-center small mb-0">Esta notificação é apenas informativa. Não há respostas a exibir.</div>';
+                htmlRespostas = '<div class="alert alert-secondary text-center small mb-0 rounded-3">Esta notificação é apenas informativa. Não há respostas a exibir.</div>';
             } else if (n.respostas && n.respostas.length > 0) {
-                // Se houver respostas, exibe o botão de exportar
-                btnExportar = `<a href="/admin/notificacoes/${n.id}/exportar" class="btn btn-sm btn-success me-1 fw-bold shadow-sm">📥 Exportar Dados (Excel)</a>`;
+                btnExportar = `<a href="/admin/notificacoes/${n.id}/exportar" class="btn btn-sm btn-success fw-bold rounded-pill shadow-sm"><i class="bi bi-file-earmark-excel me-1"></i> Exportar Dados</a>`;
 
                 let linhasRespostas = n.respostas.map(r => {
                     const dataResp = new Date(r.respondido_em).toLocaleDateString('pt-BR') + ' ' + new Date(r.respondido_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -52,74 +96,115 @@ function renderAdminNotificacoesView(admin, notificacoes) {
 
                     return `
                         <tr>
-                            <td class="fw-semibold">${r.nome_aluno}</td>
-                            <td>${conteudoResposta}</td>
+                            <td class="fw-semibold text-dark">${r.nome_aluno}</td>
+                            <td class="text-secondary">${conteudoResposta}</td>
                             <td class="text-muted small">${dataResp}</td>
                         </tr>
                     `;
                 }).join('');
 
                 htmlRespostas = `
-                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                    <div class="table-responsive border rounded-3 bg-white" style="max-height: 300px; overflow-y: auto;">
                         <table class="table table-sm table-hover align-middle mb-0">
-                            <thead class="table-light sticky-top">
-                                <tr><th>Aluno</th><th>Resposta / Avaliação</th><th>Data</th></tr>
+                            <thead class="table-light sticky-top shadow-sm">
+                                <tr><th class="ps-3">Aluno</th><th>Resposta / Avaliação</th><th>Data</th></tr>
                             </thead>
                             <tbody>${linhasRespostas}</tbody>
                         </table>
                     </div>
                 `;
             } else {
-                htmlRespostas = '<div class="alert alert-light text-center border small mb-0">Aguardando as respostas dos alunos...</div>';
+                htmlRespostas = '<div class="alert alert-light text-center border small mb-0 rounded-3">Aguardando as respostas dos alunos...</div>';
             }
 
             let badgeTipo = 'bg-secondary';
             if(n.tipo_interacao === 'PESQUISA_TEXTO') badgeTipo = 'bg-info text-dark';
-            if(n.tipo_interacao === 'AVALIACAO_ESTRELAS') badgeTipo = 'bg-warning text-dark';
+            if(n.tipo_interacao === 'AVALIACAO_ESTRELAS') badgeTipo = 'bg-primary';
 
+            // ==========================================
+            // CARD DA NOTIFICAÇÃO
+            // ==========================================
             htmlNotificacoes += `
-                <div class="accordion-item border-0 shadow-sm mb-3 rounded overflow-hidden">
-                    <h2 class="accordion-header" id="heading_${n.id}">
-                        <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}">
-                            <div class="d-flex flex-column w-100 me-3">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-bold fs-5 text-dark">${n.titulo}</span>
-                                    <span class="badge ${badgeTipo}">${n.tipo_interacao.replace('_', ' ')}</span>
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center text-muted small">
-                                    <span class="text-truncate d-inline-block" style="max-width: 60%;">
-                                        Disparado em: <strong>${dataDisparo}</strong> | Alvo: <strong>${alvoVisual}</strong>
-                                    </span>
-                                    <span>Lidos: <strong>${n.total_lidos} / ${n.total_enviados}</strong> (${taxaLeitura}%)</span>
+                <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
+                    <div class="card shadow-sm rounded-4 h-100 hover-card transition-all ${cardCustomClass}">
+                        <div class="card-body p-4 d-flex flex-column">
+                            
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="fw-bold text-dark mb-0 text-truncate pe-2" title="${n.titulo}">${n.titulo}</h5>
+                                <span class="badge ${badgeStatus} rounded-pill shadow-sm" style="font-size: 0.65rem;">${statusVisual}</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <span class="badge ${badgeTipo} mb-2 shadow-sm">${n.tipo_interacao.replace('_', ' ')}</span>
+                                <small class="d-block text-muted mb-1">Público Alvo:</small>
+                                <div class="d-flex flex-wrap gap-1">
+                                    ${alvoVisual}
                                 </div>
                             </div>
-                        </button>
-                    </h2>
-                    <div id="${collapseId}" class="accordion-collapse collapse" data-bs-parent="#accordionNotificacoes">
-                        <div class="accordion-body bg-light border-top p-4">
-                            <div class="row">
-                                <div class="col-md-5 mb-4 mb-md-0">
-                                    <h6 class="fw-bold text-secondary mb-3">Conteúdo</h6>
-                                    <p class="mb-2 p-3 bg-white border rounded shadow-sm text-dark">${n.mensagem.replace(/\\n/g, '<br>')}</p>
-                                    ${n.imagem_url ? `<img src="${n.imagem_url}" class="img-fluid rounded border mb-2" style="max-height: 120px;">` : ''}
-                                    
-                                    <div class="mt-3 p-2 bg-white border rounded small">
-                                        <i class="bi bi-calendar-event text-primary"></i> <strong>Exibição:</strong><br>
-                                        Início: ${dInicio}<br>Fim: <span class="${n.data_fim && new Date(n.data_fim) < new Date() ? 'text-danger fw-bold' : ''}">${dFim}</span>
-                                    </div>
+
+                            <div class="row g-2 mb-4 mt-auto p-3 bg-white bg-opacity-75 rounded-4 border border-light shadow-sm">
+                                <div class="col-6 mb-2">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Data de Início</small>
+                                    <strong class="text-dark small"><i class="bi bi-calendar-check text-success me-1"></i>${dInicio.split(' ')[0]}</strong>
                                 </div>
-                                <div class="col-md-7">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h6 class="fw-bold text-secondary mb-0">Respostas dos Alunos</h6>
-                                        <div>
-                                            ${btnExportar}
-                                            <button class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#${modalEditId}">Editar...</button>
-                                            <form action="/admin/notificacoes/${n.id}/excluir" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza? Isso apagará as respostas e removerá o modal dos alunos.');">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
-                                            </form>
+                                <div class="col-6 mb-2">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Data de Fim</small>
+                                    <strong class="text-dark small"><i class="bi bi-calendar-x text-danger me-1"></i>${dFim.split(' ')[0]}</strong>
+                                </div>
+                                <div class="col-6 border-top border-light pt-2">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Lidos</small>
+                                    <strong class="text-success fs-6"><i class="bi bi-check-all me-1"></i>${totalLidos}</strong>
+                                </div>
+                                <div class="col-6 border-top border-light pt-2">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Faltam Ler</small>
+                                    <strong class="text-warning text-dark fs-6"><i class="bi bi-hourglass-split me-1"></i>${faltamLer}</strong>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-auto">
+                                <button class="btn btn-outline-primary bg-white w-50 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#${modalDetalhesId}">
+                                    <i class="bi bi-eye me-1"></i> Detalhes
+                                </button>
+                                <button class="btn btn-primary w-50 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#${modalEditId}">
+                                    <i class="bi bi-pencil-square me-1"></i> Editar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // ==========================================
+            // MODAL DE DETALHES E RESPOSTAS
+            // ==========================================
+            htmlModais += `
+                <div class="modal fade" id="${modalDetalhesId}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content border-0 rounded-4 shadow-lg">
+                            <div class="modal-header bg-light border-0">
+                                <h5 class="modal-title text-dark fw-bold"><i class="bi bi-envelope-paper text-primary me-2"></i>Detalhes da Notificação</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-4 p-md-5">
+                                <div class="row g-4">
+                                    <div class="col-lg-5">
+                                        <h6 class="fw-bold text-secondary mb-3"><i class="bi bi-card-text me-2"></i>Conteúdo do Aviso</h6>
+                                        <div class="p-4 bg-light border rounded-4 mb-3">
+                                            <h5 class="fw-bold text-dark mb-3">${n.titulo}</h5>
+                                            <p class="mb-3 text-dark lh-lg" style="font-size: 0.95rem;">${n.mensagem.replace(/\\n/g, '<br>')}</p>
+                                            ${imagemUrlTratada ? `<img src="${imagemUrlTratada}" class="img-fluid rounded-3 border shadow-sm" style="max-height: 200px; object-fit: cover;">` : ''}
                                         </div>
+                                        <form action="/admin/notificacoes/${n.id}/excluir" method="POST" onsubmit="return confirm('Tem certeza? Isso apagará as respostas e removerá o aviso dos alunos.');">
+                                            <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill w-100"><i class="bi bi-trash3 me-1"></i> Excluir Notificação</button>
+                                        </form>
                                     </div>
-                                    ${htmlRespostas}
+                                    <div class="col-lg-7">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-chat-left-dots me-2"></i>Respostas dos Alunos</h6>
+                                            ${btnExportar}
+                                        </div>
+                                        ${htmlRespostas}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -127,36 +212,39 @@ function renderAdminNotificacoesView(admin, notificacoes) {
                 </div>
 
                 <div class="modal fade" id="${modalEditId}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header bg-primary text-white">
-                                <h5 class="modal-title">Editar Notificação</h5>
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content border-0 rounded-4 shadow-lg">
+                            <div class="modal-header bg-primary border-0">
+                                <h5 class="modal-title text-white fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Notificação</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
                             <form action="/admin/notificacoes/${n.id}/editar" method="POST">
-                                <div class="modal-body">
+                                <div class="modal-body p-4">
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold">Título</label>
-                                        <input type="text" class="form-control" name="titulo" value="${n.titulo}" required>
+                                        <input type="text" class="form-control bg-light" name="titulo" value="${n.titulo}" required>
                                     </div>
-                                    <div class="mb-3">
+                                    <div class="mb-4">
                                         <label class="form-label fw-semibold">Mensagem</label>
-                                        <textarea class="form-control" name="mensagem" rows="3" required>${n.mensagem}</textarea>
+                                        <textarea class="form-control bg-light" name="mensagem" rows="4" required>${n.mensagem}</textarea>
                                     </div>
-                                    <hr>
-                                    <h6 class="fw-bold mb-3">Período de Exibição (Prolongar/Encurtar)</h6>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-semibold">Data Início</label>
-                                        <input type="datetime-local" class="form-control" name="data_inicio" value="${valInicio}">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small fw-semibold">Data Fim (Expiração)</label>
-                                        <input type="datetime-local" class="form-control" name="data_fim" value="${valFim}">
+                                    <hr class="opacity-10 mb-4">
+                                    <h6 class="fw-bold mb-3 text-secondary"><i class="bi bi-clock-history me-2"></i>Período de Exibição</h6>
+                                    <p class="small text-muted mb-3">Pode prolongar ou encurtar o tempo que este aviso aparece para os alunos.</p>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Data Início</label>
+                                            <input type="datetime-local" class="form-control bg-light" name="data_inicio" value="${valInicio}">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Data Fim (Expiração)</label>
+                                            <input type="datetime-local" class="form-control bg-light" name="data_fim" value="${valFim}">
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="modal-footer bg-light">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-success fw-bold">Salvar Alterações</button>
+                                <div class="modal-footer border-0 bg-light">
+                                    <button type="button" class="btn btn-secondary fw-bold rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm">Salvar Alterações</button>
                                 </div>
                             </form>
                         </div>
@@ -164,6 +252,50 @@ function renderAdminNotificacoesView(admin, notificacoes) {
                 </div>
             `;
         });
+    }
+
+    // ==========================================
+    // PAGINAÇÃO
+    // ==========================================
+    let paginationHtml = '';
+    if (totalPages > 1) {
+        paginationHtml += `<ul class="pagination justify-content-center mb-0 mt-4 shadow-sm">`;
+        if (currentPage > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-start-pill px-3" href="?page=${currentPage - 1}${searchParam}">&laquo;</a></li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-start-pill px-3">&laquo;</span></li>`;
+        }
+
+        let startPage = Math.max(1, currentPage - 1);
+        let endPage = Math.min(totalPages, currentPage + 1);
+
+        if (currentPage === 1) endPage = Math.min(3, totalPages);
+        if (currentPage === totalPages) startPage = Math.max(1, totalPages - 2);
+
+        if (startPage > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=1${searchParam}">1</a></li>`;
+            if (startPage > 2) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                paginationHtml += `<li class="page-item active"><span class="page-link fw-bold">${i}</span></li>`;
+            } else {
+                paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${i}${searchParam}">${i}</a></li>`;
+            }
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${totalPages}${searchParam}">${totalPages}</a></li>`;
+        }
+
+        if (currentPage < totalPages) {
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-end-pill px-3" href="?page=${currentPage + 1}${searchParam}">&raquo;</a></li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-end-pill px-3">&raquo;</span></li>`;
+        }
+        paginationHtml += `</ul>`;
     }
 
     return `
@@ -178,8 +310,10 @@ function renderAdminNotificacoesView(admin, notificacoes) {
             body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
-                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+                .main-content { height: calc(100vh - 60px); }
             }
+            .transition-all { transition: all 0.3s ease; }
+            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
         </style>
     </head>
     <body class="bg-light">
@@ -195,47 +329,66 @@ function renderAdminNotificacoesView(admin, notificacoes) {
        <div class="flex-grow-1 main-content bg-light">
                 <div class="container-fluid p-4 p-md-5">
 
-        <div class="container mt-0 mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h3 class="fw-bold text-dark mb-0">Gerenciador de Notificações</h3>
-                    <p class="text-muted mb-0">Acompanhe estatísticas, leia as respostas e prolongue a validade dos avisos.</p>
+        <div class="container-fluid mt-0 mb-5">
+            <div class="row mb-4 align-items-center">
+                <div class="col-md-4 mb-3 mb-md-0">
+                    <h3 class="fw-bold text-dark mb-0"><i class="bi bi-broadcast text-primary me-2"></i>Notificações</h3>
+                    <p class="text-muted small mt-1 mb-0">Página ${currentPage} de ${totalPages}.</p>
                 </div>
-                <a href="/admin/notificacoes/nova" class="btn btn-success fw-bold shadow-sm">+ Disparar Nova</a>
+                
+                <div class="col-md-5 mb-3 mb-md-0">
+                    <form action="/admin/notificacoes" method="GET" class="d-flex shadow-sm rounded-pill overflow-hidden bg-white border">
+                        <input type="text" name="search" class="form-control border-0 shadow-none ps-4" placeholder="Buscar por título ou mensagem..." value="${searchQuery}">
+                        <button type="submit" class="btn btn-primary fw-bold px-4 rounded-end-pill">Buscar</button>
+                        ${searchQuery ? `<a href="/admin/notificacoes" class="btn btn-light border-start text-secondary px-3"><i class="bi bi-x-lg"></i></a>` : ''}
+                    </form>
+                </div>
+
+                <div class="col-md-3 text-md-end">
+                    <a href="/admin/notificacoes/nova" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-send-plus-fill me-1"></i> Nova Notificação
+                    </a>
+                </div>
             </div>
 
-            <div class="accordion" id="accordionNotificacoes">
+            <div class="row">
                 ${htmlNotificacoes}
             </div>
+
+            <nav aria-label="Navegação de notificações" class="mb-5 pb-4">
+                ${paginationHtml}
+            </nav>
+
         </div>
 
         </div> </div> </div>
-        <script>
-    // 1. Esconde o loader no carregamento normal E quando o usuário clica em "Voltar"
-    window.addEventListener('pageshow', function(event) {
-        const loader = document.getElementById('globalLoader');
-        if (loader) {
-            // Se event.persisted for true, significa que a página veio do "cache" do botão voltar
-            if (event.persisted) {
-                loader.style.display = 'none';
-                loader.style.opacity = '0';
-            } else {
-                // Carregamento normal da página (fade suave)
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 400);
-            }
-        }
-    });
+        
+        ${htmlModais}
 
-    // 2. Mostra o loader quando a página for descarregada (clique em link ou submit)
-    window.addEventListener('beforeunload', function() {
-        const loader = document.getElementById('globalLoader');
-        if (loader) {
-            loader.style.display = 'flex';
-            setTimeout(() => { loader.style.opacity = '1'; }, 10); 
-        }
-    });
-</script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script>
+            window.addEventListener('pageshow', function(event) {
+                const loader = document.getElementById('globalLoader');
+                if (loader) {
+                    if (event.persisted) {
+                        loader.style.display = 'none';
+                        loader.style.opacity = '0';
+                    } else {
+                        loader.style.opacity = '0';
+                        setTimeout(() => { loader.style.display = 'none'; }, 400);
+                    }
+                }
+            });
+
+            window.addEventListener('beforeunload', function() {
+                const loader = document.getElementById('globalLoader');
+                if (loader) {
+                    loader.style.display = 'flex';
+                    setTimeout(() => { loader.style.opacity = '1'; }, 10); 
+                }
+            });
+        </script>
     </body>
     </html>
     `;

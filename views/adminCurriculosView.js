@@ -4,7 +4,7 @@ const renderAdminMenuLateral = require('./adminMenuLateral');
 
 function renderAdminCurriculosView(admin, modelosCV = []) {
 
-    const htmlSidebar = renderAdminMenuLateral(admin, 'admin/curriculos');
+    const htmlSidebar = renderAdminMenuLateral(admin, 'curriculos');
     
     let htmlModelosCV = '';
     if (!modelosCV || modelosCV.length === 0) {

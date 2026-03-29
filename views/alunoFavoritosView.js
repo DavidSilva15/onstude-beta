@@ -1,34 +1,40 @@
 // views/alunoFavoritosView.js
 
+const renderAlunoMenuLateral = require('./alunoMenuLateral');
+
 function renderAlunoFavoritosView(aluno, cursosFavoritos) {
+    
+    // Injeta o novo menu lateral indicando que a página ativa é 'favoritos'
+    const htmlSidebar = renderAlunoMenuLateral(aluno, 'favoritos');
+
     let htmlCursos = '';
 
     if (cursosFavoritos.length === 0) {
         htmlCursos = `
-            <div class="col-12 text-center py-5 mt-4 bg-white border rounded-4 shadow-sm">
+            <div class="col-12 text-center py-5 mt-4 bg-white border-0 rounded-4 shadow-sm">
                 <div class="mb-3">
-                    <i class="bi bi-heart text-muted" style="font-size: 3rem; opacity: 0.5;"></i>
+                    <i class="bi bi-heart fs-1 text-secondary opacity-25" style="font-size: 3rem;"></i>
                 </div>
-                <h4 class="text-secondary fw-bold mb-3">Nenhum curso nos favoritos</h4>
+                <h4 class="text-dark fw-bold mb-2">Nenhum curso nos favoritos</h4>
                 <p class="text-muted mb-4">Explore a nossa plataforma e adicione os cursos que tem interesse em fazer futuramente!</p>
-                <a href="/#secao-cursos" class="btn btn-primary fw-bold px-4 rounded-pill">Explorar Cursos</a>
+                <a href="/#secao-cursos" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm"><i class="bi bi-search me-1"></i> Explorar Cursos</a>
             </div>
         `;
     } else {
         cursosFavoritos.forEach(curso => {
             const capa = curso.capa_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80';
-            const preco = parseFloat(curso.preco) > 0 ? `R$ ${parseFloat(curso.preco).toFixed(2).replace('.', ',')}` : 'Gratuito';
+            const preco = parseFloat(curso.preco) > 0 ? `R$ ${parseFloat(curso.preco).toFixed(2).replace('.', ',')}` : '<span class="text-success">Gratuito</span>';
             const duracao = curso.duracao_horas ? `${curso.duracao_horas}h` : '--h';
             
             htmlCursos += `
-                <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card h-100 shadow-sm border-0 hover-shadow transition rounded-4 overflow-hidden position-relative">
+                <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
+                    <div class="card h-100 shadow-sm border-0 hover-card transition-all rounded-4 overflow-hidden position-relative bg-white">
                         
-                        <button class="btn btn-light btn-sm rounded-circle shadow-sm position-absolute top-0 end-0 m-3 z-2 text-danger btn-toggle-favorito" data-id="${curso.id}" title="Remover dos favoritos">
-                            <i class="bi bi-heart-fill fs-6"></i>
+                        <button class="btn btn-light btn-sm rounded-circle shadow position-absolute top-0 end-0 m-3 z-2 text-danger btn-toggle-favorito" data-id="${curso.id}" title="Remover dos favoritos" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-heart-fill"></i>
                         </button>
 
-                        <img src="${capa}" class="card-img-top" alt="Capa de ${curso.titulo}" style="height: 180px; object-fit: cover;">
+                        <img src="${capa}" class="card-img-top border-bottom" alt="Capa de ${curso.titulo}" style="height: 180px; object-fit: cover;">
                         
                         <div class="card-body d-flex flex-column p-4">
                             <h5 class="card-title fw-bold text-dark mb-2 text-truncate" title="${curso.titulo}">${curso.titulo}</h5>
@@ -36,14 +42,14 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                                 ${curso.descricao || 'Curso incrível para alavancar a sua carreira.'}
                             </p>
                             
-                            <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold">
-                                <span class="me-3" title="Duração do Curso"><i class="bi bi-clock me-1"></i> ${duracao}</span>
-                                <span title="Acesso"><i class="bi bi-calendar-check me-1"></i> Vitalício</span>
+                            <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold bg-light p-2 rounded-3 border">
+                                <span class="me-3" title="Duração do Curso"><i class="bi bi-clock text-primary me-1"></i> ${duracao}</span>
+                                <span title="Acesso"><i class="bi bi-calendar-check text-success me-1"></i> Vitalício</span>
                             </div>
                             
-                            <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
-                                <span class="fw-bold fs-5 text-primary">${preco}</span>
-                                <a href="/cursos/${curso.id}" class="btn btn-outline-primary fw-bold px-4 rounded-pill">Ver Curso</a>
+                            <div class="mt-auto pt-3 border-top border-light d-flex justify-content-between align-items-center">
+                                <span class="fw-bold fs-5 text-dark">${preco}</span>
+                                <a href="/cursos/${curso.id}" class="btn btn-outline-primary fw-bold px-4 rounded-pill shadow-sm">Ver Curso</a>
                             </div>
                         </div>
                     </div>
@@ -62,107 +68,68 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
-            body { background-color: #f8f9fa; }
-            .hover-shadow:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; transform: translateY(-2px); transition: all .3s ease; }
-            .transition { transition: all .3s ease; }
+            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
+            @media (max-width: 991.98px) {
+                .main-content { height: calc(100vh - 60px); } 
+            }
+            .transition-all { transition: all .3s ease; }
+            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
             .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
         </style>
     </head>
-    <body>
+    <body class="bg-light">
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
             <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;"></div>
             <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
         </div>
 
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-bold text-white fs-4" href="/aluno">OnStude</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <a class="nav-link fw-semibold" href="/aluno">Meus Cursos</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link fw-semibold" href="/aluno/certificados">Meus Certificados</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active fw-bold border-bottom border-2 border-white" href="/aluno/favoritos">Meus Favoritos</a>
-                        </li>
-                        <li class="nav-item ms-lg-3 border-start-lg ps-lg-3">
-                            <a class="nav-link fw-bold text-warning" href="/forum">💬 Fórum de Dúvidas</a>
-                        </li>
-                    </ul>
-                    
-                    <div class="d-flex align-items-center ms-auto mt-3 mt-lg-0">
-                        <div class="dropdown me-4">
-                            <a href="#" class="text-white text-decoration-none position-relative" id="dropdownNotif" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside" style="font-size: 1.4rem;">
-                                🔔
-                                <span id="badgeNotificacoes" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none border border-light" style="font-size: 0.6rem; margin-left: -5px;">0</span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="dropdownNotif" style="width: 340px; max-height: 450px; overflow-y: auto; padding: 0;" id="listaNotificacoesDropdown">
-                                <li class="p-4 text-center text-muted small">
-                                    <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div><br>
-                                    Carregando notificações...
-                                </li>
-                            </ul>
-                        </div>
+        <div class="d-flex flex-column flex-lg-row w-100 h-100">
+            
+            ${htmlSidebar}
 
-                        <div class="dropdown">
-                            <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
-                                ${aluno.foto_perfil_url 
-                                    ? `<img src="${aluno.foto_perfil_url}" alt="Foto" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover; border: 2px solid rgba(255,255,255,0.5);">` 
-                                    : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-light text-primary fw-bold" style="width: 36px; height: 36px; border: 2px solid rgba(255,255,255,0.5); font-size: 14px;">${aluno.nome.charAt(0).toUpperCase()}</div>`
-                                }
-                                <span class="d-none d-md-inline me-2">Olá, <strong>${aluno.nome.split(' ')[0]}</strong></span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownUser">
-                                <li><a class="dropdown-item fw-semibold text-secondary" href="/aluno/perfil">✏️ Editar Perfil</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item fw-bold text-danger" href="/logout">🚪 Sair</a></li>
-                            </ul>
+            <div class="flex-grow-1 main-content bg-light">
+                <div class="container-fluid p-4 p-md-5">
+
+                    <div class="row mb-5 align-items-center">
+                        <div class="col-12 d-flex align-items-center mb-1">
+                            <h2 class="fw-bold text-dark mb-0 me-3"><i class="bi bi-heart-fill text-danger me-2"></i>Meus Favoritos</h2>
+                            <span class="badge bg-danger rounded-pill fs-6 px-3 shadow-sm">${cursosFavoritos.length} salvos</span>
+                        </div>
+                        <div class="col-12">
+                            <p class="text-muted mb-0">Acompanhe os cursos que você separou para a sua jornada profissional.</p>
                         </div>
                     </div>
-                </div>
-            </div>
-        </nav>
 
-        <div class="container mt-5 mb-5">
-            <div class="row mb-4">
-                <div class="col-12 d-flex align-items-center">
-                    <h2 class="fw-bold text-dark mb-0 me-3">Meus Favoritos</h2>
-                    <span class="badge bg-danger rounded-pill fs-6">${cursosFavoritos.length} salvos</span>
-                </div>
-                <div class="col-12 mt-2">
-                    <p class="text-muted">Acompanhe os cursos que você separou para a sua jornada profissional.</p>
-                </div>
-            </div>
+                    <div class="row">
+                        ${htmlCursos}
+                    </div>
 
-            <div class="row">
-                ${htmlCursos}
+                </div>
             </div>
         </div>
 
         <div class="modal fade" id="modalNotificacao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg" style="border-radius: 15px; overflow: hidden;">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="modal-header bg-primary text-white border-0 py-3">
                         <h5 class="modal-title fw-bold" id="notifTitulo">Aviso Importante</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4 text-center">
-                        <img id="notifImagem" src="" class="img-fluid rounded shadow-sm mb-4 d-none" style="max-height: 250px; width: 100%; object-fit: cover;">
+                        <img id="notifImagem" src="" class="img-fluid rounded-4 shadow-sm mb-4 d-none" style="max-height: 250px; width: 100%; object-fit: cover;">
                         <p id="notifMensagem" class="fs-5 text-secondary mb-4"></p>
-                        <div id="alertaJaRespondido" class="alert alert-success d-none mb-3 text-start">
-                            <strong>✅ Você já respondeu!</strong> Obrigado pelo seu feedback e participação.
+
+                        <div id="alertaJaRespondido" class="alert alert-success border-success bg-success bg-opacity-10 d-none mb-3 text-start rounded-4">
+                            <strong><i class="bi bi-check-circle-fill me-2"></i>Você já respondeu!</strong> Obrigado pelo seu feedback.
                         </div>
-                        <div id="areaPesquisaTexto" class="d-none text-start mb-3">
+
+                        <div id="areaPesquisaTexto" class="d-none text-start mb-3 bg-light p-3 rounded-4 border border-light">
                             <label class="form-label fw-bold text-dark">Sua resposta:</label>
-                            <textarea id="inputPesquisaTexto" class="form-control bg-light" rows="3" placeholder="Escreva aqui..."></textarea>
+                            <textarea id="inputPesquisaTexto" class="form-control" rows="3" placeholder="Escreva aqui..."></textarea>
                         </div>
-                        <div id="areaAvaliacaoEstrelas" class="d-none mb-3">
+
+                        <div id="areaAvaliacaoEstrelas" class="d-none mb-3 bg-light p-3 rounded-4 border border-light">
                             <h6 class="fw-bold text-dark mb-2">Avalie:</h6>
                             <div id="estrelasContainer" class="fs-1 text-secondary" style="cursor: pointer; letter-spacing: 5px;">
                                 <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>
@@ -171,7 +138,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                         </div>
                     </div>
                     <div class="modal-footer border-0 bg-light justify-content-center py-3">
-                        <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm" id="btnResponderNotificacao" style="border-radius: 50px;">
+                        <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm rounded-pill" id="btnResponderNotificacao">
                             Entendido
                         </button>
                     </div>
@@ -182,12 +149,13 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
         <script>
+            // Lógica de Remover dos Favoritos com Animação
             document.querySelectorAll('.btn-toggle-favorito').forEach(btn => {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const cursoId = this.getAttribute('data-id');
                     const icon = this.querySelector('i');
-                    const cardElement = this.closest('.col-md-6'); // Pega o Card todo
+                    const cardElement = this.closest('.col-md-6'); // Pega a div da coluna
 
                     // Troca visualmente o ícone para dar feedback instantâneo
                     icon.classList.remove('bi-heart-fill', 'text-danger');
@@ -206,7 +174,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                             cardElement.style.opacity = '0';
                             cardElement.style.transform = 'scale(0.9)';
                             setTimeout(() => {
-                                window.location.reload(); // Recarrega para atualizar contador e tela vazia
+                                window.location.reload(); 
                             }, 400);
                         }
                     })
@@ -223,6 +191,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                 carregarListaNotificacoesSino();
             });
 
+            // Lógica do Sino de Notificações
             function carregarListaNotificacoesSino() {
                 fetch('/aluno/api/notificacoes/lista')
                     .then(response => response.json())
@@ -245,9 +214,9 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                             }
 
                             let htmlLista = \`
-                                <li class="d-flex justify-content-between align-items-center p-2 border-bottom bg-light sticky-top" style="z-index: 10;">
-                                    <span class="fw-bold text-secondary ms-2" style="font-size: 0.85rem;">Notificações</span>
-                                    <button class="btn btn-sm btn-link text-decoration-none text-danger py-0" onclick="limparTodasNotificacoes()" style="font-size: 0.8rem;">Limpar Tudo</button>
+                                <li class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light sticky-top rounded-top-4" style="z-index: 10;">
+                                    <span class="fw-bold text-secondary" style="font-size: 0.85rem;"><i class="bi bi-envelope-open me-2"></i>Notificações</span>
+                                    <button class="btn btn-sm btn-light border text-danger py-1 px-2 rounded-pill fw-bold" onclick="limparTodasNotificacoes()" style="font-size: 0.75rem;"><i class="bi bi-trash3 me-1"></i>Limpar Tudo</button>
                                 </li>
                             \`;
 
@@ -255,7 +224,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                                 const dataFormatada = new Date(n.criado_em).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
                                 const isNaoLida = n.status === 'PENDENTE';
                                 const classFundo = isNaoLida ? 'bg-white fw-bold' : 'bg-light text-muted opacity-75';
-                                const iconeLida = isNaoLida ? '<span class="icone-nao-lida badge bg-primary rounded-circle p-1 me-2 d-inline-block" style="width: 8px; height: 8px;"></span>' : '';
+                                const iconeLida = isNaoLida ? '<span class="icone-nao-lida badge bg-primary rounded-circle p-1 me-2 d-inline-block shadow-sm" style="width: 10px; height: 10px;"></span>' : '';
                                 const onclickAcao = n.link_url ? \`abrirLinkExterno(\${n.id}, '\${n.link_url}')\` : \`abrirModalNotificacao(\${n.id})\`;
 
                                 htmlLista += \`
@@ -263,7 +232,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                                         <a href="javascript:void(0)" onclick="\${onclickAcao}" class="dropdown-item border-bottom text-wrap p-3 notif-item \${classFundo}" style="white-space: normal;">
                                             <div class="d-flex justify-content-between align-items-start mb-1">
                                                 <span class="text-dark d-flex align-items-center" style="font-size: 0.85rem;">\${iconeLida} \${n.titulo}</span>
-                                                <small class="text-secondary ms-2" style="font-size: 0.7rem;">\${dataFormatada}</small>
+                                                <small class="text-secondary ms-2 bg-light border px-1 rounded text-nowrap" style="font-size: 0.65rem;">\${dataFormatada}</small>
                                             </div>
                                             <div class="small \${isNaoLida ? 'text-secondary' : 'text-muted'}" style="font-size: 0.8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                                                 \${n.mensagem}

@@ -3,6 +3,17 @@
 function renderHomeView(usuarioLogado, cursos) {
     let htmlCursosSlider = '';
 
+    // Função auxiliar para formatar os segundos totais em Horas/Minutos legíveis
+    const formatarDuracao = (segundosTotais) => {
+        if (!segundosTotais || segundosTotais == 0) return '0h';
+        const horas = Math.floor(segundosTotais / 3600);
+        const minutos = Math.floor((segundosTotais % 3600) / 60);
+        
+        if (horas > 0 && minutos > 0) return `${horas}h ${minutos}m`;
+        if (horas > 0) return `${horas}h`;
+        return `${minutos}m`;
+    };
+
     if (cursos.length === 0) {
         htmlCursosSlider = `
             <div class="text-center py-5 text-muted w-100">
@@ -13,8 +24,22 @@ function renderHomeView(usuarioLogado, cursos) {
         cursos.forEach(curso => {
             const capa = curso.capa_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80';
             const preco = parseFloat(curso.preco) > 0 ? `R$ ${parseFloat(curso.preco).toFixed(2).replace('.', ',')}` : 'Gratuito';
-            const duracao = curso.duracao_horas ? `${curso.duracao_horas}h` : '--h';
-            const conclusao = curso.conclusao_dias ? `${curso.conclusao_dias} dias` : '-- dias';
+            
+            // Lógica da Duração Automática
+            const duracao = curso.duracao_total_segundos !== undefined 
+                            ? formatarDuracao(curso.duracao_total_segundos) 
+                            : (curso.duracao_horas ? `${curso.duracao_horas}h` : '--h');
+
+            // Lógica de Conclusão baseada em 2h de estudo diário
+            let conclusao = '-- dias';
+            if (curso.duracao_total_segundos > 0) {
+                const horasTotais = curso.duracao_total_segundos / 3600;
+                const diasCalculados = Math.ceil(horasTotais / 2);
+                const diasFinais = diasCalculados < 1 ? 1 : diasCalculados;
+                conclusao = `${diasFinais} dia${diasFinais > 1 ? 's' : ''}`;
+            } else if (curso.conclusao_dias) {
+                conclusao = `${curso.conclusao_dias} dias`;
+            }
             
             // Converte as tags do mercado para minúsculas para facilitar o filtro depois
             const tagsDoCurso = (curso.mercado || '').toLowerCase();
@@ -36,8 +61,8 @@ function renderHomeView(usuarioLogado, cursos) {
                             </p>
                             
                             <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold">
-                                <span class="me-3" title="Duração do Curso"><i class="bi bi-clock me-1"></i> ${duracao}</span>
-                                <span title="Tempo Médio de Conclusão"><i class="bi bi-calendar-check me-1"></i> ${conclusao}</span>
+                                <span class="me-3" title="Soma do tempo de todas as aulas"><i class="bi bi-clock text-primary me-1"></i> ${duracao}</span>
+                                <span title="Estimativa baseada em 2h de estudo/dia"><i class="bi bi-calendar-check text-success me-1"></i> ${conclusao}</span>
                             </div>
                             
                             <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
@@ -293,7 +318,6 @@ function renderHomeView(usuarioLogado, cursos) {
         <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
         <script>
-            // Passa a informação do backend para o Javascript (se o usuário está logado ou não)
             const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
 
             document.addEventListener('DOMContentLoaded', function () {
@@ -316,11 +340,6 @@ function renderHomeView(usuarioLogado, cursos) {
                     },
                 });
 
-                // ==========================================
-                // SISTEMA DE FILTRO DE CATEGORIAS (TAGS)
-                // ==========================================
-                
-                // 1. Guarda na memória TODOS os slides gerados inicialmente
                 const todosOsSlidesNodes = Array.from(document.querySelectorAll('.curso-slide'));
                 const swiperWrapper = document.querySelector('.swiper-wrapper');
                 const botoesFiltro = document.querySelectorAll('.btn-filter');
@@ -329,7 +348,6 @@ function renderHomeView(usuarioLogado, cursos) {
                     btn.addEventListener('click', function(e) {
                         e.preventDefault();
 
-                        // Alterna as cores dos botões para mostrar qual está ativo
                         botoesFiltro.forEach(b => {
                             b.classList.remove('btn-dark', 'fw-bold', 'px-4');
                             b.classList.add('btn-outline-secondary', 'fw-semibold');
@@ -337,58 +355,42 @@ function renderHomeView(usuarioLogado, cursos) {
                         this.classList.remove('btn-outline-secondary', 'fw-semibold');
                         this.classList.add('btn-dark', 'fw-bold', 'px-4');
 
-                        // Descobre qual categoria foi clicada
                         const filtro = this.getAttribute('data-filter').toLowerCase();
-                        
-                        // Remove todos os slides atuais da tela usando a API do Swiper
                         swiper.removeAllSlides();
                         
-                        // Limpa a mensagem de vazio, se existir de cliques anteriores
                         const emptyMsg = swiperWrapper.querySelector('.swiper-no-slides');
                         if (emptyMsg) emptyMsg.remove();
 
-                        // Filtra os slides guardados
                         const slidesFiltrados = todosOsSlidesNodes.filter(slide => {
                             const tags = slide.getAttribute('data-tags');
-                            // Se for "all", passa. Se não, verifica se as tags do curso incluem a palavra filtrada
                             return filtro === 'all' || tags.includes(filtro);
                         });
 
-                        // Se tiver cursos, insere-os de volta. Se não, exibe aviso.
                         if (slidesFiltrados.length > 0) {
                             swiper.appendSlide(slidesFiltrados);
                         } else {
                             swiperWrapper.innerHTML = '<div class="w-100 text-center py-5 text-muted swiper-no-slides">Nenhum curso encontrado nesta categoria no momento.</div>';
                         }
 
-                        // Atualiza o layout do carrossel e recomeça do primeiro card
                         swiper.update();
                         swiper.slideTo(0);
                     });
                 });
 
-                // ==========================================
-                // BOTÃO FAVORITAR (USANDO EVENT DELEGATION)
-                // ==========================================
-                // Como os cartões entram e saem da tela com o filtro, 
-                // delegamos o clique ao "body" para não perdermos o Event Listener
                 document.body.addEventListener('click', function(e) {
                     const btn = e.target.closest('.btn-favoritar');
                     if (!btn) return;
                     
                     e.preventDefault();
                     
-                    // 1. Bloqueia e redireciona caso não tenha conta
                     if (!isUsuarioLogado) {
                         window.location.href = '/login?returnTo=/';
                         return;
                     }
 
-                    // 2. Se tiver conta, dispara o request para o servidor
                     const cursoId = btn.getAttribute('data-curso-id');
                     const icon = btn.querySelector('i');
                     
-                    // Feedback visual imediato (Optimistic UI)
                     const isFavorited = icon.classList.contains('bi-heart-fill');
                     if (isFavorited) {
                         icon.classList.replace('bi-heart-fill', 'bi-heart');
@@ -396,7 +398,6 @@ function renderHomeView(usuarioLogado, cursos) {
                         icon.classList.replace('bi-heart', 'bi-heart-fill');
                     }
 
-                    // Chamada real para a API
                     fetch('/aluno/api/favoritos/toggle', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -406,7 +407,6 @@ function renderHomeView(usuarioLogado, cursos) {
                     .then(data => {
                         if (!data.success) {
                             alert('Ocorreu um erro ao atualizar os favoritos.');
-                            // Reverte o ícone caso a API falhe
                             if (isFavorited) {
                                 icon.classList.replace('bi-heart', 'bi-heart-fill');
                             } else {

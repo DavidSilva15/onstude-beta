@@ -1,71 +1,117 @@
 // views/alunoCertificadosView.js
 
-function renderAlunoCertificadosView(aluno, certificados) {
+const renderAlunoMenuLateral = require('./alunoMenuLateral');
+
+function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, totalPages = 1, searchQuery = '') {
+    
+    const htmlSidebar = renderAlunoMenuLateral(aluno, 'certificados');
+
     let htmlCertificados = '';
+    const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
 
     if (certificados.length === 0) {
         htmlCertificados = `
-            <div class="col-12 text-center py-5 mt-4 bg-white border rounded shadow-sm">
-                <h4 class="text-secondary fw-bold mb-3">Nenhum registo encontrado</h4>
-                <p class="text-muted mb-4">Assim que for matriculado em um curso, os dados do seu certificado aparecerão aqui.</p>
+            <div class="col-12 text-center py-5 mt-4 bg-white border-0 rounded-4 shadow-sm">
+                <i class="bi bi-award fs-1 opacity-25 mb-3 d-block text-secondary"></i>
+                <h4 class="text-dark fw-bold mb-2">Nenhum certificado encontrado</h4>
+                <p class="text-muted mb-0">Assim que for matriculado em um curso ou concluir suas aulas, eles aparecerão aqui.</p>
             </div>
         `;
     } else {
         certificados.forEach(cert => {
-            // Usa o template do certificado como Thumb (ou um placeholder se o admin esquecer de enviar)
             const thumb = cert.certificado_template_url ? cert.certificado_template_url : 'https://via.placeholder.com/600x400?text=Certificado+OnStude';
-            
             const estaConcluido = cert.emitido_em !== null;
-            const dataEmissao = estaConcluido ? new Date(cert.emitido_em).toLocaleDateString('pt-BR') : 'Pendente';
+            const dataEmissao = estaConcluido ? new Date(cert.emitido_em).toLocaleDateString('pt-BR') : '-';
             
-            // Lógica visual da Thumb (Miniatura)
-            const thumbHtml = estaConcluido
-                ? `<div class="h-100 w-100 overflow-hidden bg-light"><img src="${thumb}" class="img-fluid w-100 h-100 border-end" style="object-fit: cover;" alt="Certificado Liberado"></div>`
-                : `<div class="position-relative h-100 w-100 bg-dark overflow-hidden d-flex align-items-center justify-content-center">
-                        <img src="${thumb}" class="img-fluid w-100 h-100" style="object-fit: cover; opacity: 0.4; filter: blur(2px);" alt="Certificado Bloqueado">
-                        <div class="position-absolute fs-1" title="Curso não concluído">🔒</div>
-                   </div>`;
+            const badgeOverlay = estaConcluido 
+                ? '<span class="badge bg-success position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Concluído</span>' 
+                : '<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Pendente</span>';
 
-            const badgeStatus = estaConcluido 
-                ? '<span class="badge bg-success mb-2">Concluído</span>' 
-                : '<span class="badge bg-warning text-dark mb-2">Em Andamento</span>';
+            const imgClass = estaConcluido ? "card-img-top border-bottom" : "card-img-top border-bottom opacity-50";
             
             const areaAcao = estaConcluido
                 ? `
-                    <div class="bg-light p-3 rounded border border-success mt-3">
-                        <p class="small text-success fw-bold mb-1">EMITIDO EM: ${dataEmissao}</p>
-                        <p class="mb-3">Código de Validação: <strong class="user-select-all fs-6 text-dark">${cert.token}</strong></p>
-                        <a href="/aluno/certificados/${cert.certificado_id}/download" class="btn btn-success fw-bold px-4">⬇️ Fazer Download do PDF</a>
+                    <div class="mt-auto pt-3 border-top border-light">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <small class="text-muted" style="font-size: 0.7rem;">Emitido em</small>
+                            <strong class="text-dark small"><i class="bi bi-calendar-check text-success me-1"></i>${dataEmissao}</strong>
+                        </div>
+                        <div class="bg-light p-2 rounded-3 text-center mb-3 border border-light shadow-sm">
+                            <small class="text-muted d-block" style="font-size: 0.7rem;">Cód. Validação</small>
+                            <strong class="text-dark user-select-all" style="font-size: 0.85rem;">${cert.token}</strong>
+                        </div>
+                        <div class="d-grid">
+                            <a href="/aluno/certificados/${cert.certificado_id}/download" class="btn btn-success fw-bold rounded-pill shadow-sm"><i class="bi bi-download me-1"></i> Baixar PDF</a>
+                        </div>
                     </div>
                 `
                 : `
-                    <div class="bg-light p-3 rounded border mt-3 text-muted">
-                        <p class="small mb-1">Status: <strong class="text-dark">Aguardando conclusão da última aula</strong></p>
-                        <p class="mb-0 small">O seu código de validação <strong class="user-select-all">${cert.token}</strong> será ativado em breve.</p>
+                    <div class="mt-auto pt-3 border-top border-light">
+                        <div class="alert alert-light border border-light text-center p-3 mb-0 rounded-4 shadow-sm">
+                            <small class="text-muted d-block"><i class="bi bi-info-circle me-1 d-block fs-4 mb-2"></i>Conclua todas as aulas para liberar o seu certificado.</small>
+                        </div>
                     </div>
                 `;
 
             htmlCertificados += `
-                <div class="col-12 mb-4">
-                    <div class="card shadow-sm border-0 h-100 transition">
-                        <div class="row g-0 h-100">
-                            <div class="col-md-4 col-lg-3 d-none d-md-block h-100" style="min-height: 200px;">
-                                ${thumbHtml}
-                            </div>
-                            <div class="col-md-8 col-lg-9">
-                                <div class="card-body d-flex flex-column h-100 justify-content-center p-4">
-                                    <div>
-                                        ${badgeStatus}
-                                        <h4 class="card-title fw-bold text-dark mb-1">${cert.curso_titulo}</h4>
-                                    </div>
-                                    ${areaAcao}
-                                </div>
-                            </div>
+                <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
+                    <div class="card shadow-sm border-0 rounded-4 h-100 hover-card transition-all overflow-hidden bg-white">
+                        
+                        <div class="position-relative bg-dark">
+                            <img src="${thumb}" class="${imgClass}" style="height: 180px; object-fit: cover; width: 100%;" alt="Certificado">
+                            ${badgeOverlay}
+                            ${!estaConcluido ? '<div class="position-absolute top-50 start-50 translate-middle fs-1" title="Curso não concluído">🔒</div>' : ''}
+                        </div>
+
+                        <div class="card-body p-4 d-flex flex-column">
+                            <h5 class="card-title fw-bold text-dark mb-3 lh-base text-truncate" title="${cert.curso_titulo}">${cert.curso_titulo}</h5>
+                            ${areaAcao}
                         </div>
                     </div>
                 </div>
             `;
         });
+    }
+
+    let paginationHtml = '';
+    if (totalPages > 1) {
+        paginationHtml += `<ul class="pagination justify-content-center mb-0 mt-4 shadow-sm">`;
+        if (currentPage > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-start-pill px-3" href="?page=${currentPage - 1}${searchParam}">&laquo;</a></li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-start-pill px-3">&laquo;</span></li>`;
+        }
+
+        let startPage = Math.max(1, currentPage - 1);
+        let endPage = Math.min(totalPages, currentPage + 1);
+
+        if (currentPage === 1) endPage = Math.min(3, totalPages);
+        if (currentPage === totalPages) startPage = Math.max(1, totalPages - 2);
+
+        if (startPage > 1) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=1${searchParam}">1</a></li>`;
+            if (startPage > 2) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                paginationHtml += `<li class="page-item active"><span class="page-link fw-bold">${i}</span></li>`;
+            } else {
+                paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${i}${searchParam}">${i}</a></li>`;
+            }
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${totalPages}${searchParam}">${totalPages}</a></li>`;
+        }
+
+        if (currentPage < totalPages) {
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-end-pill px-3" href="?page=${currentPage + 1}${searchParam}">&raquo;</a></li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-end-pill px-3">&raquo;</span></li>`;
+        }
+        paginationHtml += `</ul>`;
     }
 
     return `
@@ -76,117 +122,79 @@ function renderAlunoCertificadosView(aluno, certificados) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Meus Certificados - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
-            body { background-color: #f8f9fa; }
-            .transition { transition: all .3s ease; }
-            .transition:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
-            .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
-
-            /* Ajuste da área de conteúdo principal para rolar independentemente do menu */
             body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
-                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+                .main-content { height: calc(100vh - 60px); } 
             }
+            .transition-all { transition: all .3s ease; }
+            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+            .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
         </style>
     </head>
-    <body>
-    <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
-        <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
-            <span class="visually-hidden">Carregando...</span>
+    <body class="bg-light">
+        <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
+            <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;"></div>
+            <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
         </div>
-        <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
-    </div>
     
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-bold text-white" href="/aluno">OnStude</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <a class="nav-link fw-semibold" href="/aluno">Meus Cursos</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link active fw-semibold" href="/aluno/certificados">Meus Certificados</a>
-                        </li>
-                        <li class="nav-item ms-lg-3 border-start-lg ps-lg-3">
-                            <a class="nav-link fw-bold text-warning" href="/forum">💬 Fórum de Dúvidas</a>
-                        </li>
-                    </ul>
-                    
-                    <div class="d-flex align-items-center ms-auto mt-3 mt-lg-0">
-                        
-                        <div class="dropdown me-4">
-                            <a href="#" class="text-white text-decoration-none position-relative" id="dropdownNotif" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside" style="font-size: 1.4rem;">
-                                🔔
-                                <span id="badgeNotificacoes" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none border border-light" style="font-size: 0.6rem; margin-left: -5px;">
-                                    0
-                                </span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="dropdownNotif" style="width: 340px; max-height: 450px; overflow-y: auto; padding: 0;" id="listaNotificacoesDropdown">
-                                <li class="p-4 text-center text-muted small">
-                                    <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div><br>
-                                    Carregando notificações...
-                                </li>
-                            </ul>
-                        </div>
+        <div class="d-flex flex-column flex-lg-row w-100 h-100">
+            
+            ${htmlSidebar}
 
-                        <div class="dropdown">
-                            <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
-                                ${aluno.foto_perfil_url 
-                                    ? `<img src="${aluno.foto_perfil_url}" alt="Foto" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover; border: 2px solid rgba(255,255,255,0.5);">` 
-                                    : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-light text-primary fw-bold" style="width: 36px; height: 36px; border: 2px solid rgba(255,255,255,0.5); font-size: 14px;">${aluno.nome.charAt(0).toUpperCase()}</div>`
-                                }
-                                <span class="d-none d-md-inline me-2">Olá, <strong>${aluno.nome.split(' ')[0]}</strong></span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="dropdownUser">
-                                <li><a class="dropdown-item fw-semibold text-secondary" href="/aluno/perfil">✏️ Editar Perfil</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item fw-bold text-danger" href="/logout">🚪 Sair</a></li>
-                            </ul>
+            <div class="flex-grow-1 main-content bg-light">
+                <div class="container-fluid p-4 p-md-5">
+
+                    <div class="row mb-5 align-items-center">
+                        <div class="col-md-5 mb-3 mb-md-0">
+                            <h2 class="fw-bold text-dark mb-1"><i class="bi bi-award-fill text-primary me-2"></i>Certificados</h2>
+                            <p class="text-muted small mt-1 mb-0">Página ${currentPage} de ${totalPages}.</p>
+                        </div>
+                        
+                        <div class="col-md-7 mb-3 mb-md-0">
+                            <form action="/aluno/certificados" method="GET" class="d-flex shadow-sm rounded-pill overflow-hidden bg-white border">
+                                <input type="text" name="search" class="form-control border-0 shadow-none ps-4" placeholder="Buscar por nome do curso..." value="${searchQuery}">
+                                <button type="submit" class="btn btn-primary fw-bold px-4 rounded-end-pill">Buscar</button>
+                                ${searchQuery ? `<a href="/aluno/certificados" class="btn btn-light border-start text-secondary px-3"><i class="bi bi-x-lg"></i></a>` : ''}
+                            </form>
                         </div>
                     </div>
+                    
+                    <div class="row">
+                        ${htmlCertificados}
+                    </div>
+
+                    <nav aria-label="Navegação de certificados" class="mb-5 pb-4 mt-2">
+                        ${paginationHtml}
+                    </nav>
 
                 </div>
-            </div>
-        </nav>
-
-        <div class="container mt-5 mb-5">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <h2 class="fw-bold text-dark">Meus Certificados</h2>
-                    <p class="text-muted">Acompanhe as suas validações e faça o download em PDF dos seus certificados concluídos.</p>
-                </div>
-            </div>
-            <div class="row">
-                ${htmlCertificados}
             </div>
         </div>
 
         <div class="modal fade" id="modalNotificacao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg" style="border-radius: 15px; overflow: hidden;">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
                     <div class="modal-header bg-primary text-white border-0 py-3">
                         <h5 class="modal-title fw-bold" id="notifTitulo">Aviso Importante</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-4 text-center">
-                        <img id="notifImagem" src="" class="img-fluid rounded shadow-sm mb-4 d-none" style="max-height: 250px; width: 100%; object-fit: cover;">
+                        <img id="notifImagem" src="" class="img-fluid rounded-4 shadow-sm mb-4 d-none" style="max-height: 250px; width: 100%; object-fit: cover;">
                         <p id="notifMensagem" class="fs-5 text-secondary mb-4"></p>
 
-                        <div id="alertaJaRespondido" class="alert alert-success d-none mb-3 text-start">
-                            <strong>✅ Você já respondeu!</strong> Obrigado pelo seu feedback e participação.
+                        <div id="alertaJaRespondido" class="alert alert-success border-success bg-success bg-opacity-10 d-none mb-3 text-start rounded-4">
+                            <strong><i class="bi bi-check-circle-fill me-2"></i>Você já respondeu!</strong> Obrigado pelo seu feedback.
                         </div>
 
-                        <div id="areaPesquisaTexto" class="d-none text-start mb-3">
+                        <div id="areaPesquisaTexto" class="d-none text-start mb-3 bg-light p-3 rounded-4 border border-light">
                             <label class="form-label fw-bold text-dark">Sua resposta:</label>
-                            <textarea id="inputPesquisaTexto" class="form-control bg-light" rows="3" placeholder="Escreva aqui..."></textarea>
+                            <textarea id="inputPesquisaTexto" class="form-control" rows="3" placeholder="Escreva aqui..."></textarea>
                         </div>
 
-                        <div id="areaAvaliacaoEstrelas" class="d-none mb-3">
+                        <div id="areaAvaliacaoEstrelas" class="d-none mb-3 bg-light p-3 rounded-4 border border-light">
                             <h6 class="fw-bold text-dark mb-2">Avalie:</h6>
                             <div id="estrelasContainer" class="fs-1 text-secondary" style="cursor: pointer; letter-spacing: 5px;">
                                 <span data-val="1">★</span><span data-val="2">★</span><span data-val="3">★</span><span data-val="4">★</span><span data-val="5">★</span>
@@ -195,7 +203,7 @@ function renderAlunoCertificadosView(aluno, certificados) {
                         </div>
                     </div>
                     <div class="modal-footer border-0 bg-light justify-content-center py-3">
-                        <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm" id="btnResponderNotificacao" style="border-radius: 50px;">
+                        <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm rounded-pill" id="btnResponderNotificacao">
                             Entendido
                         </button>
                     </div>
@@ -210,15 +218,14 @@ function renderAlunoCertificadosView(aluno, certificados) {
             let notificacaoAtualId = null;
 
             document.addEventListener('DOMContentLoaded', function() {
-                // Ao contrário do dashboard principal, aqui podemos apenas carregar a lista do sino 
-                // para não chatear o utilizador com pop-ups automáticos enquanto ele vê os certificados.
+                // APENAS CARREGA O SINO NO MENU LATERAL. 
+                // A função verificarNotificacoesPendentesModal() FOI OMITIDA AQUI PARA NÃO ABRIR POPUP SOZINHO NESTA TELA.
                 carregarListaNotificacoesSino();
             });
 
             // ==========================================
-            // LÓGICA DO MENU SUSPENSO DO SINO (DROPDOWN)
+            // LÓGICA DO MENU SUSPENSO DO SINO (RESTAURADA)
             // ==========================================
-
             function carregarListaNotificacoesSino() {
                 fetch('/aluno/api/notificacoes/lista')
                     .then(response => response.json())
@@ -241,9 +248,9 @@ function renderAlunoCertificadosView(aluno, certificados) {
                             }
 
                             let htmlLista = \`
-                                <li class="d-flex justify-content-between align-items-center p-2 border-bottom bg-light sticky-top" style="z-index: 10;">
-                                    <span class="fw-bold text-secondary ms-2" style="font-size: 0.85rem;">Notificações</span>
-                                    <button class="btn btn-sm btn-link text-decoration-none text-danger py-0" onclick="limparTodasNotificacoes()" style="font-size: 0.8rem;">Limpar Tudo</button>
+                                <li class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light sticky-top rounded-top-4" style="z-index: 10;">
+                                    <span class="fw-bold text-secondary" style="font-size: 0.85rem;"><i class="bi bi-envelope-open me-2"></i>Notificações</span>
+                                    <button class="btn btn-sm btn-light border text-danger py-1 px-2 rounded-pill fw-bold" onclick="limparTodasNotificacoes()" style="font-size: 0.75rem;"><i class="bi bi-trash3 me-1"></i>Limpar Tudo</button>
                                 </li>
                             \`;
 
@@ -252,7 +259,7 @@ function renderAlunoCertificadosView(aluno, certificados) {
                                 const isNaoLida = n.status === 'PENDENTE';
                                 
                                 const classFundo = isNaoLida ? 'bg-white fw-bold' : 'bg-light text-muted opacity-75';
-                                const iconeLida = isNaoLida ? '<span class="icone-nao-lida badge bg-primary rounded-circle p-1 me-2 d-inline-block" style="width: 8px; height: 8px;"></span>' : '';
+                                const iconeLida = isNaoLida ? '<span class="icone-nao-lida badge bg-primary rounded-circle p-1 me-2 d-inline-block shadow-sm" style="width: 10px; height: 10px;"></span>' : '';
                                 
                                 const onclickAcao = n.link_url ? \`abrirLinkExterno(\${n.id}, '\${n.link_url}')\` : \`abrirModalNotificacao(\${n.id})\`;
 
@@ -261,7 +268,7 @@ function renderAlunoCertificadosView(aluno, certificados) {
                                         <a href="javascript:void(0)" onclick="\${onclickAcao}" class="dropdown-item border-bottom text-wrap p-3 notif-item \${classFundo}" style="white-space: normal;">
                                             <div class="d-flex justify-content-between align-items-start mb-1">
                                                 <span class="text-dark d-flex align-items-center" style="font-size: 0.85rem;">\${iconeLida} \${n.titulo}</span>
-                                                <small class="text-secondary ms-2" style="font-size: 0.7rem;">\${dataFormatada}</small>
+                                                <small class="text-secondary ms-2 bg-light border px-1 rounded text-nowrap" style="font-size: 0.65rem;">\${dataFormatada}</small>
                                             </div>
                                             <div class="small \${isNaoLida ? 'text-secondary' : 'text-muted'}" style="font-size: 0.8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                                                 \${n.mensagem}
@@ -287,10 +294,6 @@ function renderAlunoCertificadosView(aluno, certificados) {
                 window.open(url, '_blank');
                 setTimeout(carregarListaNotificacoesSino, 1000);
             };
-
-            // ==========================================
-            // LÓGICA DO MODAL
-            // ==========================================
 
             window.abrirModalNotificacao = function(id) {
                 const notif = listaNotificacoesGlobal.find(x => x.id === id);
@@ -410,9 +413,6 @@ function renderAlunoCertificadosView(aluno, certificados) {
                 });
             }
 
-            // ==========================================
-            // LÓGICA DO LOADER (Navegação Suave)
-            // ==========================================
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {

@@ -6,12 +6,11 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
     
     const htmlSidebar = renderAdminMenuLateral(admin, 'usuarios');
 
-    let linhasUsuarios = '';
-    
+    let cardsUsuarios = '';
     const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
 
     if (usuarios.length === 0) {
-        linhasUsuarios = `<tr><td colspan="9" class="text-center text-muted py-4">Nenhum usuário encontrado ${searchQuery ? 'para "'+searchQuery+'"' : ''}.</td></tr>`;
+        cardsUsuarios = `<div class="col-12 text-center text-muted py-5"><i class="bi bi-people fs-1 opacity-50 mb-3 d-block"></i>Nenhum usuário encontrado ${searchQuery ? 'para "'+searchQuery+'"' : ''}.</div>`;
     } else {
         usuarios.forEach(u => {
             let badgeTipo = u.tipo === 'ADMIN' ? 'bg-danger' : 'bg-primary';
@@ -20,82 +19,144 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
             // LÓGICA DO STATUS INTELIGENTE (CONCLUINTE)
             // ==========================================
             let statusVisual = u.status;
-            let badgeStatus = 'bg-secondary'; // Padrão
+            let badgeStatus = 'bg-secondary';
 
             if (u.status === 'ATIVO') {
-                // Se ele tem pelo menos 1 curso E todos estão concluídos
                 if (u.total_cursos > 0 && Number(u.total_cursos) === Number(u.concluidos_count)) {
                     statusVisual = 'CONCLUINTE';
-                    badgeStatus = 'bg-info text-dark fw-bold shadow-sm'; // Destaque visual para concluintes
+                    badgeStatus = 'bg-info text-dark fw-bold shadow-sm';
                 } else {
-                    badgeStatus = 'bg-success'; // Ativo normal
+                    badgeStatus = 'bg-success';
                 }
             } else if (u.status === 'BLOQUEADO') {
                 badgeStatus = 'bg-warning text-dark';
             }
 
-            const dataCadastro = u.criado_em ? new Date(u.criado_em).toLocaleDateString('pt-BR') : '-';
-            const dataNascimento = u.data_nascimento ? new Date(u.data_nascimento).toLocaleDateString('pt-BR') : '-';
-            
+            // ==========================================
+            // LÓGICA DE CORES DOS CARDS (SINAIS VITAIS)
+            // ==========================================
+            let cardCustomClass = 'bg-white border-0'; // Padrão: Branco
+
+            if (statusVisual === 'CONCLUINTE') {
+                // Levemente Verde
+                cardCustomClass = 'bg-success bg-opacity-10 border border-success border-opacity-25';
+            } else if (u.tipo === 'ALUNO') {
+                if (!u.ultimo_acesso) {
+                    // Levemente Amarelo (Nunca acessou)
+                    cardCustomClass = 'bg-warning bg-opacity-10 border border-warning border-opacity-25';
+                } else {
+                    const diffEmDias = (new Date() - new Date(u.ultimo_acesso)) / (1000 * 60 * 60 * 24);
+                    if (diffEmDias > 2) {
+                        // Levemente Vermelho (Ausente há mais de 2 dias)
+                        cardCustomClass = 'bg-danger bg-opacity-10 border border-danger border-opacity-25';
+                    }
+                }
+            }
+
             const cursosTooltip = u.cursos_lista ? u.cursos_lista : 'Nenhum curso';
             const qtdCursos = u.total_cursos || 0;
 
-            let trClass = '';
-            let dataUltimoAcesso = '<span class="text-muted fst-italic">Nunca acessou</span>';
-
+            let dataUltimoAcesso = '<span class="text-danger fw-semibold small">Nunca acessou</span>';
             if (u.ultimo_acesso) {
                 const dataAcesso = new Date(u.ultimo_acesso);
-                dataUltimoAcesso = dataAcesso.toLocaleDateString('pt-BR') + ' às ' + dataAcesso.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                
-                const diffEmDias = (new Date() - dataAcesso) / (1000 * 60 * 60 * 24);
-                if (diffEmDias > 3 && u.tipo === 'ALUNO') {
-                    trClass = 'table-danger';
-                }
-            } else if (u.tipo === 'ALUNO') {
-                trClass = 'table-danger';
+                dataUltimoAcesso = `<span class="small fw-semibold text-dark">${dataAcesso.toLocaleDateString('pt-BR')} <span class="text-muted fw-normal">às ${dataAcesso.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></span>`;
             }
 
-            let ultimaAulaVisual = '-';
+            let ultimaAulaVisual = '<span class="text-muted small">Nenhuma atividade</span>';
             if (u.ultima_aula_info) {
                 const [aulaTitulo, cursoTitulo] = u.ultima_aula_info.split('|||');
                 ultimaAulaVisual = `
-                    <div style="max-width: 180px;">
-                        <span class="d-block text-truncate fw-semibold text-dark" title="${aulaTitulo}">${aulaTitulo}</span>
-                        <small class="d-block text-truncate text-muted" title="${cursoTitulo}">${cursoTitulo}</small>
+                    <div class="text-truncate" style="max-width: 100%;">
+                        <strong class="d-block text-truncate small text-dark" title="${aulaTitulo}">${aulaTitulo}</strong>
+                        <small class="d-block text-truncate text-muted" title="${cursoTitulo}" style="font-size: 0.75rem;">${cursoTitulo}</small>
                     </div>
                 `;
             }
 
-            linhasUsuarios += `
-                <tr class="${trClass}">
-                    <td>${u.id}</td>
-                    <td class="fw-bold">${u.nome}</td>
-                    <td>${u.email}</td>
-                    <td><span class="badge ${badgeTipo}">${u.tipo}</span></td>
-                    <td><span class="badge ${badgeStatus}">${statusVisual}</span></td>
-                    <td>${dataUltimoAcesso}</td>
-                    <td>${ultimaAulaVisual}</td>
-                    <td class="text-center">
-                        <span class="badge bg-dark text-white shadow-sm" style="cursor: help;" data-bs-toggle="tooltip" data-bs-placement="top" title="${cursosTooltip}">
-                            ${qtdCursos}
-                        </span>
-                    </td>
-                    <td>
-                        <a href="/admin/usuarios/${u.id}/editar" class="btn btn-sm btn-outline-primary shadow-sm">Editar</a>
-                    </td>
-                </tr>
+            // Iniciais para o Avatar
+            const iniciais = u.nome.substring(0, 2).toUpperCase();
+
+            // Métricas (Protegidas)
+            const notaMedia = u.nota_media_geral ? parseFloat(u.nota_media_geral).toFixed(1) : '-';
+            const aulasConcluidas = u.aulas_concluidas || 0;
+            const melhorCurso = u.melhor_curso || '-';
+
+            cardsUsuarios += `
+                <div class="col-md-6 col-xl-4 mb-4">
+                    <div class="card shadow-sm rounded-4 h-100 hover-card transition-all position-relative ${cardCustomClass}">
+                        <div class="card-body p-4 d-flex flex-column">
+                            
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-bold shadow-sm me-3" style="width: 45px; height: 45px; font-size: 1.1rem;">
+                                        ${iniciais}
+                                    </div>
+                                    <div style="max-width: 160px;">
+                                        <h6 class="fw-bold text-dark mb-0 text-truncate" title="${u.nome}">${u.nome}</h6>
+                                        <small class="text-muted text-truncate d-block" title="${u.email}">${u.email}</small>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge ${badgeTipo} d-block mb-1">${u.tipo}</span>
+                                    <span class="badge ${badgeStatus} d-block">${statusVisual}</span>
+                                </div>
+                            </div>
+
+                            <hr class="opacity-10 my-2">
+
+                            <div class="mb-3 mt-2">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Último Acesso:</small>
+                                    <div class="text-end">${dataUltimoAcesso}</div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <small class="text-muted"><i class="bi bi-play-circle me-1"></i>Última Aula:</small>
+                                    <div class="text-end flex-grow-1 ms-2">${ultimaAulaVisual}</div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted"><i class="bi bi-journal-bookmark me-1"></i>Matrículas:</small>
+                                    <span class="badge bg-white border text-dark shadow-sm" style="cursor: help;" data-bs-toggle="tooltip" title="${cursosTooltip}">
+                                        ${qtdCursos} Cursos
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mt-auto mb-4 p-2 bg-white bg-opacity-75 rounded-3 border border-light shadow-sm">
+                                <div class="col-4 text-center border-end border-light">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Nota Média</small>
+                                    <strong class="text-dark"><i class="bi bi-star-fill text-warning me-1 small"></i>${notaMedia}</strong>
+                                </div>
+                                <div class="col-4 text-center border-end border-light">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Aulas Feitas</small>
+                                    <strong class="text-dark"><i class="bi bi-check-circle-fill text-success me-1 small"></i>${aulasConcluidas}</strong>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Destaque</small>
+                                    <strong class="text-dark text-truncate d-block px-1" title="${melhorCurso}" style="font-size: 0.85rem;">${melhorCurso}</strong>
+                                </div>
+                            </div>
+
+                            <a href="/admin/usuarios/${u.id}/editar" class="btn btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm">
+                                <i class="bi bi-pencil-square me-1"></i> Editar Usuário
+                            </a>
+
+                        </div>
+                    </div>
+                </div>
             `;
         });
     }
 
+    // ==========================================
+    // PAGINAÇÃO
+    // ==========================================
     let paginationHtml = '';
     if (totalPages > 1) {
-        paginationHtml += `<ul class="pagination justify-content-center mb-0 mt-3 shadow-sm">`;
-
+        paginationHtml += `<ul class="pagination justify-content-center mb-0 mt-4 shadow-sm">`;
         if (currentPage > 1) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${currentPage - 1}${searchParam}">&laquo;</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-start-pill px-3" href="?page=${currentPage - 1}${searchParam}">&laquo;</a></li>`;
         } else {
-            paginationHtml += `<li class="page-item disabled"><span class="page-link">&laquo;</span></li>`;
+            paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-start-pill px-3">&laquo;</span></li>`;
         }
 
         let startPage = Math.max(1, currentPage - 1);
@@ -106,9 +167,7 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
 
         if (startPage > 1) {
             paginationHtml += `<li class="page-item"><a class="page-link" href="?page=1${searchParam}">1</a></li>`;
-            if (startPage > 2) {
-                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-            }
+            if (startPage > 2) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
         }
 
         for (let i = startPage; i <= endPage; i++) {
@@ -120,18 +179,15 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
         }
 
         if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-            }
+            if (endPage < totalPages - 1) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
             paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${totalPages}${searchParam}">${totalPages}</a></li>`;
         }
 
         if (currentPage < totalPages) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${currentPage + 1}${searchParam}">&raquo;</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-end-pill px-3" href="?page=${currentPage + 1}${searchParam}">&raquo;</a></li>`;
         } else {
-            paginationHtml += `<li class="page-item disabled"><span class="page-link">&raquo;</span></li>`;
+            paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-end-pill px-3">&raquo;</span></li>`;
         }
-
         paginationHtml += `</ul>`;
     }
 
@@ -147,8 +203,10 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
             body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
-                .main-content { height: calc(100vh - 60px); } /* Desconta a navbar mobile */
+                .main-content { height: calc(100vh - 60px); }
             }
+            .transition-all { transition: all 0.3s ease; }
+            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
         </style>
     </head>
     <body class="bg-light">
@@ -159,68 +217,43 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
 
         <div class="d-flex flex-column flex-lg-row w-100 h-100">
 
-        ${htmlSidebar}
+            ${htmlSidebar}
 
-        <div class="flex-grow-1 main-content bg-light">
+            <div class="flex-grow-1 main-content bg-light">
                 <div class="container-fluid p-4 p-md-5">
 
-        <div class="container-fluid mt-4 px-4">
-            <div class="row justify-content-center">
-                <div class="col-12 col-lg-10">
-                    
                     <div class="row mb-4 align-items-center">
                         <div class="col-md-4 mb-3 mb-md-0">
-                            <h4 class="fw-bold text-secondary mb-0">Gestão de Usuários</h4>
-                            <p class="small text-muted mb-0">Exibindo a página ${currentPage} de ${totalPages}.</p>
+                            <h3 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-primary me-2"></i>Gestão de Usuários</h3>
+                            <p class="small text-muted mb-0 mt-1">Exibindo a página ${currentPage} de ${totalPages}.</p>
                         </div>
                         
                         <div class="col-md-5 mb-3 mb-md-0">
-                            <form action="/admin/usuarios" method="GET" class="d-flex shadow-sm rounded">
-                                <input type="text" name="search" class="form-control me-2" placeholder="Buscar por nome ou título do curso..." value="${searchQuery}">
-                                <button type="submit" class="btn btn-primary fw-bold">Buscar</button>
-                                ${searchQuery ? '<a href="/admin/usuarios" class="btn btn-outline-secondary ms-2">Limpar</a>' : ''}
+                            <form action="/admin/usuarios" method="GET" class="d-flex shadow-sm rounded-pill overflow-hidden bg-white border">
+                                <input type="text" name="search" class="form-control border-0 shadow-none ps-4" placeholder="Buscar usuário ou curso..." value="${searchQuery}">
+                                <button type="submit" class="btn btn-primary fw-bold px-4 rounded-end-pill">Buscar</button>
+                                ${searchQuery ? `<a href="/admin/usuarios" class="btn btn-light border-start text-secondary px-3"><i class="bi bi-x-lg"></i></a>` : ''}
                             </form>
                         </div>
 
                         <div class="col-md-3 text-md-end">
-                            <a href="/admin/usuarios/novo" class="btn btn-success fw-bold shadow-sm">+ Novo Usuário</a>
+                            <a href="/admin/usuarios/novo" class="btn btn-success fw-bold rounded-pill shadow-sm px-4">
+                                <i class="bi bi-person-plus-fill me-1"></i> Novo Usuário
+                            </a>
                         </div>
                     </div>
 
-                    <div class="card shadow-sm border-0 mb-4 rounded-3 overflow-hidden">
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Nome</th>
-                                            <th>E-mail</th>
-                                            <th>Tipo</th>
-                                            <th>Status</th>
-                                            <th>Último Acesso</th>
-                                            <th>Última Ação</th>
-                                            <th class="text-center">Cursos</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${linhasUsuarios}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div class="row">
+                        ${cardsUsuarios}
                     </div>
                     
-                    <nav aria-label="Navegação de usuários">
+                    <nav aria-label="Navegação de usuários" class="mb-5 pb-4">
                         ${paginationHtml}
                     </nav>
-                    <br><br>
+
                 </div>
             </div>
         </div>
-
-        </div> </div> </div>
         
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 

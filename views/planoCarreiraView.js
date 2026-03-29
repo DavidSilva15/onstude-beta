@@ -67,6 +67,56 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
 
             .hover-white { transition: color 0.3s; }
             .hover-white:hover { color: #ffffff !important; }
+
+            /* ==========================================
+               CSS: MENTOR BOT FLUTUANTE & FOGUETE
+               ========================================== */
+               
+            /* Foguete de Entrada */
+            .rocket-intro { position: fixed; bottom: -150px; right: 40px; z-index: 1060; font-size: 5.5rem; transform: rotate(-45deg); pointer-events: none; animation: rocketFlight 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+            @keyframes rocketFlight { 
+                0% { bottom: -150px; opacity: 1; } 
+                35% { bottom: 20px; opacity: 1; } /* Estaciona */
+                55% { bottom: 20px; opacity: 1; } /* Solta o robô */
+                100% { bottom: 150vh; opacity: 1; } /* Decola para o espaço */
+            }
+
+            /* O Robô Flutuante (Inicia invisível) */
+            .bot-flutuante { position: fixed; bottom: 30px; right: 30px; z-index: 1050; cursor: pointer; opacity: 0; pointer-events: none; }
+            
+            /* Classe adicionada via JS após o foguete chegar */
+            .bot-flutuante.bot-ativo { opacity: 1; pointer-events: auto; animation: botSpawn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, floatBot 3s ease-in-out infinite 0.6s; }
+            
+            .bot-icon-bg { width: 85px; height: 85px; font-size: 2.5rem; background: linear-gradient(135deg, #0d6efd, #6610f2); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(13, 110, 253, 0.5); transition: transform 0.3s; border: 4px solid white; }
+            .bot-flutuante:hover .bot-icon-bg { transform: scale(1.15) rotate(10deg); }
+            
+            .bot-balao { position: absolute; bottom: 95px; right: 40px; background: white; padding: 15px 20px; border-radius: 20px 20px 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 280px; font-size: 1rem; font-weight: 700; color: #212529; opacity: 0; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; border: 2px solid #0d6efd; transform-origin: bottom right; transform: scale(0.8);}
+            .bot-balao.show { opacity: 1; transform: scale(1); }
+            
+            @keyframes botSpawn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+            @keyframes floatBot { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+            
+            /* Mecânicas Gamificadas do Quiz */
+            .btn-quiz-opcao { transition: all 0.2s; border-width: 2px; }
+            .btn-quiz-opcao:hover:not(:disabled) { background-color: #f8f9fa; border-color: #0d6efd; color: #0d6efd; transform: translateX(5px); }
+            
+            /* Jogo: Balões */
+            .balao-container { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
+            .balao-item { width: 140px; height: 160px; background: linear-gradient(135deg, #ff6b6b, #dc3545); border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; color: white; display: flex; align-items: center; justify-content: center; text-align: center; padding: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 15px rgba(220, 53, 69, 0.3); animation: floatBalloon 4s ease-in-out infinite alternate; font-size: 0.9rem;}
+            .balao-item:nth-child(even) { animation-delay: 1s; background: linear-gradient(135deg, #fd7e14, #ffc107); box-shadow: 0 8px 15px rgba(253, 126, 20, 0.3);}
+            .balao-item:hover { transform: scale(1.1); filter: brightness(1.1); }
+            .balao-item.popped { transform: scale(0); opacity: 0; pointer-events: none; transition: transform 0.2s, opacity 0.2s; }
+            @keyframes floatBalloon { 0% { transform: translateY(0px); } 100% { transform: translateY(-10px); } }
+
+            /* Jogo: Mito ou Verdade */
+            .card-mito-verdade { border: 3px solid transparent; border-radius: 20px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+            .card-mito-verdade:hover { transform: translateY(-5px); }
+            .card-mito { background-color: #fff5f5; border-color: #dc3545; color: #dc3545; }
+            .card-verdade { background-color: #f0fdf4; border-color: #198754; color: #198754; }
+            .card-mito-verdade.disabled { opacity: 0.6; pointer-events: none; filter: grayscale(100%); }
+
+            .shake-animation { animation: shake 0.5s; }
+            @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-10px); } 50% { transform: translateX(10px); } 75% { transform: translateX(-10px); } 100% { transform: translateX(0); } }
         </style>
     </head>
     <body>
@@ -320,6 +370,83 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             </div>
         </section>
 
+        <div id="rocketIntro" class="rocket-intro text-danger" style="filter: drop-shadow(0 10px 10px rgba(220,53,69,0.5));">
+            <i class="bi bi-rocket-fill"></i>
+        </div>
+
+        <div class="bot-flutuante" id="mentorBot" onclick="abrirQuizCV()">
+            <div class="bot-balao" id="botBalaoTexto"></div>
+            
+            <button class="btn btn-danger btn-sm rounded-circle shadow position-absolute d-flex align-items-center justify-content-center" onclick="fecharMentorBot(event)" style="width: 24px; height: 24px; top: -5px; right: -5px; z-index: 1060; padding: 0; border: 2px solid white;" title="Esconder Mentor">
+                <i class="bi bi-x" style="font-size: 1.2rem;"></i>
+            </button>
+
+            <div class="bot-icon-bg text-white"><i class="bi bi-robot"></i></div>
+        </div>
+
+        <div class="modal fade" id="modalQuizCV" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                    <div class="modal-header bg-primary text-white border-0 py-3">
+                        <h5 class="modal-title fw-bold"><i class="bi bi-robot me-2 fs-4"></i> Mentor de Currículo (IA)</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4 p-md-5 bg-white" style="min-height: 450px; display: flex; flex-direction: column; justify-content: center;">
+                        
+                        <div id="quizIntro" class="text-center py-2">
+                            <div class="d-inline-block bg-primary bg-opacity-10 p-4 rounded-circle mb-4 text-primary">
+                                <i class="bi bi-lightning-charge-fill" style="font-size: 4rem;"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-3">Seu currículo sobrevive ao RH?</h3>
+                            <p class="text-muted fs-5 mb-5 px-md-4">Recrutadores demoram cerca de <strong>6 segundos</strong> para olhar um currículo. Jogue nosso mini-game rápido e descubra se o seu perfil vai para a pilha do "Contratado" ou do "Lixo"!</p>
+                            <button class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow-sm" onclick="iniciarQuizCV()">Começar o Desafio <i class="bi bi-controller ms-2"></i></button>
+                        </div>
+
+                        <div id="quizContainer" style="display: none; width: 100%;">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <span class="badge bg-light text-primary border border-primary px-3 py-2 fw-bold" id="quizStatus">Desafio 1 de 5</span>
+                                <div class="progress flex-grow-1 ms-3 bg-light rounded-pill" style="height: 12px;">
+                                    <div class="progress-bar bg-primary rounded-pill transition" id="quizProgress" style="width: 20%;"></div>
+                                </div>
+                            </div>
+                            
+                            <h4 class="fw-bold text-dark mb-4 fs-4 lh-base text-center" id="quizPergunta">Pergunta?</h4>
+                            
+                            <div id="quizOpcoesDinâmico" class="mb-4 w-100">
+                                </div>
+                            
+                            <div id="quizFeedback" class="alert rounded-4 mb-0 shadow border" style="display: none;">
+                                <div class="d-flex align-items-start">
+                                    <div id="quizFeedbackIcon" class="me-3 mt-1"></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="fw-bold mb-1" id="quizFeedbackTitulo">Feedback</h6>
+                                        <p class="mb-3 text-dark" id="quizFeedbackTexto" style="font-size: 0.95rem;">Texto da dica aqui.</p>
+                                        <button class="btn btn-dark btn-sm rounded-pill px-4 fw-bold w-100 w-md-auto" onclick="proximaPerguntaQuiz()">Próximo Desafio <i class="bi bi-chevron-right ms-1"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="quizResultado" class="text-center py-2" style="display: none;">
+                            <div id="resultadoIcone" class="mb-4"></div>
+                            <h2 class="fw-bold mb-2" id="resultadoTitulo">Sua Classificação</h2>
+                            <p class="fs-5 mb-4 text-muted">Sua pontuação final: <strong id="resultadoPontos" class="text-dark fs-3">0</strong> de 5</p>
+                            
+                            <div class="p-4 bg-light rounded-4 mb-4 text-start border shadow-sm">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="bi bi-robot text-primary fs-3 me-3"></i>
+                                    <h5 class="fw-bold text-dark mb-0">Avaliação do Mentor:</h5>
+                                </div>
+                                <p class="mb-0 text-secondary fs-6" id="resultadoMensagem">Mensagem final personalizada aqui.</p>
+                            </div>
+                            <button class="btn btn-primary rounded-pill px-5 py-3 fw-bold shadow-sm w-100" data-bs-dismiss="modal">Usar o Gerador de Currículo Agora!</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <footer class="bg-dark text-white pt-5 pb-3 mt-5">
             <div class="container">
                 <div class="row mb-4">
@@ -372,7 +499,369 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
         <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
         <script>
+            // ==========================================
+            // ANIMAÇÃO DE FALA DO MENTOR BOT E FOGUETE
+            // ==========================================
+            const botPhrases = [
+                "Bip Bop! Seu currículo está escrito em Comic Sans? Por favor, diga que não!",
+                "Meu código é impecável. Se algo der errado, a culpa é do Dev da OnStude que esqueceu um ponto e vírgula!",
+                "Eu processaria 1 milhão de currículos por segundo, mas o seu me fez travar. Brincadeira! Quer ajuda?",
+                "Seu currículo tem mais de 2 páginas? A não ser que você seja o Einstein, precisamos conversar.",
+                "Reclamações sobre a minha sinceridade devem ser enviadas ao Dev da OnStude. Eu só sigo o algoritmo!",
+                "Aviso de sistema: Nível crítico de clichês detectado no seu resumo. Clique para corrigir.",
+                "Colocar 'Sou perfeccionista' como defeito parou de funcionar em 2010. Quer uma dica de verdade?",
+                "Fui programado pelo Dev da OnStude para ser o melhor mentor de carreiras da galáxia. Confia e clica em mim!",
+                "Eu não tenho sentimentos, mas aquele seu PDF sem formatação quase me fez chorar.",
+                "Você coloca 'Inglês Fluente' mas só sabe falar 'The book is on the table'? Vem cá conversar comigo.",
+                "Quer parar de sofrer ghosting da Gupy e dos recrutadores? Clique aqui, humano!",
+                "Dica de IA: Enviar o currículo em .docx é como ir a uma entrevista de pijama. Use o nosso gerador PDF!",
+                "Se você achar algum bug, coloque no currículo 'Experiência em QA' e avise o Dev da OnStude!",
+                "De acordo com os meus algoritmos, as suas chances de contratação aumentam 87% se você clicar em mim.",
+                "Detectando a frase 'trabalho bem sob pressão'... Atualizando o meu banco de dados de redundâncias."
+            ];
+            
+            let currentPhraseIdx = 0;
+            let botInterval;
+            
+            // Lógica para esconder completamente o robô
+            window.fecharMentorBot = function(event) {
+                event.stopPropagation(); // Impede que o clique acione o quiz
+                const bot = document.getElementById('mentorBot');
+                if (bot) {
+                    bot.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                    bot.style.transform = 'scale(0)';
+                    bot.style.opacity = '0';
+                    // Limpa o loop de frases para não rodar no fundo
+                    if(botInterval) clearInterval(botInterval); 
+                    setTimeout(() => bot.remove(), 400); 
+                }
+            };
+            
+            // Controle da Animação do Foguete e do Robô
+            setTimeout(() => {
+                const bot = document.getElementById('mentorBot');
+                if (bot) bot.classList.add('bot-ativo'); 
+                
+                setTimeout(() => {
+                    const rocket = document.getElementById('rocketIntro');
+                    if (rocket) rocket.remove();
+                }, 2500); 
+                
+            }, 1000); 
+            
+            // Começa o loop de frases DEPOIS que o robô aparece
+            setTimeout(() => { 
+                const balaoBot = document.getElementById('botBalaoTexto');
+                if(!balaoBot) return; // Se o usuário fechou antes de carregar
+                
+                currentPhraseIdx = Math.floor(Math.random() * botPhrases.length);
+                balaoBot.innerText = botPhrases[currentPhraseIdx];
+                balaoBot.classList.add('show'); 
+                
+                // Loop a cada 12 segundos
+                botInterval = setInterval(() => {
+                    const balaoAtual = document.getElementById('botBalaoTexto');
+                    if (!balaoAtual) { clearInterval(botInterval); return; } // Segurança extra
+                    
+                    balaoAtual.classList.remove('show');
+                    setTimeout(() => {
+                        const balaoCheck = document.getElementById('botBalaoTexto');
+                        if (!balaoCheck) return;
+                        
+                        let newIdx;
+                        do { newIdx = Math.floor(Math.random() * botPhrases.length); } while (newIdx === currentPhraseIdx);
+                        currentPhraseIdx = newIdx;
+                        balaoCheck.innerText = botPhrases[currentPhraseIdx];
+                        balaoCheck.classList.add('show');
+                    }, 500); 
+                }, 12000);
+            }, 2500);
+
+
+            // ==========================================
+            // LÓGICA DO QUIZ GAMIFICADO (MÚLTIPLAS MECÂNICAS)
+            // ==========================================
+            const bancoPerguntas = [
+                {
+                    tipo: "classico",
+                    pergunta: "Em relação a colocar foto no currículo, qual é a melhor prática?",
+                    opcoes: ["Sempre colocar, para verem quem sou.", "Nunca colocar.", "Apenas se a vaga exigir (ex: atores)."],
+                    correta: 2,
+                    dica: "Fotos geram vieses inconscientes. O padrão global hoje é NÃO colocar, a menos que peçam."
+                },
+                {
+                    tipo: "mito-verdade",
+                    pergunta: "A seção 'Objetivo' deve conter um texto longo sobre os seus sonhos de vida e o quanto você quer aprender na empresa.",
+                    correta: false, // Falso = Mito
+                    dica: "Objetivo não é carta de amor! Deve ter no máximo 2 linhas indicando o cargo exato que você quer (ex: 'Assistente Administrativo')."
+                },
+                {
+                    tipo: "balao",
+                    pergunta: "Estoure o balão que contém algo que você NUNCA deve colocar no seu currículo!",
+                    opcoes: ["Email Profissional", "Número de CPF / RG", "Link do LinkedIn", "Cursos Extracurriculares"],
+                    correta: 1, // O balão do CPF deve ser estourado (é o erro)
+                    dica: "Nunca coloque CPF, RG ou dados sensíveis. Isso é um risco de segurança (LGPD) e o RH só pedirá isso na hora da contratação."
+                },
+                {
+                    tipo: "classico",
+                    pergunta: "Qual o tamanho ideal de um currículo campeão?",
+                    opcoes: ["5 páginas (mostra que sou experiente)", "1 a no máximo 2 páginas", "Meia página"],
+                    correta: 1,
+                    dica: "Se o CEO da Apple consegue colocar o currículo em 2 páginas, você também consegue. Seja conciso e foque nas experiências mais recentes!"
+                },
+                {
+                    tipo: "mito-verdade",
+                    pergunta: "As Experiências Profissionais devem ser listadas da mais recente para a mais antiga.",
+                    correta: true, // Verdade
+                    dica: "Sempre use a Ordem Cronológica Inversa! O recrutador quer saber o que você fez por último, não o seu primeiro emprego há 10 anos."
+                },
+                {
+                    tipo: "balao",
+                    pergunta: "Qual desses clichês irrita os recrutadores e deve ser ELIMINADO do seu perfil?",
+                    opcoes: ["Aumento de Vendas em 20%", "Sou perfeccionista", "Inglês Intermediário", "Domínio em Excel"],
+                    correta: 1,
+                    dica: "'Sou perfeccionista' é a frase mais manjada das entrevistas. Em vez de adjetivos vazios, mostre resultados reais que você alcançou."
+                },
+                {
+                    tipo: "classico",
+                    pergunta: "No seu endereço, quais informações são estritamente necessárias?",
+                    opcoes: ["Rua, Número, CEP, Bloco e Apartamento", "Apenas Bairro, Cidade e Estado", "Não se coloca endereço hoje em dia"],
+                    correta: 1,
+                    dica: "O RH só precisa saber o Bairro e a Cidade para calcular o vale-transporte e logística. O resto é detalhe desnecessário."
+                },
+                {
+                    tipo: "mito-verdade",
+                    pergunta: "Mentir nível de inglês ou ferramentas no currículo é ok, porque dá para aprender depois.",
+                    correta: false,
+                    dica: "Mentira tem perna curta! Se colocou Excel Avançado, espere um teste prático na entrevista. Seja sempre honesto."
+                },
+                {
+                    tipo: "balao",
+                    pergunta: "Estoure o balão com o PIOR formato para salvar e enviar um currículo!",
+                    opcoes: ["Formato .PDF", "Formato .DOCX (Word)", "Formato .PNG (Imagem)"],
+                    correta: 2,
+                    dica: "Nunca mande currículo em Imagem! Os robôs de leitura (ATS) das empresas não conseguem ler imagens e você será reprovado automaticamente. Use sempre PDF!"
+                }
+            ];
+
+            let perguntasSelecionadas = [];
+            let quizIndex = 0;
+            let pontuacao = 0;
+
+            function embaralharArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+                return array;
+            }
+
+            function abrirQuizCV() {
+                var myModal = new bootstrap.Modal(document.getElementById('modalQuizCV'));
+                myModal.show();
+                document.getElementById('quizIntro').style.display = 'block';
+                document.getElementById('quizContainer').style.display = 'none';
+                document.getElementById('quizResultado').style.display = 'none';
+                
+                // Sorteia 5 perguntas pro jogo não ser repetitivo
+                let copiaBanco = [...bancoPerguntas];
+                perguntasSelecionadas = embaralharArray(copiaBanco).slice(0, 5);
+            }
+
+            function iniciarQuizCV() {
+                quizIndex = 0;
+                pontuacao = 0;
+                document.getElementById('quizIntro').style.display = 'none';
+                document.getElementById('quizContainer').style.display = 'block';
+                carregarPergunta();
+            }
+
+            function carregarPergunta() {
+                const p = perguntasSelecionadas[quizIndex];
+                document.getElementById('quizStatus').innerText = 'Desafio ' + (quizIndex + 1) + ' de 5';
+                document.getElementById('quizProgress').style.width = ((quizIndex + 1) / 5 * 100) + '%';
+                document.getElementById('quizPergunta').innerText = p.pergunta;
+                
+                const containerDinâmico = document.getElementById('quizOpcoesDinâmico');
+                containerDinâmico.innerHTML = '';
+                document.getElementById('quizFeedback').style.display = 'none';
+
+                // ===================================
+                // RENDERIZAR JOGO COM BASE NO TIPO
+                // ===================================
+                if (p.tipo === "classico") {
+                    const grid = document.createElement('div');
+                    grid.className = 'd-grid gap-3';
+                    p.opcoes.forEach((opcao, i) => {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn btn-outline-secondary text-start p-3 fw-semibold btn-quiz-opcao rounded-4';
+                        btn.innerText = opcao;
+                        btn.onclick = () => processarRespostaClassica(btn, grid, i, p.correta, p.dica);
+                        grid.appendChild(btn);
+                    });
+                    containerDinâmico.appendChild(grid);
+                } 
+                else if (p.tipo === "mito-verdade") {
+                    const row = document.createElement('div');
+                    row.className = 'row g-3 px-3';
+                    
+                    // Botão Verdade
+                    const colV = document.createElement('div'); colV.className = 'col-6';
+                    const btnV = document.createElement('div');
+                    btnV.className = 'card-mito-verdade card-verdade p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center';
+                    btnV.innerHTML = '<i class="bi bi-check-circle-fill fs-1 mb-2"></i> VERDADE';
+                    btnV.onclick = () => processarRespostaBooleana(row, btnV, true, p.correta, p.dica);
+                    colV.appendChild(btnV);
+
+                    // Botão Mito
+                    const colM = document.createElement('div'); colM.className = 'col-6';
+                    const btnM = document.createElement('div');
+                    btnM.className = 'card-mito-verdade card-mito p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center';
+                    btnM.innerHTML = '<i class="bi bi-x-circle-fill fs-1 mb-2"></i> MITO';
+                    btnM.onclick = () => processarRespostaBooleana(row, btnM, false, p.correta, p.dica);
+                    colM.appendChild(btnM);
+
+                    row.appendChild(colV); row.appendChild(colM);
+                    containerDinâmico.appendChild(row);
+                }
+                else if (p.tipo === "balao") {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'balao-container mt-3';
+                    p.opcoes.forEach((opcao, i) => {
+                        const balao = document.createElement('div');
+                        balao.className = 'balao-item';
+                        balao.innerText = opcao;
+                        balao.onclick = () => processarRespostaBalao(wrap, balao, i, p.correta, p.dica);
+                        wrap.appendChild(balao);
+                    });
+                    containerDinâmico.appendChild(wrap);
+                }
+            }
+
+            // --- Lógica: Jogo Clássico ---
+            function processarRespostaClassica(btnSelecionado, gridConteiner, indiceSelecionado, indiceCorreto, dica) {
+                const botoes = gridConteiner.querySelectorAll('button');
+                botoes.forEach(b => b.disabled = true);
+                const acertou = (indiceSelecionado === indiceCorreto);
+                
+                if (acertou) {
+                    pontuacao++;
+                    btnSelecionado.classList.replace('btn-outline-secondary', 'btn-success');
+                    btnSelecionado.classList.add('text-white', 'border-success');
+                } else {
+                    btnSelecionado.classList.add('shake-animation');
+                    btnSelecionado.classList.replace('btn-outline-secondary', 'btn-danger');
+                    btnSelecionado.classList.add('text-white', 'border-danger');
+                    botoes[indiceCorreto].classList.replace('btn-outline-secondary', 'btn-success');
+                    botoes[indiceCorreto].classList.add('text-white');
+                }
+                mostrarFeedback(acertou, dica);
+            }
+
+            // --- Lógica: Mito ou Verdade ---
+            function processarRespostaBooleana(rowContainer, btnClicado, escolhaDoUser, respostaCorreta, dica) {
+                const cards = rowContainer.querySelectorAll('.card-mito-verdade');
+                cards.forEach(c => { c.classList.add('disabled'); c.onclick = null; });
+                
+                btnClicado.classList.remove('disabled'); // Destaca o escolhido
+                const acertou = (escolhaDoUser === respostaCorreta);
+                
+                if (acertou) {
+                    pontuacao++;
+                } else {
+                    btnClicado.classList.add('shake-animation');
+                }
+                mostrarFeedback(acertou, dica);
+            }
+
+            // --- Lógica: Estourar Balão ---
+            function processarRespostaBalao(container, balaoClicado, indiceClicado, indiceCorreto, dica) {
+                const baloes = container.querySelectorAll('.balao-item');
+                baloes.forEach(b => b.onclick = null); // Bloqueia
+
+                const acertou = (indiceClicado === indiceCorreto);
+                
+                if (acertou) {
+                    pontuacao++;
+                    balaoClicado.classList.add('popped'); // Estoura a opção ruim
+                    
+                    // Oculta os outros suavemente
+                    setTimeout(() => {
+                        baloes.forEach(b => { if(b !== balaoClicado) b.style.opacity = '0.3'; });
+                    }, 300);
+                } else {
+                    balaoClicado.classList.add('shake-animation');
+                    baloes[indiceCorreto].style.border = '4px solid #198754'; // Mostra qual era o certo pra estourar
+                    baloes[indiceCorreto].classList.add('popped'); // A IA estoura por ele
+                }
+                mostrarFeedback(acertou, dica);
+            }
+
+            function mostrarFeedback(acertou, dica) {
+                const feedbackDiv = document.getElementById('quizFeedback');
+                const iconDiv = document.getElementById('quizFeedbackIcon');
+                const titulo = document.getElementById('quizFeedbackTitulo');
+                
+                feedbackDiv.className = 'alert rounded-4 mb-0 shadow-lg border mt-4 ' + (acertou ? 'alert-success border-success' : 'alert-danger border-danger');
+                
+                if (acertou) {
+                    iconDiv.innerHTML = '<i class="bi bi-star-fill text-success" style="font-size: 2rem;"></i>';
+                    titulo.innerText = 'Mandou bem!';
+                    titulo.className = 'fw-bold mb-1 text-success';
+                } else {
+                    iconDiv.innerHTML = '<i class="bi bi-exclamation-octagon-fill text-danger" style="font-size: 2rem;"></i>';
+                    titulo.innerText = 'Cuidado com essa armadilha!';
+                    titulo.className = 'fw-bold mb-1 text-danger';
+                }
+
+                document.getElementById('quizFeedbackTexto').innerHTML = '<strong>Anotação do Mentor:</strong> ' + dica;
+                feedbackDiv.style.display = 'block';
+                
+                // Rola para o feedback caso a tela seja pequena
+                feedbackDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+
+            function proximaPerguntaQuiz() {
+                quizIndex++;
+                if (quizIndex < 5) {
+                    carregarPergunta();
+                } else {
+                    mostrarResultadoFinal();
+                }
+            }
+
+            function mostrarResultadoFinal() {
+                document.getElementById('quizContainer').style.display = 'none';
+                document.getElementById('quizResultado').style.display = 'block';
+                
+                document.getElementById('resultadoPontos').innerText = pontuacao;
+                
+                const icone = document.getElementById('resultadoIcone');
+                const titulo = document.getElementById('resultadoTitulo');
+                const mensagem = document.getElementById('resultadoMensagem');
+
+                if (pontuacao <= 2) {
+                    icone.innerHTML = '<i class="bi bi-emoji-dizzy text-danger" style="font-size: 5rem;"></i>';
+                    titulo.innerText = 'Ops! Seu currículo precisa de ajuda.';
+                    titulo.className = 'fw-bold text-danger mb-2';
+                    mensagem.innerHTML = 'Ainda bem que você me encontrou! O seu conhecimento sobre currículos está um pouco desatualizado e isso pode estar te tirando entrevistas. Use o <strong>Gerador Automático da página</strong>, ele não deixa você cometer erros de estrutura.';
+                } else if (pontuacao === 3 || pontuacao === 4) {
+                    icone.innerHTML = '<i class="bi bi-hand-thumbs-up-fill text-info" style="font-size: 5rem;"></i>';
+                    titulo.innerText = 'Bom Perfil!';
+                    titulo.className = 'fw-bold text-info mb-2';
+                    mensagem.innerHTML = 'Você já sabe o básico para não ser descartado de cara pelos robôs de RH! Aplique essas dicas no gerador abaixo, seja claro nos seus objetivos e arrase na entrevista.';
+                } else {
+                    icone.innerHTML = '<i class="bi bi-trophy-fill text-warning" style="font-size: 6rem; filter: drop-shadow(0 5px 15px rgba(255, 193, 7, 0.4));"></i>';
+                    titulo.innerText = 'Especialista em RH!';
+                    titulo.className = 'fw-bold text-warning mb-2';
+                    mensagem.innerHTML = 'Você gabaritou! Tem a visão exata do que o mercado de trabalho procura hoje em dia. Preencha seus dados reais no nosso sistema agora mesmo, baixe seu PDF campeão e parta para o abraço!';
+                }
+            }
+
+
+            // ==========================================
             // INICIALIZAR O SLIDER DE MODELOS
+            // ==========================================
             document.addEventListener('DOMContentLoaded', function () {
                 var swiper = new Swiper(".mySwiper", {
                     slidesPerView: 1, spaceBetween: 20,
@@ -387,7 +876,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 });
             });
 
-            // FUNÇÃO PARA ABRIR O MODAL DE VISUALIZAÇÃO
             function abrirModalVisualizacao(imagemUrl, titulo) {
                 document.getElementById('modalVisualizarCVImage').src = imagemUrl;
                 document.getElementById('modalVisualizarCVTitle').innerText = titulo;
@@ -396,7 +884,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             }
 
             // ==========================================
-            // LÓGICA DE ADICIONAR/REMOVER CAMPOS DINÂMICOS
+            // LÓGICA DO FORMULÁRIO (ADD/REMOVE) - INTACTO
             // ==========================================
             function attachRemoveEvent(containerId, itemClass) {
                 const container = document.getElementById(containerId);
@@ -437,7 +925,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             }
 
             // ==========================================
-            // LÓGICA DE ENVIO PARA O BACKEND (PDFKIT)
+            // LÓGICA DE ENVIO PARA O BACKEND (PDFKIT) - INTACTO
             // ==========================================
             document.getElementById('formCurriculo').addEventListener('submit', function(e) {
                 e.preventDefault(); 
@@ -447,7 +935,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando PDF...';
                 btn.disabled = true;
 
-                // 1. Pacote de dados (JSON)
                 const payload = {
                     nome: document.getElementById('cvNome').value,
                     nascimento: document.getElementById('cvNascimento').value,
@@ -460,7 +947,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     
                     formacao: Array.from(document.querySelectorAll('.item-formacao')).map(item => ({
                         nivel: item.querySelector('.f-nivel').value,
-                        curso: item.querySelector('.f-curso').value, // <-- O novo campo de Graduação
+                        curso: item.querySelector('.f-curso').value,
                         instituicao: item.querySelector('.f-escola').value,
                         status: item.querySelector('.f-status').value,
                         ano: item.querySelector('.f-ano').value
@@ -481,7 +968,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     })).filter(e => e.empresa.trim() !== '')
                 };
 
-                // 2. Dispara requisição POST via Fetch
                 fetch('/plano-de-carreira/gerar-pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
