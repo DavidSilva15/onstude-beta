@@ -52,6 +52,11 @@ function renderAlunoMenuLateral(aluno, activePage) {
                     </a>
                 </li>
                 <li>
+                    <a href="/plano-de-carreira" class="nav-link px-3 ${activePage === 'planocarreira' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
+                        <i class="bi bi-bullseye me-3 ${activePage === 'planocarreira' ? '' : 'text-secondary'}"></i> Plano de Carreira
+                    </a>
+                </li>
+                <li>
                     <a href="/aluno/conquistas" class="nav-link px-3 ${activePage === 'conquistas' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
                         <i class="bi bi-trophy-fill me-3 ${activePage === 'conquistas' ? '' : 'text-secondary'}"></i> Conquistas
                     </a>

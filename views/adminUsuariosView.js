@@ -2,22 +2,48 @@
 
 const renderAdminMenuLateral = require('./adminMenuLateral');
 
-function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 1, searchQuery = '') {
+function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 1, searchQuery = '', currentFilter = 'todos', filterCounts = {}) {
     
     const htmlSidebar = renderAdminMenuLateral(admin, 'usuarios');
 
+    const counts = {
+        todos: filterCounts.todos || 0,
+        ativos: filterCounts.ativos || 0,
+        concluintes: filterCounts.concluintes || 0,
+        faltosos: filterCounts.faltosos || 0,
+        inativos: filterCounts.inativos || 0
+    };
+
     let cardsUsuarios = '';
     const searchParam = searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : '';
+    const filterParam = currentFilter && currentFilter !== 'todos' ? `&filter=${currentFilter}` : '';
+
+    const filterHtml = `
+    <div class="d-flex gap-2 overflow-auto pb-2 mb-4 scrollbar-hide" style="white-space: nowrap;">
+        <a href="?filter=todos${searchParam}" class="btn ${currentFilter === 'todos' || !currentFilter ? 'btn-primary' : 'btn-outline-secondary bg-white'} rounded-pill shadow-sm fw-bold px-3 d-inline-flex align-items-center transition-all">
+            Todos <span class="badge ${currentFilter === 'todos' || !currentFilter ? 'bg-white text-primary' : 'bg-secondary'} ms-2">${counts.todos}</span>
+        </a>
+        <a href="?filter=ativos${searchParam}" class="btn ${currentFilter === 'ativos' ? 'btn-success' : 'btn-outline-secondary bg-white'} rounded-pill shadow-sm fw-bold px-3 d-inline-flex align-items-center transition-all">
+            Ativos (Cursando) <span class="badge ${currentFilter === 'ativos' ? 'bg-white text-success' : 'bg-secondary'} ms-2">${counts.ativos}</span>
+        </a>
+        <a href="?filter=concluintes${searchParam}" class="btn ${currentFilter === 'concluintes' ? 'btn-info text-dark' : 'btn-outline-secondary bg-white'} rounded-pill shadow-sm fw-bold px-3 d-inline-flex align-items-center transition-all">
+            Concluintes <span class="badge ${currentFilter === 'concluintes' ? 'bg-white text-dark' : 'bg-secondary'} ms-2">${counts.concluintes}</span>
+        </a>
+        <a href="?filter=faltosos${searchParam}" class="btn ${currentFilter === 'faltosos' ? 'btn-danger' : 'btn-outline-secondary bg-white'} rounded-pill shadow-sm fw-bold px-3 d-inline-flex align-items-center transition-all">
+            Faltosos <span class="badge ${currentFilter === 'faltosos' ? 'bg-white text-danger' : 'bg-secondary'} ms-2">${counts.faltosos}</span>
+        </a>
+        <a href="?filter=inativos${searchParam}" class="btn ${currentFilter === 'inativos' ? 'btn-warning text-dark' : 'btn-outline-secondary bg-white'} rounded-pill shadow-sm fw-bold px-3 d-inline-flex align-items-center transition-all">
+            Inativos <span class="badge ${currentFilter === 'inativos' ? 'bg-white text-dark' : 'bg-secondary'} ms-2">${counts.inativos}</span>
+        </a>
+    </div>
+    `;
 
     if (usuarios.length === 0) {
-        cardsUsuarios = `<div class="col-12 text-center text-muted py-5"><i class="bi bi-people fs-1 opacity-50 mb-3 d-block"></i>Nenhum usuário encontrado ${searchQuery ? 'para "'+searchQuery+'"' : ''}.</div>`;
+        cardsUsuarios = `<div class="col-12 text-center text-muted py-5"><i class="bi bi-people fs-1 opacity-50 mb-3 d-block"></i>Nenhum usuário encontrado na categoria "${currentFilter}".</div>`;
     } else {
         usuarios.forEach(u => {
             let badgeTipo = u.tipo === 'ADMIN' ? 'bg-danger' : 'bg-primary';
             
-            // ==========================================
-            // LÓGICA DO STATUS INTELIGENTE (CONCLUINTE)
-            // ==========================================
             let statusVisual = u.status;
             let badgeStatus = 'bg-secondary';
 
@@ -32,23 +58,43 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
                 badgeStatus = 'bg-warning text-dark';
             }
 
-            // ==========================================
-            // LÓGICA DE CORES DOS CARDS (SINAIS VITAIS)
-            // ==========================================
-            let cardCustomClass = 'bg-white border-0'; // Padrão: Branco
+            let cardCustomClass = 'bg-white border-0'; 
+            let htmlWhatsAppBtn = '';
 
             if (statusVisual === 'CONCLUINTE') {
-                // Levemente Verde
                 cardCustomClass = 'bg-success bg-opacity-10 border border-success border-opacity-25';
-            } else if (u.tipo === 'ALUNO') {
+            
+            // TRAVA APLICADA AQUI: Só entra na lógica de faltoso/WhatsApp se for ALUNO e estiver ATIVO
+            } else if (u.tipo === 'ALUNO' && u.status === 'ATIVO') {
+                
+                let showWhatsBtn = false;
+                let msgWhats = '';
+                const primeiroNome = u.nome.split(' ')[0];
+
                 if (!u.ultimo_acesso) {
-                    // Levemente Amarelo (Nunca acessou)
                     cardCustomClass = 'bg-warning bg-opacity-10 border border-warning border-opacity-25';
+                    showWhatsBtn = true;
+                    msgWhats = `Olá ${primeiroNome}, vimos que você ainda não iniciou os seus estudos na OnStude! Que tal dar o primeiro passo hoje? 🚀`;
                 } else {
                     const diffEmDias = (new Date() - new Date(u.ultimo_acesso)) / (1000 * 60 * 60 * 24);
-                    if (diffEmDias > 2) {
-                        // Levemente Vermelho (Ausente há mais de 2 dias)
+                    if (diffEmDias >= 2) {
                         cardCustomClass = 'bg-danger bg-opacity-10 border border-danger border-opacity-25';
+                        showWhatsBtn = true;
+                        msgWhats = `Olá ${primeiroNome}, notamos que você não acessa a OnStude há alguns dias. Volte para continuar de onde parou, a sua evolução é importante para nós! 📚🚀`;
+                    }
+                }
+
+                if (showWhatsBtn && u.telefone) {
+                    const numeroWhats = u.telefone.replace(/\D/g, ''); 
+                    if (numeroWhats.length >= 10) { 
+                        const numeroFormatado = numeroWhats.startsWith('55') ? numeroWhats : `55${numeroWhats}`;
+                        const linkWhats = `https://wa.me/${numeroFormatado}?text=${encodeURIComponent(msgWhats)}`;
+                        
+                        htmlWhatsAppBtn = `
+                            <a href="${linkWhats}" target="_blank" class="btn btn-success w-100 fw-bold rounded-pill shadow-sm mt-2">
+                                <i class="bi bi-whatsapp me-1"></i> Lembrar no WhatsApp
+                            </a>
+                        `;
                     }
                 }
             }
@@ -73,10 +119,7 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
                 `;
             }
 
-            // Iniciais para o Avatar
             const iniciais = u.nome.substring(0, 2).toUpperCase();
-
-            // Métricas (Protegidas)
             const notaMedia = u.nota_media_geral ? parseFloat(u.nota_media_geral).toFixed(1) : '-';
             const aulasConcluidas = u.aulas_concluidas || 0;
             const melhorCurso = u.melhor_curso || '-';
@@ -136,9 +179,12 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
                                 </div>
                             </div>
 
-                            <a href="/admin/usuarios/${u.id}/editar" class="btn btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm">
-                                <i class="bi bi-pencil-square me-1"></i> Editar Usuário
-                            </a>
+                            <div class="mt-auto">
+                                <a href="/admin/usuarios/${u.id}/editar" class="btn btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm">
+                                    <i class="bi bi-pencil-square me-1"></i> Editar Usuário
+                                </a>
+                                ${htmlWhatsAppBtn}
+                            </div>
 
                         </div>
                     </div>
@@ -147,14 +193,16 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
         });
     }
 
-    // ==========================================
-    // PAGINAÇÃO
-    // ==========================================
     let paginationHtml = '';
     if (totalPages > 1) {
         paginationHtml += `<ul class="pagination justify-content-center mb-0 mt-4 shadow-sm">`;
+        
+        let urlBasePagination = `?`;
+        if(searchQuery) urlBasePagination += `search=${encodeURIComponent(searchQuery)}&`;
+        if(currentFilter && currentFilter !== 'todos') urlBasePagination += `filter=${currentFilter}&`;
+
         if (currentPage > 1) {
-            paginationHtml += `<li class="page-item"><a class="page-link rounded-start-pill px-3" href="?page=${currentPage - 1}${searchParam}">&laquo;</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-start-pill px-3" href="${urlBasePagination}page=${currentPage - 1}">&laquo;</a></li>`;
         } else {
             paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-start-pill px-3">&laquo;</span></li>`;
         }
@@ -166,7 +214,7 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
         if (currentPage === totalPages) startPage = Math.max(1, totalPages - 2);
 
         if (startPage > 1) {
-            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=1${searchParam}">1</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="${urlBasePagination}page=1">1</a></li>`;
             if (startPage > 2) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
         }
 
@@ -174,17 +222,17 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
             if (i === currentPage) {
                 paginationHtml += `<li class="page-item active"><span class="page-link fw-bold">${i}</span></li>`;
             } else {
-                paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${i}${searchParam}">${i}</a></li>`;
+                paginationHtml += `<li class="page-item"><a class="page-link" href="${urlBasePagination}page=${i}">${i}</a></li>`;
             }
         }
 
         if (endPage < totalPages) {
             if (endPage < totalPages - 1) paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-            paginationHtml += `<li class="page-item"><a class="page-link" href="?page=${totalPages}${searchParam}">${totalPages}</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="${urlBasePagination}page=${totalPages}">${totalPages}</a></li>`;
         }
 
         if (currentPage < totalPages) {
-            paginationHtml += `<li class="page-item"><a class="page-link rounded-end-pill px-3" href="?page=${currentPage + 1}${searchParam}">&raquo;</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link rounded-end-pill px-3" href="${urlBasePagination}page=${currentPage + 1}">&raquo;</a></li>`;
         } else {
             paginationHtml += `<li class="page-item disabled"><span class="page-link rounded-end-pill px-3">&raquo;</span></li>`;
         }
@@ -207,6 +255,10 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
             }
             .transition-all { transition: all 0.3s ease; }
             .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+            
+            /* Oculta scrollbar horizontal dos filtros no Windows/Mac, mas mantém funcionalidade */
+            .scrollbar-hide::-webkit-scrollbar { display: none; }
+            .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         </style>
     </head>
     <body class="bg-light">
@@ -230,9 +282,10 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
                         
                         <div class="col-md-5 mb-3 mb-md-0">
                             <form action="/admin/usuarios" method="GET" class="d-flex shadow-sm rounded-pill overflow-hidden bg-white border">
-                                <input type="text" name="search" class="form-control border-0 shadow-none ps-4" placeholder="Buscar usuário ou curso..." value="${searchQuery}">
+                                <input type="text" name="search" class="form-control border-0 shadow-none ps-4" placeholder="Buscar usuário..." value="${searchQuery}">
+                                ${currentFilter !== 'todos' ? `<input type="hidden" name="filter" value="${currentFilter}">` : ''}
                                 <button type="submit" class="btn btn-primary fw-bold px-4 rounded-end-pill">Buscar</button>
-                                ${searchQuery ? `<a href="/admin/usuarios" class="btn btn-light border-start text-secondary px-3"><i class="bi bi-x-lg"></i></a>` : ''}
+                                ${searchQuery ? `<a href="/admin/usuarios?filter=${currentFilter}" class="btn btn-light border-start text-secondary px-3"><i class="bi bi-x-lg"></i></a>` : ''}
                             </form>
                         </div>
 
@@ -242,6 +295,8 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
                             </a>
                         </div>
                     </div>
+
+                    ${filterHtml}
 
                     <div class="row">
                         ${cardsUsuarios}

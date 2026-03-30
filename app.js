@@ -1460,23 +1460,21 @@ app.post('/admin/aulas/:id/excluir', verificarAdmin, async (req, res) => {
 // ROTAS DE GESTÃO DE USUÁRIOS (ADMIN)
 // ==========================================
 
-// GET: Renderiza a lista de todos os Usuários (Admin) com Paginação, Busca e Cards Interativos
+// GET: Renderiza a lista de todos os Usuários (Admin) com Paginação, Busca, Filtros e Cards Interativos
 app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
     try {
         const limit = 12;
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
         const search = req.query.search || '';
+        const currentFilter = req.query.filter || 'todos';
 
         let queryParams = [];
-        let whereClauseCount = '';
         let whereClauseMain = '';
 
         // Se o admin digitou algo na busca
         if (search.trim() !== '') {
             const searchTerm = `%${search}%`;
-            whereClauseCount = ' WHERE u.nome LIKE ? OR c.titulo LIKE ?';
-
             whereClauseMain = ` WHERE u.id IN (
                 SELECT DISTINCT u2.id FROM usuarios u2 
                 LEFT JOIN matriculas m2 ON u2.id = m2.aluno_id 
@@ -1486,22 +1484,70 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             queryParams.push(searchTerm, searchTerm);
         }
 
-        // Conta o total (aplicando o filtro de busca se existir)
-        const countQuery = `
-            SELECT COUNT(DISTINCT u.id) AS total 
-            FROM usuarios u 
-            LEFT JOIN matriculas m ON u.id = m.aluno_id 
-            LEFT JOIN cursos c ON m.curso_id = c.id
-            ${whereClauseCount}
+        // ==========================================
+        // 1. CONTAGEM INTELIGENTE PARA OS FILTROS
+        // ==========================================
+        const statsQuery = `
+            SELECT
+                COUNT(*) as todos,
+                SUM(CASE WHEN status_calc = 'ATIVO' THEN 1 ELSE 0 END) as ativos,
+                SUM(CASE WHEN status_calc = 'CONCLUINTE' THEN 1 ELSE 0 END) as concluintes,
+                SUM(CASE WHEN status_calc = 'INATIVO' THEN 1 ELSE 0 END) as inativos,
+                -- Faltoso agora exige que o status calculado seja puramente 'ATIVO' (Exclui concluintes e inativos)
+                SUM(CASE WHEN is_faltoso = 1 AND status_calc = 'ATIVO' THEN 1 ELSE 0 END) as faltosos
+            FROM (
+                SELECT 
+                    u.id,
+                    CASE 
+                        WHEN u.status = 'ATIVO' AND COUNT(DISTINCT m.curso_id) > 0 AND COUNT(DISTINCT m.curso_id) = SUM(CASE WHEN m.status = 'CONCLUIDA' THEN 1 ELSE 0 END) THEN 'CONCLUINTE'
+                        WHEN u.status = 'ATIVO' THEN 'ATIVO'
+                        ELSE u.status
+                    END AS status_calc,
+                    CASE 
+                        WHEN u.tipo = 'ALUNO' AND u.status = 'ATIVO' AND (u.ultimo_acesso IS NULL OR DATEDIFF(NOW(), u.ultimo_acesso) >= 2) THEN 1
+                        ELSE 0
+                    END AS is_faltoso
+                FROM usuarios u
+                LEFT JOIN matriculas m ON u.id = m.aluno_id AND m.status IN ('ATIVA', 'CONCLUIDA')
+                ${whereClauseMain}
+                GROUP BY u.id
+            ) AS user_stats
         `;
-        const [totalQuery] = await db.execute(countQuery, queryParams);
-        const totalUsuarios = totalQuery[0].total;
+        
+        const [statsResult] = await db.execute(statsQuery, queryParams);
+        
+        const filterCounts = {
+            todos: Number(statsResult[0].todos || 0),
+            ativos: Number(statsResult[0].ativos || 0),
+            concluintes: Number(statsResult[0].concluintes || 0),
+            inativos: Number(statsResult[0].inativos || 0),
+            faltosos: Number(statsResult[0].faltosos || 0)
+        };
+
+        const totalUsuarios = filterCounts[currentFilter] || filterCounts.todos;
         const totalPages = Math.ceil(totalUsuarios / limit) || 1;
 
-        // Query principal (Traz dados base do usuário e quantidade de cursos)
+        // ==========================================
+        // 2. APLICAÇÃO DO FILTRO ESCOLHIDO (HAVING)
+        // ==========================================
+        let havingClause = '';
+        if (currentFilter === 'ativos') {
+            havingClause = ` HAVING u.status = 'ATIVO' AND (total_cursos = 0 OR total_cursos != concluidos_count)`;
+        } else if (currentFilter === 'concluintes') {
+            havingClause = ` HAVING u.status = 'ATIVO' AND total_cursos > 0 AND total_cursos = concluidos_count`;
+        } else if (currentFilter === 'faltosos') {
+            // Garante que é ATIVO e NÃO é CONCLUINTE (total_cursos != concluidos_count)
+            havingClause = ` HAVING u.status = 'ATIVO' AND (total_cursos = 0 OR total_cursos != concluidos_count) AND u.tipo = 'ALUNO' AND (u.ultimo_acesso IS NULL OR DATEDIFF(NOW(), u.ultimo_acesso) >= 2)`;
+        } else if (currentFilter === 'inativos') {
+            havingClause = ` HAVING u.status = 'INATIVO'`;
+        }
+
+        // ==========================================
+        // 3. QUERY PRINCIPAL DE USUÁRIOS
+        // ==========================================
         const mainQuery = `
             SELECT 
-                u.id, u.nome, u.email, u.tipo, u.status, u.criado_em, u.data_nascimento, u.ultimo_acesso,
+                u.id, u.nome, u.email, u.telefone, u.tipo, u.status, u.criado_em, u.data_nascimento, u.ultimo_acesso,
                 
                 (SELECT CONCAT(a.titulo, '|||', cur.titulo) 
                  FROM progresso_aula pa 
@@ -1520,25 +1566,23 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             LEFT JOIN cursos c ON m.curso_id = c.id
             ${whereClauseMain}
             GROUP BY u.id
+            ${havingClause}
             ORDER BY u.ultimo_acesso DESC, u.id DESC
             LIMIT ${limit} OFFSET ${offset}
         `;
         const [usuariosRaw] = await db.execute(mainQuery, queryParams);
 
         // ==========================================
-        // LÓGICA DE KPIs (Mesma da view do Aluno)
+        // LÓGICA DE KPIs
         // ==========================================
-        // Faz um loop paralelo extremamente rápido apenas nos 12 usuários da página atual
         const usuariosComKPIs = await Promise.all(usuariosRaw.map(async (u) => {
 
-            // Se for ADMIN, não precisa calcular notas, retorna zerado
             if (u.tipo === 'ADMIN') {
                 return { ...u, aulas_concluidas: '0 / 0', nota_media_geral: '-', melhor_curso: '-' };
             }
 
             const alunoId = u.id;
 
-            // 1. Aulas Concluídas vs Total
             const [aulasQuery] = await db.execute(`
                 SELECT 
                     SUM(COALESCE(p.aulas_concluidas, 0)) AS concluidas_geral,
@@ -1553,7 +1597,6 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             const totalGeral = aulasQuery[0]?.total_geral || 0;
             const stringAulasKpi = `${concluidasGeral} / ${totalGeral}`;
 
-            // 2. Nota Média Geral
             const [notaQuery] = await db.execute(`
                 SELECT AVG(max_nota) AS nota_media FROM (
                     SELECT MAX(at.nota) AS max_nota 
@@ -1567,7 +1610,6 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             const notaMediaRaw = notaQuery[0]?.nota_media;
             const notaMedia = notaMediaRaw ? parseFloat(notaMediaRaw).toFixed(1) : '-';
 
-            // 3. Melhor Desempenho (Curso)
             const [melhorCursoQuery] = await db.execute(`
                 SELECT c.titulo, AVG(at.nota) AS media_curso 
                 FROM avaliacao_tentativas at 
@@ -1581,7 +1623,6 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
 
             const melhorCurso = melhorCursoQuery.length > 0 ? melhorCursoQuery[0].titulo : '-';
 
-            // Junta os dados originais do usuário com os novos KPIs
             return {
                 ...u,
                 aulas_concluidas: stringAulasKpi,
@@ -1590,8 +1631,18 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             };
         }));
 
-        // Renderiza a View passando os usuários já com os KPIs processados
-        res.send(renderAdminUsuariosView(req.session.usuario, usuariosComKPIs, currentPage, totalPages, search));
+        const renderAdminUsuariosView = require('./views/adminUsuariosView');
+        
+        res.send(renderAdminUsuariosView(
+            req.session.usuario, 
+            usuariosComKPIs, 
+            currentPage, 
+            totalPages, 
+            search, 
+            currentFilter, 
+            filterCounts
+        ));
+
     } catch (error) {
         console.error('Erro ao listar usuários:', error);
         res.status(500).send('Erro interno do servidor.');

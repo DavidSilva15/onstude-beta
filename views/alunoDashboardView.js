@@ -21,7 +21,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
     }
 
     // ==========================================
-    // LÓGICA DE CURSOS
+    // LÓGICA DE CURSOS (MENORES E GRID 4x)
     // ==========================================
     let htmlCursos = '';
     if (cursosMatriculados.length === 0) {
@@ -43,23 +43,23 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             const corBotao = percentual >= 100 ? 'btn-success' : 'btn-primary';
 
             htmlCursos += `
-                <div class="col-md-6 col-xl-4 mb-4">
+                <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
                     <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden hover-card transition-all">
-                        <img src="${capa}" class="card-img-top border-bottom" alt="Capa de ${curso.titulo}" style="height: 180px; object-fit: cover;">
-                        <div class="card-body p-4 d-flex flex-column">
-                            <span class="badge bg-light text-dark border mb-3 align-self-start px-2 py-1"><i class="bi bi-upc-scan me-1"></i>${curso.codigo_unico}</span>
-                            <h5 class="card-title fw-bold text-dark mb-3 text-truncate" title="${curso.titulo}">${curso.titulo}</h5>
+                        <img src="${capa}" class="card-img-top border-bottom" alt="Capa de ${curso.titulo}" style="height: 140px; object-fit: cover;">
+                        <div class="card-body p-3 d-flex flex-column">
+                            <span class="badge bg-light text-dark border mb-2 align-self-start px-2 py-1" style="font-size: 0.65rem;"><i class="bi bi-upc-scan me-1"></i>${curso.codigo_unico}</span>
+                            <h6 class="card-title fw-bold text-dark mb-3 text-truncate" title="${curso.titulo}">${curso.titulo}</h6>
                             
                             <div class="mt-auto">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <small class="text-muted fw-semibold">Progresso <span class="fw-normal">(${concluidas}/${total} aulas)</span></small>
-                                    <small class="text-primary fw-bold">${percentual.toFixed(0)}%</small>
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="text-muted fw-semibold" style="font-size: 0.7rem;">Progresso <span class="fw-normal">(${concluidas}/${total})</span></small>
+                                    <small class="text-primary fw-bold" style="font-size: 0.75rem;">${percentual.toFixed(0)}%</small>
                                 </div>
-                                <div class="progress mb-4 rounded-pill bg-light border" style="height: 8px;">
+                                <div class="progress mb-3 rounded-pill bg-light border" style="height: 6px;">
                                     <div class="progress-bar ${corBotao.replace('btn-', 'bg-')}" role="progressbar" style="width: ${percentual}%" aria-valuenow="${percentual}" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                                 <div class="d-grid">
-                                    <a href="/aluno/cursos/${curso.curso_id}/aula" class="btn ${corBotao} fw-bold rounded-pill shadow-sm">${textoBotao}</a>
+                                    <a href="/aluno/cursos/${curso.curso_id}/aula" class="btn ${corBotao} btn-sm fw-bold rounded-pill shadow-sm">${textoBotao}</a>
                                 </div>
                             </div>
                         </div>
@@ -297,7 +297,6 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                 // ==========================================
                 const novaConquistaBackend = ${kpiData && kpiData.novaConquista ? JSON.stringify(kpiData.novaConquista) : 'null'};
                 if (novaConquistaBackend) {
-                    // Delay para a animação da dashboard carregar antes
                     setTimeout(() => {
                         window.exibirModalConquista(novaConquistaBackend.icone, novaConquistaBackend.titulo, novaConquistaBackend.descricao);
                     }, 800);
@@ -326,7 +325,6 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                         osc.stop(ctx.currentTime + time + duration);
                     }
                     
-                    // Toque Fanfarra mais "Épico" (D - F# - A - D High)
                     playTone(587.33, 'triangle', 0, 0.15, 0.5); 
                     playTone(739.99, 'triangle', 0.15, 0.15, 0.5); 
                     playTone(880.00, 'triangle', 0.3, 0.15, 0.5); 
@@ -396,34 +394,20 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                 const container = document.getElementById('containerListaRanking');
                 const loader = document.getElementById('rankingLoader');
                 
-                // Limpa e mostra loader
                 Array.from(container.children).forEach(child => { if(child.id !== 'rankingLoader') child.remove(); });
                 loader.classList.remove('d-none');
 
                 fetch('/aluno/api/ranking/' + cursoId)
                     .then(response => {
-                        if(!response.ok) throw new Error('Rota não existe ainda');
+                        if(!response.ok) throw new Error('Rota falhou');
                         return response.json();
                     })
                     .then(data => {
                         renderizarHTMLRanking(container, loader, data.ranking);
                     })
                     .catch(err => {
-                        // FALLBACK MOCK: Enquanto a rota não for criada
-                        console.warn("Rota de ranking não encontrada. Usando dados fictícios.");
-                        setTimeout(() => {
-                            const mockRanking = [
-                                { pos: 1, nome: 'Maria S.', xp: Math.floor(Math.random() * 500) + 1000, trend: 'up' },
-                                { pos: 2, nome: 'João P.', xp: Math.floor(Math.random() * 300) + 700, trend: 'down' },
-                                { pos: 3, nome: NOME_ALUNO + ' (Você)', xp: Math.floor(Math.random() * 200) + 500, trend: 'up', isUser: true },
-                                { pos: 4, nome: 'Ana C.', xp: 450, trend: 'flat' },
-                                { pos: 5, nome: 'Carlos E.', xp: 300, trend: 'down' }
-                            ];
-                            mockRanking.sort((a, b) => b.xp - a.xp);
-                            mockRanking.forEach((r, i) => r.pos = i + 1);
-                            
-                            renderizarHTMLRanking(container, loader, mockRanking);
-                        }, 600);
+                        loader.classList.add('d-none');
+                        container.innerHTML += '<div class="text-center text-muted p-4">Não foi possível carregar o ranking.</div>';
                     });
             }
 
@@ -435,7 +419,21 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     return;
                 }
 
-                rankingArray.forEach(r => {
+                // Filtra para exibir apenas até a 5ª posição, e o aluno logado se estiver além dela
+                let arrayExibicao = [];
+                let usuarioEncontrado = false;
+
+                for(let i = 0; i < rankingArray.length; i++) {
+                    if(i < 5) {
+                        arrayExibicao.push(rankingArray[i]);
+                        if(rankingArray[i].isUser) usuarioEncontrado = true;
+                    } else if(rankingArray[i].isUser && !usuarioEncontrado) {
+                        arrayExibicao.push(rankingArray[i]);
+                        usuarioEncontrado = true;
+                    }
+                }
+
+                arrayExibicao.forEach(r => {
                     let medalha = r.pos;
                     if(r.pos === 1) medalha = '🥇';
                     if(r.pos === 2) medalha = '🥈';
@@ -449,8 +447,11 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     if(r.pos <= 3) classRank = 'rank-' + r.pos;
                     if(r.isUser) classRank += ' rank-user anim-rank-up';
 
+                    // Se a posição for > 5 e o cara não tiver no top 5 natural, adiciona margem visual
+                    let marginExtra = (r.pos > 5 && !usuarioEncontrado && r.isUser) ? 'border-top border-2 border-primary mt-2' : 'border-bottom';
+
                     const itemHTML = \`
-                        <div class="d-flex align-items-center p-3 border-bottom rank-item \${classRank}">
+                        <div class="d-flex align-items-center p-3 \${marginExtra} rank-item \${classRank}">
                             <div class="fw-bold fs-5 text-center" style="width: 40px; color: #6c757d;">\${medalha}</div>
                             <div class="ms-2 flex-grow-1">
                                 <div class="text-dark mb-0 \${r.isUser ? 'fw-bolder text-primary' : 'fw-semibold'}" style="font-size: 0.9rem;">\${r.nome}</div>
