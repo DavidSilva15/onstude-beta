@@ -140,7 +140,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
     htmlMenuLateral += '</div>';
 
     // ==========================================
-    // 3. LÓGICA DAS ETAPAS DA AULA ATUAL E NOTAS (Lado a Lado)
+    // 3. LÓGICA DAS ETAPAS DA AULA ATUAL E NOTAS
     // ==========================================
     let htmlConteudo = '';
 
@@ -175,7 +175,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
             </div>
         `;
 
-        // --- ETAPA 1: VÍDEO (Layout Dividido no Desktop) ---
+        // --- ETAPA 1: VÍDEO (COM NOVOS CONTROLES E VOLUME) ---
         const temVideo = conteudosAtual && conteudosAtual.video_path;
         let htmlVideo = '';
         if (temVideo) {
@@ -183,8 +183,10 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                 <div class="row g-4">
                     <div class="col-xl-8 col-lg-12">
                         <div id="customVideoContainer" class="position-relative w-100 rounded-4 shadow-sm bg-dark overflow-hidden d-flex justify-content-center align-items-center video-container-h">
-                            <video id="videoPlayer" class="w-100 h-100" style="object-fit: contain;">
-                                <source src="${conteudosAtual.video_path}" type="video/mp4">
+                            <video id="videoPlayer" class="w-100 h-100" style="object-fit: contain;" crossorigin="anonymous">
+                                <source src="${conteudosAtual.video_path}" type="video/mp4" id="mainVideoSource">
+                                
+                                ${conteudosAtual.legenda_url ? `<track id="videoTrack" src="${conteudosAtual.legenda_url}" kind="subtitles" srclang="pt" label="Português" default>` : ''}
                             </video>
                             
                             <div id="centerPlayBtn" class="position-absolute" style="cursor: pointer; opacity: 0.8; transition: opacity 0.2s;">
@@ -194,9 +196,20 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                 </svg>
                             </div>
 
-                            <div id="videoControls" class="position-absolute bottom-0 w-100 p-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(transparent, rgba(0,0,0,0.9)); transition: opacity 0.3s; opacity: 1;">
-                                <button id="btnPlayPause" class="btn btn-link text-white text-decoration-none p-0 me-3" style="font-size: 1.5rem;">▶️</button>
-                                <span id="videoCurrentTime" class="text-white small fw-bold" style="min-width: 45px; text-align: right;">0:00</span>
+                            <div id="videoControls" class="position-absolute bottom-0 w-100 p-3 d-flex align-items-center justify-content-between" style="background: linear-gradient(transparent, rgba(0,0,0,0.9)); transition: opacity 0.3s; opacity: 1; z-index: 10;">
+                                
+                                <div class="d-flex align-items-center">
+                                    <button id="btnPlayPause" class="btn btn-link text-white text-decoration-none p-0 me-3" style="font-size: 1.5rem;">▶️</button>
+                                    
+                                    <div class="d-flex align-items-center me-3 position-relative">
+                                        <button id="btnVolume" class="btn btn-link text-white text-decoration-none p-0 transition-all" style="font-size: 1.4rem;" title="Volume/Mudo">
+                                            <i class="bi bi-volume-up-fill" id="iconVolume"></i>
+                                        </button>
+                                        <input type="range" id="volumeSlider" class="form-range ms-2 d-none d-md-block" min="0" max="1" step="0.05" value="1" style="width: 70px; height: 5px;">
+                                    </div>
+
+                                    <span id="videoCurrentTime" class="text-white small fw-bold" style="min-width: 45px; text-align: right;">0:00</span>
+                                </div>
                                 
                                 <div id="progressContainer" class="progress flex-grow-1 mx-3 bg-secondary rounded-pill" style="height: 8px; cursor: ${percent >= 33.33 ? 'pointer' : 'not-allowed'}; position: relative; overflow: visible;">
                                     <div id="progressBar" class="progress-bar bg-primary rounded-pill" role="progressbar" style="width: 0%; transition: width 0.1s linear;"></div>
@@ -204,7 +217,40 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                 </div>
 
                                 <span id="videoDuration" class="text-white small fw-bold me-3" style="min-width: 45px;">0:00</span>
-                                <button id="btnFullscreen" class="btn btn-link text-white text-decoration-none p-0" style="font-size: 1.5rem;" title="Tela Cheia">⛶</button>
+
+                                <div class="d-flex align-items-center gap-3 me-3">
+                                    <button id="btnSubtitles" class="btn btn-link text-white text-decoration-none p-0 transition-all" title="Legendas Automáticas (CC)">
+                                        <i class="bi bi-badge-cc-fill" style="font-size: 1.4rem;"></i>
+                                    </button>
+
+                                    <div class="dropup">
+                                        <button class="btn btn-link text-white text-decoration-none p-0 d-flex align-items-center transition-all" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Velocidade">
+                                            <span id="speedIndicator" class="fw-bold small" style="font-size: 0.95rem;">1x</span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg mb-2 border-0 rounded-3" style="min-width: auto; font-size: 0.9rem;">
+                                            <li><a class="dropdown-item speed-btn active" href="#" data-speed="1">Normal (1x)</a></li>
+                                            <li><a class="dropdown-item speed-btn" href="#" data-speed="1.25">1.25x</a></li>
+                                            <li><a class="dropdown-item speed-btn" href="#" data-speed="1.5">1.5x</a></li>
+                                            <li><a class="dropdown-item speed-btn" href="#" data-speed="1.7">1.7x</a></li>
+                                            <li><a class="dropdown-item speed-btn" href="#" data-speed="2">2x</a></li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="dropup">
+                                        <button class="btn btn-link text-white text-decoration-none p-0 d-flex align-items-center transition-all" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Qualidade do Vídeo">
+                                            <i class="bi bi-gear-fill" style="font-size: 1.1rem;"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow-lg mb-2 border-0 rounded-3" style="min-width: auto; font-size: 0.9rem;">
+                                            <li><h6 class="dropdown-header text-center text-white-50">Qualidade</h6></li>
+                                            <li><a class="dropdown-item quality-btn active" href="#" data-quality="Auto">Auto</a></li>
+                                            <li><a class="dropdown-item quality-btn" href="#" data-quality="720p">720p (HD)</a></li>
+                                            <li><a class="dropdown-item quality-btn" href="#" data-quality="480p">480p</a></li>
+                                            <li><a class="dropdown-item quality-btn" href="#" data-quality="360p">360p</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <button id="btnFullscreen" class="btn btn-link text-white text-decoration-none p-0 transition-all" style="font-size: 1.3rem;" title="Tela Cheia"><i class="bi bi-arrows-fullscreen"></i></button>
                             </div>
                         </div>
 
@@ -353,7 +399,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
             </div>
         `;
 
-        // --- ETAPA 3: AVALIAÇÃO (QUIZ DINÂMICO) ---
+        // --- ETAPA 3: AVALIAÇÃO (QUIZ DINÂMICO MODIFICADO) ---
         let htmlAvaliacaoConteudo = '';
 
         if (percent >= 100) {
@@ -388,15 +434,15 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         </div>
 
                         <div id="quizFeedbackContainer" class="mt-4" style="display: none;">
-                            <div id="quizExplanation" class="alert alert-info rounded-3 border-info shadow-sm"></div>
-                            <button id="quizNextBtn" class="btn btn-primary rounded-pill fw-bold px-4 px-md-5 mt-2 w-100 w-md-auto">Próxima Pergunta <i class="bi bi-arrow-right ms-2"></i></button>
+                            <div id="quizExplanation"></div>
+                            <button id="quizNextBtn" class="btn btn-primary rounded-pill fw-bold px-4 px-md-5 mt-3 w-100 w-md-auto">Próxima Pergunta <i class="bi bi-arrow-right ms-2"></i></button>
                         </div>
 
                         <div id="quizResultContainer" class="text-center p-4 p-md-5 border rounded-4 mt-4 bg-light shadow-sm" style="display: none;">
                             <h3 id="quizResultTitle" class="fw-bold mb-3 fs-4 fs-md-3"></h3>
                             <p class="fs-6 fs-md-5 mb-4">Você acertou <strong id="quizResultScore"></strong> de <strong id="quizResultTotal"></strong> questões.</p>
                             
-                            <form action="/aluno/aulas/${aulaAtual.id}/avaliacao" method="POST">
+                            <form id="formQuizAvaliacao" action="/aluno/aulas/${aulaAtual.id}/avaliacao" method="POST">
                                 <input type="hidden" name="curso_id" value="${curso.id}">
                                 <input type="hidden" id="quizFinalResultInput" name="resultado" value="">
                                 <input type="hidden" id="quizScoreInput" name="score" value="0">
@@ -513,9 +559,27 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                     </div>
                 </div>
             </div>
+
+            <div class="modal fade" id="modalXPGanho" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="background: linear-gradient(135deg, #ffffff, #f4f6f9);">
+                        <div class="modal-body text-center p-5 position-relative" id="xpExplosionContainer">
+                            <div id="xpStarIcon" class="mb-3 d-inline-block" style="font-size: 6rem; filter: drop-shadow(0 10px 15px rgba(255, 193, 7, 0.4)); transform: scale(0); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                                ⭐
+                            </div>
+                            <h2 class="fw-bold text-dark mb-2">Incrível!</h2>
+                            <p class="text-muted fs-5 mb-4">Você concluiu a aula e ganhou:</p>
+                            <h1 class="display-3 fw-bold text-primary mb-4" id="xpCounterValue">+0 XP</h1>
+                            <p class="text-secondary small mb-0">Salvando o seu progresso...</p>
+                            <div class="spinner-border spinner-border-sm text-primary mt-3" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <script>
                 document.addEventListener('DOMContentLoaded', function() {
-                    // Inicializar Tooltips do Bootstrap (Apenas para Desktop/dispositivos com hover)
+                    // Inicializar Tooltips do Bootstrap
                     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
                     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
@@ -528,7 +592,9 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                     // ALERTAS DE FEEDBACK DA AVALIAÇÃO
                     // ==========================================
                     const urlParams = new URLSearchParams(window.location.search);
-                    if (urlParams.has('resetado')) {
+                    const isResetado = urlParams.has('resetado');
+                    
+                    if (isResetado) {
                         const alertDiv = document.createElement('div');
                         alertDiv.className = 'alert alert-danger alert-dismissible fade show shadow-sm mb-4 rounded-4';
                         alertDiv.innerHTML = \`
@@ -574,7 +640,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                     }
 
                     // ==========================================
-                    // LÓGICA DO CUSTOM PLAYER E NOTAS
+                    // LÓGICA DO CUSTOM PLAYER E NOTAS E CONTROLES AVANÇADOS
                     // ==========================================
                     const video = document.getElementById('videoPlayer');
                     const container = document.getElementById('customVideoContainer');
@@ -592,19 +658,47 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         const btnFullscreen = document.getElementById('btnFullscreen');
                         const controlsOverlay = document.getElementById('videoControls');
                         
+                        // Controles de Volume
+                        const btnVolume = document.getElementById('btnVolume');
+                        const volumeSlider = document.getElementById('volumeSlider');
+                        const iconVolume = document.getElementById('iconVolume');
+
                         let isSeekingAllowed = percentualAtual >= 33.33; 
                         let isHovering = false;
                         let hideControlsTimeout;
 
-                        const tempoSalvo = ${aulaAtual.tempo_assistido || 0};
+                        // Função Utilitária para exibir Toasts na tela do vídeo
+                        function showVideoToast(msg) {
+                            const toast = document.createElement('div');
+                            toast.className = 'position-absolute top-0 start-50 translate-middle-x mt-4 badge bg-dark bg-opacity-75 p-2 px-3 text-white shadow-sm';
+                            toast.style.zIndex = '1070';
+                            toast.style.fontSize = '0.9rem';
+                            toast.innerText = msg;
+                            container.appendChild(toast);
+                            setTimeout(() => {
+                                toast.style.opacity = '0';
+                                toast.style.transition = 'opacity 0.3s';
+                                setTimeout(() => toast.remove(), 300);
+                            }, 2000);
+                        }
+
+                        let tempoSalvo = ${aulaAtual.tempo_assistido || 0};
+                        if (isResetado) tempoSalvo = 0; // Força recomeçar o vídeo caso tenha sido resetado
 
                         const iniciarTempoVideo = () => {
                             durationDisplay.innerText = formatTime(video.duration);
                             if (tempoSalvo > 0 && percentualAtual < 33.33) {
                                 video.currentTime = tempoSalvo;
+                            } else if (isResetado) {
+                                video.currentTime = 0;
                             }
                             renderizarListaNotas();
                             renderizarMarcadoresNotas();
+                            
+                            // Se foi resetado e não concluiu o vídeo (segurança), já salva 0 no banco logo
+                            if (isResetado && percentualAtual < 33.33) {
+                                salvarTempoAtualNoBanco();
+                            }
                         };
 
                         if (video.readyState >= 1) iniciarTempoVideo();
@@ -667,9 +761,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             video.currentTime = pos * video.duration;
                         });
 
-                        // Suporte para mobile (touch) para mostrar controles
                         container.addEventListener('touchstart', () => { showControls(); hideControlsDelay(); });
-
                         container.addEventListener('mouseenter', () => { isHovering = true; showControls(); });
                         container.addEventListener('mouseleave', () => { isHovering = false; hideControlsDelay(); });
                         container.addEventListener('mousemove', () => { showControls(); hideControlsDelay(); });
@@ -686,6 +778,39 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                     if(container.matches(':hover')) document.body.style.cursor = 'none';
                                 }, 2500);
                             }
+                        }
+
+                        // Lógica do Volume
+                        if(btnVolume && volumeSlider) {
+                            let lastVolume = 1;
+
+                            btnVolume.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                if (video.volume > 0) {
+                                    lastVolume = video.volume;
+                                    video.volume = 0;
+                                    volumeSlider.value = 0;
+                                    iconVolume.className = 'bi bi-volume-mute-fill';
+                                } else {
+                                    video.volume = lastVolume || 1;
+                                    volumeSlider.value = video.volume;
+                                    iconVolume.className = video.volume > 0.5 ? 'bi bi-volume-up-fill' : 'bi bi-volume-down-fill';
+                                }
+                            });
+
+                            volumeSlider.addEventListener('input', (e) => {
+                                e.stopPropagation();
+                                video.volume = e.target.value;
+                                if (video.volume == 0) {
+                                    iconVolume.className = 'bi bi-volume-mute-fill';
+                                } else if (video.volume < 0.5) {
+                                    iconVolume.className = 'bi bi-volume-down-fill';
+                                } else {
+                                    iconVolume.className = 'bi bi-volume-up-fill';
+                                }
+                            });
+                            
+                            volumeSlider.addEventListener('click', (e) => e.stopPropagation());
                         }
 
                         btnFullscreen.addEventListener('click', () => {
@@ -713,14 +838,109 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                     progressContainer.style.cursor = 'pointer';
                                     progressContainer.classList.remove('not-allowed');
                                     progressThumb.style.background = '#ffc107'; 
-                                    alert('MODO ADMIN: Avanço do vídeo liberado!');
+                                    showVideoToast('MODO ADMIN: Avanço liberado!');
                                 } else {
                                     progressContainer.style.cursor = 'not-allowed';
                                     progressThumb.style.background = '#ffffff';
-                                    alert('MODO ADMIN: Avanço do vídeo bloqueado!');
+                                    showVideoToast('MODO ADMIN: Avanço bloqueado!');
                                 }
                             }
                         });
+
+                        // ------------------------------------------
+                        // NOVOS CONTROLES: LEGENDA, VELOCIDADE E QUALIDADE
+                        // ------------------------------------------
+                        
+                        // Lógica de Velocidade (Playback Rate)
+                        const speedBtns = document.querySelectorAll('.speed-btn');
+                        const speedIndicator = document.getElementById('speedIndicator');
+                        speedBtns.forEach(btn => {
+                            btn.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const speed = parseFloat(this.getAttribute('data-speed'));
+                                video.playbackRate = speed;
+                                speedIndicator.innerText = speed === 1 ? '1x' : speed + 'x';
+                                
+                                speedBtns.forEach(b => b.classList.remove('active'));
+                                this.classList.add('active');
+                                showVideoToast('Velocidade: ' + (speed === 1 ? 'Normal' : speed + 'x'));
+                            });
+                        });
+
+                        // Lógica REAL de Qualidade de Vídeo (Troca de Source)
+                        const qualityBtns = document.querySelectorAll('.quality-btn');
+
+                        // Mapeamento das URLs do backend
+                        const videoSources = {
+                            'Auto': '${conteudosAtual.video_path}', // O vídeo padrão
+                            '720p': '${conteudosAtual.video_720p_path || conteudosAtual.video_path}',
+                            '480p': '${conteudosAtual.video_480p_path || conteudosAtual.video_path}',
+                            '360p': '${conteudosAtual.video_360p_path || conteudosAtual.video_path}'
+                        };
+
+                        qualityBtns.forEach(btn => {
+                            btn.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                const quality = this.getAttribute('data-quality');
+                                const novaUrl = videoSources[quality];
+
+                                if (video.src.includes(novaUrl)) return;
+                                
+                                qualityBtns.forEach(b => b.classList.remove('active'));
+                                this.classList.add('active');
+                                
+                                const tempoAtual = video.currentTime;
+                                const estavaPausado = video.paused;
+                                const currentSpeed = video.playbackRate; 
+                                
+                                showVideoToast('Ajustando qualidade para ' + quality + '...');
+
+                                video.src = novaUrl;
+                                video.load(); 
+                                
+                                video.onloadeddata = function() {
+                                    video.currentTime = tempoAtual;
+                                    video.playbackRate = currentSpeed;
+                                    if (!estavaPausado) {
+                                        video.play();
+                                        document.getElementById('centerPlayBtn').style.display = 'none';
+                                        document.getElementById('btnPlayPause').innerHTML = '<i class="bi bi-pause-fill"></i>';
+                                    }
+                                    showVideoToast('Qualidade: ' + quality);
+                                    video.onloadeddata = null; 
+                                };
+                            });
+                        });
+
+                        // Lógica de Legendas (CC)
+                        const btnSubtitles = document.getElementById('btnSubtitles');
+                        let subtitlesEnabled = false;
+                        btnSubtitles.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            subtitlesEnabled = !subtitlesEnabled;
+                            if(subtitlesEnabled) {
+                                this.classList.add('text-primary');
+                                this.classList.remove('text-white');
+                                
+                                if(video.textTracks.length > 0) {
+                                    video.textTracks[0].mode = 'showing';
+                                    showVideoToast('Legendas ativadas');
+                                } else {
+                                     showVideoToast('Legendas indisponíveis neste vídeo');
+                                }
+                            } else {
+                                this.classList.remove('text-primary');
+                                this.classList.add('text-white');
+                                if(video.textTracks.length > 0) {
+                                    video.textTracks[0].mode = 'hidden';
+                                }
+                                showVideoToast('Legendas desativadas');
+                            }
+                        });
+
 
                         // ------------------------------------------
                         // NOTAS 
@@ -830,7 +1050,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             window.notasArray.forEach(nota => {
                                 const perc = (nota.tempo_segundos / video.duration) * 100;
                                 const marker = document.createElement('div');
-                                marker.className = 'video-marker position-absolute rounded-circle shadow-sm d-none d-md-block'; // Oculta a bolinha no mobile pq é mt pequeno para clicar
+                                marker.className = 'video-marker position-absolute rounded-circle shadow-sm d-none d-md-block';
                                 marker.style.width = '14px';
                                 marker.style.height = '14px';
                                 marker.style.top = '-3px';
@@ -841,7 +1061,6 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                 marker.style.cursor = 'pointer';
                                 marker.title = nota.texto + ' (' + formatTime(nota.tempo_segundos) + ')';
                                 
-                                // Inicializa tooltip do Bootstrap no marcador
                                 marker.setAttribute('data-bs-toggle', 'tooltip');
                                 marker.setAttribute('data-bs-placement', 'top');
                                 if (window.innerWidth >= 768) {
@@ -891,6 +1110,65 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         });
                     }
 
+                    // ==========================================
+                    // FUNÇÕES PARA O EFEITO DE XP GAMIFICADO
+                    // ==========================================
+                    function tocarAudioLevelUp() {
+                        try {
+                            const AudioContext = window.AudioContext || window.webkitAudioContext;
+                            if(!AudioContext) return;
+                            const ctx = new AudioContext();
+                            
+                            function playTone(freq, type, time, duration, vol) {
+                                const osc = ctx.createOscillator();
+                                const gain = ctx.createGain();
+                                osc.type = type;
+                                osc.frequency.setValueAtTime(freq, ctx.currentTime + time);
+                                gain.gain.setValueAtTime(vol, ctx.currentTime + time);
+                                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + duration);
+                                osc.connect(gain);
+                                gain.connect(ctx.destination);
+                                osc.start(ctx.currentTime + time);
+                                osc.stop(ctx.currentTime + time + duration);
+                            }
+                            
+                            // Arpejo de vitória (C - E - G - C)
+                            playTone(523.25, 'sine', 0, 0.1, 0.5);
+                            playTone(659.25, 'sine', 0.1, 0.1, 0.5);
+                            playTone(783.99, 'sine', 0.2, 0.1, 0.5);
+                            playTone(1046.50, 'sine', 0.3, 0.4, 0.5);
+                        } catch(e) { console.log("Áudio não suportado"); }
+                    }
+
+                    function criarExplosaoEstrelas() {
+                        const container = document.getElementById('xpExplosionContainer');
+                        for(let i=0; i<25; i++) {
+                            const star = document.createElement('i');
+                            star.className = 'bi bi-star-fill text-warning position-absolute';
+                            star.style.fontSize = (Math.random() * 20 + 10) + 'px';
+                            star.style.left = '50%';
+                            star.style.top = '20%';
+                            star.style.transition = 'all 1s cubic-bezier(0.25, 1, 0.5, 1)';
+                            star.style.transform = 'translate(-50%, -50%)';
+                            star.style.zIndex = '1060';
+                            container.appendChild(star);
+                            
+                            setTimeout(() => {
+                                const angle = Math.random() * Math.PI * 2;
+                                const distance = Math.random() * 200 + 50;
+                                const tx = Math.cos(angle) * distance;
+                                const ty = Math.sin(angle) * distance;
+                                star.style.transform = \`translate(calc(-50% + \${tx}px), calc(-50% + \${ty}px)) rotate(\${Math.random()*360}deg)\`;
+                                star.style.opacity = '0';
+                            }, 50);
+                            
+                            setTimeout(() => star.remove(), 1050);
+                        }
+                    }
+
+                    // ==========================================
+                    // QUIZ E LÓGICA DE INTERCEPTAÇÃO
+                    // ==========================================
                     const quizDataRaw = ${avaliacaoData ? JSON.stringify(avaliacaoData) : 'null'};
                     if (quizDataRaw && quizDataRaw.quiz && quizDataRaw.quiz.length > 0 && percentualAtual >= 66.66 && percentualAtual < 100 && ${tentativasUsadas} < 3) {
                         const quiz = quizDataRaw.quiz;
@@ -930,23 +1208,27 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             const botoes = optionsContainer.querySelectorAll('button');
                             botoes.forEach(b => {
                                 b.disabled = true;
+                                // Apenas remove a cor de outline, sem marcar verde ou vermelho
                                 b.classList.remove('btn-outline-secondary');
                                 
-                                if (b.innerText === quiz[currentQuestionIndex].opcoes[correctIndex]) {
-                                    b.classList.add('btn-success', 'text-white');
+                                if (b === selectedBtn) {
+                                    b.classList.add('btn-primary', 'text-white'); // Destaca a opção escolhida neutramente
                                 } else {
-                                    b.classList.add('btn-light', 'text-muted');
+                                    b.classList.add('btn-light', 'text-muted', 'opacity-50'); // Esmaece as outras
                                 }
                             });
 
-                            if (selectedIndex === correctIndex) {
+                            const acertou = selectedIndex === correctIndex;
+
+                            if (acertou) {
                                 score++;
+                                explanationText.className = "alert alert-success rounded-3 shadow-sm";
+                                explanationText.innerHTML = "<strong class='text-success'><i class='bi bi-check-circle-fill me-1'></i> Você acertou!</strong><br><br><strong><i class='bi bi-info-circle me-1'></i> Explicação:</strong> " + explanation;
                             } else {
-                                selectedBtn.classList.remove('btn-light', 'text-muted');
-                                selectedBtn.classList.add('btn-danger', 'text-white');
+                                explanationText.className = "alert alert-danger rounded-3 shadow-sm";
+                                explanationText.innerHTML = "<strong class='text-danger'><i class='bi bi-x-circle-fill me-1'></i> Você errou!</strong><br><br><strong><i class='bi bi-info-circle me-1'></i> Explicação:</strong> " + explanation;
                             }
 
-                            explanationText.innerHTML = "<strong><i class='bi bi-info-circle me-1'></i> Explicação:</strong> " + explanation;
                             feedbackContainer.style.display = 'block';
                         }
 
@@ -990,6 +1272,57 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                 submitBtn.innerText = 'Registrar Tentativa e Voltar';
                                 submitBtn.classList.add('btn-danger');
                             }
+                        }
+
+                        // ==========================================
+                        // INTERCEPTADOR DE SUBMIT (A ANIMAÇÃO)
+                        // ==========================================
+                        const formQuiz = document.getElementById('formQuizAvaliacao');
+                        if (formQuiz) {
+                            formQuiz.addEventListener('submit', function(e) {
+                                const resultValue = document.getElementById('quizFinalResultInput').value;
+                                
+                                // Se passou no quiz, para o envio e mostra a animação
+                                if (resultValue === 'aprovado') {
+                                    e.preventDefault(); 
+                                    
+                                    const xpModalEl = document.getElementById('modalXPGanho');
+                                    const xpModal = new bootstrap.Modal(xpModalEl);
+                                    xpModal.show();
+                                    
+                                    // Calcula quanto o backend vai dar de XP
+                                    const finalScore = parseInt(document.getElementById('quizScoreInput').value);
+                                    const finalTotal = parseInt(document.getElementById('quizTotalInput').value);
+                                    const notaPercent = finalScore / finalTotal;
+                                    const totalXpGanho = 50 + Math.round(notaPercent * 10 * 5); // Exato cálculo do Node.js
+                                    
+                                    xpModalEl.addEventListener('shown.bs.modal', function () {
+                                        tocarAudioLevelUp();
+                                        criarExplosaoEstrelas();
+                                        
+                                        const starIcon = document.getElementById('xpStarIcon');
+                                        starIcon.style.transform = 'scale(1) rotate(360deg)';
+                                        
+                                        // Animação de contagem de números
+                                        let currentXp = 0;
+                                        const xpCounter = document.getElementById('xpCounterValue');
+                                        const pass = Math.ceil(totalXpGanho / 20);
+                                        
+                                        const interval = setInterval(() => {
+                                            currentXp += pass;
+                                            if (currentXp >= totalXpGanho) {
+                                                currentXp = totalXpGanho;
+                                                clearInterval(interval);
+                                                
+                                                // Envia o form de verdade 2 segundos depois da explosão
+                                                setTimeout(() => { formQuiz.submit(); }, 2000);
+                                            }
+                                            xpCounter.innerText = '+' + currentXp + ' XP';
+                                        }, 40);
+                                    }, { once: true });
+                                }
+                                // Se for reprovado, o form segue naturalmente (sem animação de ganho)
+                            });
                         }
 
                         renderQuestion();

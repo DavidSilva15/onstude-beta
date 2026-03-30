@@ -51,17 +51,25 @@ function renderLoginView(erro = null, returnTo = '') {
             .carousel-indicators [data-bs-target] { width: 10px; height: 10px; border-radius: 50%; background-color: rgba(255,255,255,0.5); }
             .carousel-indicators .active { background-color: white; }
 
-            /* Coluna da Direita (Formulário) */
+            /* Coluna da Direita mais compacta */
             .right-column {
                 background-color: #ffffff;
-                padding: 4rem 3.5rem;
+                padding: 2rem 3rem; 
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                max-height: 95vh; 
+                overflow-y: auto;
             }
 
+            /* Scrollbar customizada para a coluna direita */
+            .right-column::-webkit-scrollbar { width: 6px; }
+            .right-column::-webkit-scrollbar-track { background: transparent; }
+            .right-column::-webkit-scrollbar-thumb { background-color: #dee2e6; border-radius: 10px; }
+            .right-column::-webkit-scrollbar-thumb:hover { background-color: #adb5bd; }
+
             /* ==========================================
-               NOVO DESIGN DOS CONTAINERS (INPUTS)
+               DESIGN DOS CONTAINERS (INPUTS)
                ========================================== */
             .input-group-custom {
                 background-color: #f4f6f9;
@@ -85,30 +93,34 @@ function renderLoginView(erro = null, returnTo = '') {
                 padding-right: 0.5rem;
             }
 
+            /* Inputs com altura reduzida */
             .form-control-custom {
                 border: none;
                 background-color: transparent;
-                padding: 1rem 1.2rem 1rem 0.5rem;
-                font-size: 1rem;
+                padding: 0.7rem 1.2rem 0.7rem 0.5rem; 
+                font-size: 0.95rem; 
                 color: #212529;
+                width: 100%;
             }
             
             .form-control-custom:focus {
                 box-shadow: none;
                 background-color: transparent;
+                outline: none;
             }
 
             .form-control-custom::placeholder {
                 color: #adb5bd;
             }
 
-            /* Botões */
+            /* Botões mais elegantes e menos espessos */
             .btn-custom {
                 border-radius: 12px;
-                padding: 0.9rem;
+                padding: 0.7rem; 
                 font-weight: 700;
                 letter-spacing: 0.5px;
                 transition: all 0.3s;
+                height: 48px;
             }
             .btn-custom:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(13, 110, 253, 0.3); }
             
@@ -118,6 +130,7 @@ function renderLoginView(erro = null, returnTo = '') {
                 border: 2px solid #e9ecef;
                 color: #6c757d;
                 transition: all 0.3s;
+                height: 48px;
             }
             .btn-reset:hover {
                 background-color: #e9ecef;
@@ -138,8 +151,64 @@ function renderLoginView(erro = null, returnTo = '') {
             }
             .back-link:hover { color: white; }
 
+            /* Margem entre grupos de inputs reduzida para Desktop */
+            .mb-3 { margin-bottom: 0.85rem !important; }
+
+            /* ==========================================
+               RESPONSIVIDADE EXTREMA (MOBILE)
+               ========================================== */
             @media (max-width: 767.98px) {
-                .right-column { padding: 2.5rem; }
+                #bg-wrapper { 
+                    padding: 0; 
+                    background-image: none !important; /* Desliga imagem de fundo no mobile */
+                    background-color: #ffffff;
+                }
+                
+                .login-card { 
+                    border-radius: 0; 
+                    box-shadow: none; 
+                    min-height: 100vh; /* Ocupa a tela inteira */
+                    max-width: 100%;
+                }
+                
+                .right-column { 
+                    padding: 1.5rem 1.5rem; 
+                    max-height: none; 
+                    overflow-y: visible; 
+                    justify-content: flex-start; /* Alinha os elementos mais no topo */
+                }
+
+                h2 { font-size: 1.6rem; margin-bottom: 0.25rem !important; }
+                p.text-muted { font-size: 0.85rem; margin-bottom: 1.5rem !important; }
+                
+                .form-label { font-size: 0.8rem !important; margin-bottom: 0.2rem !important; }
+                
+                /* Reduz tamanho dos inputs */
+                .form-control-custom {
+                    padding: 0.5rem 0.8rem 0.5rem 0.4rem;
+                    font-size: 0.9rem;
+                }
+                
+                .input-group-text-custom {
+                    padding-left: 0.8rem;
+                    font-size: 0.9rem;
+                }
+
+                .input-group-custom { border-radius: 10px; }
+
+                /* Reduz margens */
+                .mb-3 { margin-bottom: 0.8rem !important; }
+                .mb-4 { margin-bottom: 1.2rem !important; }
+
+                /* Ajuste dos botões finais */
+                .btn-custom, .btn-reset {
+                    height: 42px; 
+                    font-size: 0.95rem;
+                    border-radius: 10px;
+                    padding: 0.5rem;
+                }
+                
+                .mobile-back-btn { margin-bottom: 1.5rem !important; font-size: 0.9rem; }
             }
         </style>
     </head>
@@ -197,7 +266,7 @@ function renderLoginView(erro = null, returnTo = '') {
 
                     <div class="col-md-6 right-column relative">
                         
-                        <a href="/" class="text-decoration-none text-muted mb-4 d-md-none fw-semibold">
+                        <a href="/" class="text-decoration-none text-muted mobile-back-btn d-md-none fw-semibold">
                             <i class="bi bi-arrow-left me-1"></i> Voltar
                         </a>
 
@@ -233,11 +302,11 @@ function renderLoginView(erro = null, returnTo = '') {
                             </div>
                             
                             <div class="d-flex gap-2 mt-4">
-                                <button type="reset" class="btn btn-reset px-3" title="Limpar campos">
+                                <button type="reset" class="btn btn-reset px-3 shadow-sm d-flex align-items-center justify-content-center" title="Limpar campos">
                                     <i class="bi bi-eraser-fill fs-5"></i>
                                 </button>
-                                <button type="submit" class="btn btn-primary btn-custom shadow-sm flex-grow-1">
-                                    Entrar na Plataforma <i class="bi bi-arrow-right ms-1"></i>
+                                <button type="submit" class="btn btn-primary btn-custom shadow-sm flex-grow-1 d-flex align-items-center justify-content-center">
+                                    Entrar na Plataforma <i class="bi bi-arrow-right ms-2 fs-5"></i>
                                 </button>
                             </div>
                         </form>
@@ -280,13 +349,15 @@ function renderLoginView(erro = null, returnTo = '') {
                 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1920&auto=format&fit=crop'  
             ];
 
-            const imagemSorteada = imagensEstudo[Math.floor(Math.random() * imagensEstudo.length)];
-            
-            const wrapper = document.getElementById('bg-wrapper');
-            wrapper.style.backgroundImage = 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(' + imagemSorteada + ')';
-            wrapper.style.backgroundSize = 'cover';
-            wrapper.style.backgroundPosition = 'center';
-            wrapper.style.backgroundRepeat = 'no-repeat';
+            // Só aplica imagem de fundo no desktop para poupar dados e bateria no mobile
+            if (window.innerWidth > 767.98) {
+                const imagemSorteada = imagensEstudo[Math.floor(Math.random() * imagensEstudo.length)];
+                const wrapper = document.getElementById('bg-wrapper');
+                wrapper.style.backgroundImage = 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(' + imagemSorteada + ')';
+                wrapper.style.backgroundSize = 'cover';
+                wrapper.style.backgroundPosition = 'center';
+                wrapper.style.backgroundRepeat = 'no-repeat';
+            }
 
             // ==========================================
             // LÓGICA ORIGINAL MANTIDA INTACTA

@@ -54,14 +54,14 @@ function renderCadastroView(erro = null) {
             .carousel-indicators .active { background-color: white; }
 
             /* Coluna da Direita mais compacta */
-.right-column {
-    padding: 2rem 3rem; /* Reduzido o padding vertical */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    max-height: 95vh; /* Aumentado levemente para aproveitar mais a tela */
-    overflow-y: auto;
-}
+            .right-column {
+                padding: 2rem 3rem; 
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                max-height: 95vh; 
+                overflow-y: auto;
+            }
 
             /* Scrollbar customizada para a coluna direita */
             .right-column::-webkit-scrollbar { width: 6px; }
@@ -95,14 +95,14 @@ function renderCadastroView(erro = null) {
             }
 
             /* Inputs com altura reduzida */
-.form-control-custom, .form-select-custom {
-    border: none;
-    background-color: transparent;
-    padding: 0.7rem 1.2rem 0.7rem 0.5rem; /* Padding reduzido de 1rem para 0.7rem */
-    font-size: 0.95rem; /* Fonte levemente menor para equilíbrio */
-    color: #212529;
-    width: 100%;
-}
+            .form-control-custom, .form-select-custom {
+                border: none;
+                background-color: transparent;
+                padding: 0.7rem 1.2rem 0.7rem 0.5rem; 
+                font-size: 0.95rem; 
+                color: #212529;
+                width: 100%;
+            }
             
             .form-control-custom:focus, .form-select-custom:focus {
                 box-shadow: none;
@@ -115,13 +115,14 @@ function renderCadastroView(erro = null) {
             }
 
             /* Botões mais elegantes e menos espessos */
-.btn-custom {
-    border-radius: 12px;
-    padding: 0.7rem; /* Reduzido de 0.9rem para 0.7rem */
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    transition: all 0.3s;
-}
+            .btn-custom {
+                border-radius: 12px;
+                padding: 0.7rem; 
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                transition: all 0.3s;
+                height: 48px;
+            }
             .btn-custom:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(25, 135, 84, 0.3); }
             
             .btn-reset {
@@ -130,6 +131,7 @@ function renderCadastroView(erro = null) {
                 border: 2px solid #e9ecef;
                 color: #6c757d;
                 transition: all 0.3s;
+                height: 48px;
             }
             .btn-reset:hover {
                 background-color: #e9ecef;
@@ -150,13 +152,69 @@ function renderCadastroView(erro = null) {
             }
             .back-link:hover { color: white; }
 
-            @media (max-width: 767.98px) {
-                .right-column { padding: 2.5rem 1.5rem; max-height: 100%; overflow-y: visible; }
-                .auth-card { border-radius: 16px; }
-            }
+            /* Margem entre grupos de inputs reduzida para Desktop */
+            .mb-3 { margin-bottom: 0.85rem !important; }
 
-            /* Margem entre grupos de inputs reduzida */
-.mb-3 { margin-bottom: 0.85rem !important; }
+            /* ==========================================
+               RESPONSIVIDADE EXTREMA (MOBILE)
+               ========================================== */
+            @media (max-width: 767.98px) {
+                #bg-wrapper { 
+                    padding: 0; /* Remove o fundo nas bordas */
+                    background-image: none !important; /* Pode remover o fundo se quiser otimizar, ou manter */
+                    background-color: #ffffff;
+                }
+                
+                .auth-card { 
+                    border-radius: 0; 
+                    box-shadow: none; 
+                    min-height: 100vh; /* Ocupa a tela inteira */
+                    max-width: 100%;
+                }
+                
+                .right-column { 
+                    padding: 1.5rem 1rem; /* Margens laterais e topo muito mais curtas */
+                    max-height: none; 
+                    overflow-y: visible; 
+                    justify-content: flex-start; /* Alinha no topo */
+                }
+
+                h2 { font-size: 1.6rem; mb-1 !important; }
+                p.text-muted { font-size: 0.85rem; margin-bottom: 1.2rem !important; }
+                
+                .form-label { font-size: 0.8rem !important; margin-bottom: 0.2rem !important; }
+                
+                /* Reduz tamanho dos inputs */
+                .form-control-custom, .form-select-custom {
+                    padding: 0.5rem 0.8rem 0.5rem 0.4rem;
+                    font-size: 0.9rem;
+                }
+                
+                .input-group-text-custom {
+                    padding-left: 0.8rem;
+                    font-size: 0.9rem;
+                }
+
+                .input-group-custom { border-radius: 10px; }
+
+                /* Reduz margens do grid do Bootstrap */
+                .row.g-3 { --bs-gutter-y: 0.6rem; --bs-gutter-x: 0.6rem; }
+                .mb-3 { margin-bottom: 0.6rem !important; }
+                .mb-4 { margin-bottom: 1rem !important; }
+
+                /* Ajuste dos botões finais */
+                .btn-custom, .btn-reset {
+                    height: 42px; /* Botões mais finos */
+                    font-size: 0.95rem;
+                    border-radius: 10px;
+                    padding: 0.5rem;
+                }
+
+                /* Checkbox menor */
+                .form-check-label { font-size: 0.8rem !important; }
+                
+                .mobile-back-btn { margin-bottom: 1rem !important; font-size: 0.9rem; }
+            }
         </style>
     </head>
     <body>
@@ -185,22 +243,18 @@ function renderCadastroView(erro = null) {
 
                         <div id="carouselMotivation" class="carousel slide w-100 px-3" data-bs-ride="carousel" data-bs-interval="4000">
                             <div class="carousel-inner text-center" style="min-height: 120px;">
-                                
                                 <div class="carousel-item active">
                                     <h4 class="fw-bold lh-base">Comece a sua jornada de sucesso.</h4>
                                     <p class="text-white-50 mt-3 mb-0">Crie a sua conta e tenha acesso a conteúdos exclusivos de alto nível.</p>
                                 </div>
-                                
                                 <div class="carousel-item">
                                     <h4 class="fw-bold lh-base">Qualificação prática e direto ao ponto.</h4>
                                     <p class="text-white-50 mt-3 mb-0">Aprenda com quem entende do mercado e destaque-se nas vagas.</p>
                                 </div>
-
                                 <div class="carousel-item">
                                     <h4 class="fw-bold lh-base">Estude onde e quando quiser.</h4>
                                     <p class="text-white-50 mt-3 mb-0">Uma plataforma completa pensada no seu desenvolvimento profissional.</p>
                                 </div>
-
                             </div>
                             <div class="carousel-indicators position-relative mt-5 pt-3">
                                 <button type="button" data-bs-target="#carouselMotivation" data-bs-slide-to="0" class="active"></button>
@@ -213,7 +267,7 @@ function renderCadastroView(erro = null) {
 
                     <div class="col-md-7 col-lg-7 right-column relative">
                         
-                        <a href="/" class="text-decoration-none text-muted mb-4 d-md-none fw-semibold">
+                        <a href="/" class="text-decoration-none text-muted mobile-back-btn d-md-none fw-semibold">
                             <i class="bi bi-arrow-left me-1"></i> Voltar
                         </a>
 
@@ -298,57 +352,39 @@ function renderCadastroView(erro = null) {
                                         <span class="input-group-text-custom"><i class="bi bi-geo-alt fs-5"></i></span>
                                         <select class="form-select-custom bg-transparent border-0" id="estado" name="estado" required style="cursor: pointer;">
                                             <option value="" selected disabled>Sigla</option>
-                                            <option value="AC">AC</option>
-                                            <option value="AL">AL</option>
-                                            <option value="AP">AP</option>
-                                            <option value="AM">AM</option>
-                                            <option value="BA">BA</option>
-                                            <option value="CE">CE</option>
-                                            <option value="DF">DF</option>
-                                            <option value="ES">ES</option>
-                                            <option value="GO">GO</option>
-                                            <option value="MA">MA</option>
-                                            <option value="MT">MT</option>
-                                            <option value="MS">MS</option>
-                                            <option value="MG">MG</option>
-                                            <option value="PA">PA</option>
-                                            <option value="PB">PB</option>
-                                            <option value="PR">PR</option>
-                                            <option value="PE">PE</option>
-                                            <option value="PI">PI</option>
-                                            <option value="RJ">RJ</option>
-                                            <option value="RN">RN</option>
-                                            <option value="RS">RS</option>
-                                            <option value="RO">RO</option>
-                                            <option value="RR">RR</option>
-                                            <option value="SC">SC</option>
-                                            <option value="SP">SP</option>
-                                            <option value="SE">SE</option>
-                                            <option value="TO">TO</option>
+                                            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                                            <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                                            <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                                            <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                                            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                                            <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                                            <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                                            <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                                            <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
                                         </select>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="form-check mb-4 mt-3 ms-1">
+                            <div class="form-check mb-3 mt-2 ms-1">
                                 <input class="form-check-input border-secondary" type="checkbox" id="aceiteTermos" required>
                                 <label class="form-check-label text-muted small" for="aceiteTermos" style="padding-top: 1px;">
                                     Eu li e concordo com os 
-                                    <a href="#" class="text-primary fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalTermos">Termos de Uso e Privacidade</a> da plataforma.
+                                    <a href="#" class="text-primary fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalTermos">Termos de Uso e Privacidade</a>.
                                 </label>
                             </div>
                             
                             <div class="d-flex gap-2 mt-2">
-    <button type="reset" class="btn btn-reset px-3 shadow-sm d-flex align-items-center" title="Limpar todos os campos" style="height: 48px;">
-        <i class="bi bi-eraser-fill fs-5"></i>
-    </button>
-    <button type="submit" class="btn btn-success btn-custom shadow-sm flex-grow-1 d-flex align-items-center justify-content-center" style="height: 48px;">
-        Finalizar Registo <i class="bi bi-check2-circle ms-2 fs-5"></i>
-    </button>
-</div>
+                                <button type="reset" class="btn btn-reset px-3 shadow-sm d-flex align-items-center justify-content-center" title="Limpar todos os campos">
+                                    <i class="bi bi-eraser-fill fs-5"></i>
+                                </button>
+                                <button type="submit" class="btn btn-success btn-custom shadow-sm flex-grow-1 d-flex align-items-center justify-content-center">
+                                    Finalizar Registo <i class="bi bi-check2-circle ms-2 fs-5"></i>
+                                </button>
+                            </div>
                         </form>
 
-                        <div class="text-center mt-4 pt-4 border-top">
+                        <div class="text-center mt-4 pt-3 border-top">
                             <p class="text-muted small mb-0">Já tem uma conta?</p>
                             <a href="/" class="text-primary fw-bold text-decoration-none hover-shadow transition" style="font-size: 0.95rem;">Faça login aqui</a>
                         </div>
@@ -398,18 +434,16 @@ function renderCadastroView(erro = null) {
             // LÓGICA DE VALIDAÇÃO DE SENHA E TERMOS
             // ==========================================
             
-            // Função para o botão do Modal marcar o checkbox automaticamente
             function aceitarTermosAutomaticamente() {
                 document.getElementById('aceiteTermos').checked = true;
             }
 
-            // Validação de senhas no Submit
             document.getElementById('formCadastro').addEventListener('submit', function(e) {
                 const senha = document.getElementById('senha').value;
                 const confSenha = document.getElementById('confirmar_senha').value;
                 
                 if (senha !== confSenha) {
-                    e.preventDefault(); // Impede o formulário de ser enviado
+                    e.preventDefault(); 
                     alert('As senhas não coincidem. Por favor, digite senhas idênticas.');
                     document.getElementById('confirmar_senha').focus();
                 }
@@ -425,21 +459,20 @@ function renderCadastroView(erro = null) {
                 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1920&auto=format&fit=crop'  
             ];
 
-            // Sorteia uma imagem
-            const imagemSorteada = imagensEstudo[Math.floor(Math.random() * imagensEstudo.length)];
-            
-            // Aplica a imagem com um gradiente escuro por cima
-            const wrapper = document.getElementById('bg-wrapper');
-            wrapper.style.backgroundImage = 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(' + imagemSorteada + ')';
-            wrapper.style.backgroundSize = 'cover';
-            wrapper.style.backgroundPosition = 'center';
-            wrapper.style.backgroundRepeat = 'no-repeat';
+            // Só aplica imagem de fundo no desktop para poupar dados e bateria no mobile
+            if (window.innerWidth > 767.98) {
+                const imagemSorteada = imagensEstudo[Math.floor(Math.random() * imagensEstudo.length)];
+                const wrapper = document.getElementById('bg-wrapper');
+                wrapper.style.backgroundImage = 'linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), url(' + imagemSorteada + ')';
+                wrapper.style.backgroundSize = 'cover';
+                wrapper.style.backgroundPosition = 'center';
+                wrapper.style.backgroundRepeat = 'no-repeat';
+            }
 
             // ==========================================
             // LÓGICA ORIGINAL MANTIDA INTACTA
             // ==========================================
             
-            // Faz o badge sumir suavemente após 4 segundos
             ${erro ? `
                 setTimeout(function() {
                     const badge = document.getElementById('errorBadge');
@@ -450,7 +483,6 @@ function renderCadastroView(erro = null) {
                 }, 4000);
             ` : ''}
 
-            // Loader no carregamento e "Voltar"
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {
@@ -464,7 +496,6 @@ function renderCadastroView(erro = null) {
                 }
             });
 
-            // Loader no submit/click
             window.addEventListener('beforeunload', function() {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {

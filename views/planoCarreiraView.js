@@ -1,4 +1,5 @@
 // views/planoCarreiraView.js
+const renderMainHeader = require('./mainHeader');
 
 function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
     
@@ -51,7 +52,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
         <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; overflow-x: hidden; }
             .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
             .transition { transition: all 0.3s ease; }
             
@@ -69,22 +70,61 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             .hover-white:hover { color: #ffffff !important; }
 
             /* ==========================================
+               DESIGN DOS CONTAINERS (INPUTS MODERNOS)
+               ========================================== */
+            .input-group-custom {
+                background-color: #f4f6f9;
+                border-radius: 14px;
+                border: 2px solid #e9ecef;
+                transition: all 0.3s ease;
+                overflow: hidden;
+            }
+            .input-group-custom:focus-within {
+                background-color: #ffffff;
+                border-color: #0d6efd;
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+            }
+            .input-group-text-custom {
+                background-color: transparent;
+                border: none;
+                color: #6c757d;
+                padding-left: 1.2rem;
+                padding-right: 0.5rem;
+            }
+            .form-control-custom, .form-select-custom {
+                border: none;
+                background-color: transparent;
+                padding: 0.7rem 1.2rem 0.7rem 0.5rem;
+                font-size: 0.95rem;
+                color: #212529;
+                width: 100%;
+            }
+            .form-control-custom:focus, .form-select-custom:focus {
+                box-shadow: none; background-color: transparent; outline: none;
+            }
+            .form-control-custom::placeholder { color: #adb5bd; }
+
+            .btn-custom {
+                border-radius: 12px;
+                padding: 0.7rem;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+                transition: all 0.3s;
+                height: 48px;
+            }
+
+            /* ==========================================
                CSS: MENTOR BOT FLUTUANTE & FOGUETE
                ========================================== */
-               
-            /* Foguete de Entrada */
             .rocket-intro { position: fixed; bottom: -150px; right: 40px; z-index: 1060; font-size: 5.5rem; transform: rotate(-45deg); pointer-events: none; animation: rocketFlight 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
             @keyframes rocketFlight { 
                 0% { bottom: -150px; opacity: 1; } 
-                35% { bottom: 20px; opacity: 1; } /* Estaciona */
-                55% { bottom: 20px; opacity: 1; } /* Solta o robô */
-                100% { bottom: 150vh; opacity: 1; } /* Decola para o espaço */
+                35% { bottom: 20px; opacity: 1; } 
+                55% { bottom: 20px; opacity: 1; } 
+                100% { bottom: 150vh; opacity: 1; } 
             }
 
-            /* O Robô Flutuante (Inicia invisível) */
             .bot-flutuante { position: fixed; bottom: 30px; right: 30px; z-index: 1050; cursor: pointer; opacity: 0; pointer-events: none; }
-            
-            /* Classe adicionada via JS após o foguete chegar */
             .bot-flutuante.bot-ativo { opacity: 1; pointer-events: auto; animation: botSpawn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, floatBot 3s ease-in-out infinite 0.6s; }
             
             .bot-icon-bg { width: 85px; height: 85px; font-size: 2.5rem; background: linear-gradient(135deg, #0d6efd, #6610f2); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(13, 110, 253, 0.5); transition: transform 0.3s; border: 4px solid white; }
@@ -96,82 +136,61 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             @keyframes botSpawn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
             @keyframes floatBot { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
             
-            /* Mecânicas Gamificadas do Quiz */
+            /* Gamificação */
             .btn-quiz-opcao { transition: all 0.2s; border-width: 2px; }
             .btn-quiz-opcao:hover:not(:disabled) { background-color: #f8f9fa; border-color: #0d6efd; color: #0d6efd; transform: translateX(5px); }
-            
-            /* Jogo: Balões */
             .balao-container { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
             .balao-item { width: 140px; height: 160px; background: linear-gradient(135deg, #ff6b6b, #dc3545); border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; color: white; display: flex; align-items: center; justify-content: center; text-align: center; padding: 15px; font-weight: bold; cursor: pointer; transition: all 0.3s; box-shadow: 0 8px 15px rgba(220, 53, 69, 0.3); animation: floatBalloon 4s ease-in-out infinite alternate; font-size: 0.9rem;}
             .balao-item:nth-child(even) { animation-delay: 1s; background: linear-gradient(135deg, #fd7e14, #ffc107); box-shadow: 0 8px 15px rgba(253, 126, 20, 0.3);}
             .balao-item:hover { transform: scale(1.1); filter: brightness(1.1); }
             .balao-item.popped { transform: scale(0); opacity: 0; pointer-events: none; transition: transform 0.2s, opacity 0.2s; }
             @keyframes floatBalloon { 0% { transform: translateY(0px); } 100% { transform: translateY(-10px); } }
-
-            /* Jogo: Mito ou Verdade */
             .card-mito-verdade { border: 3px solid transparent; border-radius: 20px; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
             .card-mito-verdade:hover { transform: translateY(-5px); }
             .card-mito { background-color: #fff5f5; border-color: #dc3545; color: #dc3545; }
             .card-verdade { background-color: #f0fdf4; border-color: #198754; color: #198754; }
             .card-mito-verdade.disabled { opacity: 0.6; pointer-events: none; filter: grayscale(100%); }
-
             .shake-animation { animation: shake 0.5s; }
             @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-10px); } 50% { transform: translateX(10px); } 75% { transform: translateX(-10px); } 100% { transform: translateX(0); } }
+
+            /* ==========================================
+               RESPONSIVIDADE EXTREMA (MOBILE)
+               ========================================== */
+            @media (max-width: 767.98px) {
+                .hero-section { padding: 40px 0; }
+                .hero-title { font-size: 2.2rem; }
+                .hero-img { height: 250px; }
+                
+                #gerador-cv .card { border-radius: 0 !important; box-shadow: none !important; border-top: 1px solid #eaeaea !important; }
+                #gerador-cv .card-body { padding: 1.5rem 1rem !important; }
+                
+                .form-control-custom, .form-select-custom { padding: 0.5rem 0.8rem 0.5rem 0.4rem; font-size: 0.9rem; }
+                .input-group-text-custom { padding-left: 0.8rem; font-size: 0.9rem; }
+                .input-group-custom { border-radius: 10px; }
+                .mb-3 { margin-bottom: 0.85rem !important; }
+                .btn-custom { height: 42px; padding: 0.5rem; font-size: 0.95rem; border-radius: 10px; }
+                
+                .bot-icon-bg { width: 65px; height: 65px; font-size: 1.8rem; }
+                .bot-balao { width: 220px; font-size: 0.85rem; bottom: 75px; right: 20px; padding: 10px 15px; }
+            }
         </style>
     </head>
     <body>
 
-        <nav class="navbar navbar-expand-lg navbar-custom sticky-top py-3">
-            <div class="container">
-                <a class="navbar-brand fw-bold text-primary fs-3" href="/">OnStude<span class="text-dark">.</span></a>
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse" id="navbarMain">
-                    <ul class="navbar-nav ms-lg-4 me-auto align-items-lg-center">
-                        <li class="nav-item me-lg-2"><a class="nav-link fw-semibold text-primary hover-primary" href="/plano-de-carreira">Plano de Carreira</a></li>
-                        <li class="nav-item me-lg-3"><a class="nav-link fw-semibold text-dark hover-primary" href="/#secao-cursos">Categorias</a></li>
-                        <li class="nav-item mt-3 mt-lg-0" style="min-width: 300px;">
-                            <form class="position-relative">
-                                <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                                <input type="search" class="form-control search-bar-header py-2" placeholder="O que você quer aprender hoje?">
-                            </form>
-                        </li>
-                    </ul>
-
-                    <div class="d-flex flex-column flex-lg-row align-items-lg-center mt-3 mt-lg-0 gap-3">
-                        <a href="#" class="text-dark text-decoration-none position-relative me-lg-2 fs-5">
-                            <i class="bi bi-cart3"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" style="width: 10px; height: 10px;"></span>
-                        </a>
-                        ${usuarioLogado ? `
-                            <div class="d-flex align-items-center ms-lg-2">
-                                <div class="d-flex align-items-center me-3 text-dark">
-                                    ${usuarioLogado.foto_perfil_url 
-                                        ? `<img src="${usuarioLogado.foto_perfil_url}" alt="Foto" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover; border: 2px solid #0d6efd;">` 
-                                        : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-primary text-white fw-bold" style="width: 36px; height: 36px; border: 2px solid #0d6efd; font-size: 14px;">${usuarioLogado.nome.charAt(0).toUpperCase()}</div>`
-                                    }
-                                    <span class="d-none d-md-inline">Olá, <strong>${usuarioLogado.nome.split(' ')[0]}</strong></span>
-                                </div>
-                                <a href="${usuarioLogado.tipo === 'ADMIN' ? '/admin' : '/aluno'}" class="btn btn-primary fw-bold px-4 rounded-pill me-2">Meu Painel</a>
-                                <a href="/logout" class="btn btn-outline-danger fw-bold px-4 rounded-pill">Sair</a>
-                            </div>
-                        ` : `
-                            <a href="/login?returnTo=/plano-de-carreira" class="btn btn-outline-dark fw-bold px-4 rounded-pill">Entrar</a>
-                            <a href="/cadastro" class="btn btn-primary fw-bold px-4 rounded-pill">Criar Conta</a>
-                        `}
-                    </div>
-                </div>
+        <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
+            <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
+                <span class="visually-hidden">Carregando...</span>
             </div>
-        </nav>
+        </div>
+
+        ${renderMainHeader(usuarioLogado)}
 
         <section class="hero-section overflow-hidden border-bottom">
             <div class="container">
                 <div class="row align-items-center">
                     <div class="col-lg-6 mb-5 mb-lg-0 pe-lg-5 text-center text-lg-start">
                         <span class="badge bg-primary bg-opacity-10 text-primary mb-3 px-3 py-2 rounded-pill fw-bold">🚀 Impulsione o seu Futuro</span>
-                        <h1 class="hero-title mb-4">Crie seu currículo ou escolha um dos <span class="text-primary">modelos</span> para editar conforme sua necessidade.</h1>
+                        <h1 class="hero-title mb-4">Crie seu currículo ou escolha um dos <span class="text-primary">modelos</span> para editar.</h1>
                         <p class="hero-subtitle mb-5">Tenha mais visibilidade nos processos seletivos. Utilize a nossa ferramenta gratuita para construir um currículo profissional em PDF em minutos.</p>
                         <div class="d-flex flex-column flex-sm-row justify-content-center justify-content-lg-start gap-3">
                             <a href="#gerador-cv" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow-sm">Criar Currículo PDF Agora</a>
@@ -205,7 +224,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                         <p class="text-muted fs-5 mb-0">Baixe no formato Word (.docx) e edite no seu computador.</p>
                     </div>
                 </div>
-                <div class="p-4 rounded-4 border bg-light position-relative">
+                <div class="p-4 rounded-4 border bg-light position-relative mx-2 mx-md-0">
                     <div class="swiper mySwiper">
                         <div class="swiper-wrapper py-3">
                             ${htmlModelosSlider}
@@ -218,10 +237,10 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
         </section>
 
         <section id="gerador-cv" class="py-5 bg-light border-top">
-            <div class="container">
-                <div class="row justify-content-center">
-                    <div class="col-lg-10">
-                        <div class="text-center mb-5">
+            <div class="container px-0 px-md-3">
+                <div class="row justify-content-center mx-0">
+                    <div class="col-lg-10 px-0 px-md-3">
+                        <div class="text-center mb-5 px-3 px-md-0">
                             <h2 class="fw-bold text-dark">Gerador Automático de Currículo</h2>
                             <p class="text-muted">Preencha os dados abaixo. Nós usamos o nosso motor inteligente para desenhar e entregar o PDF instantaneamente.</p>
                         </div>
@@ -233,132 +252,181 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                     <h5 class="fw-bold text-primary mb-4 border-bottom pb-2"><i class="bi bi-person-vcard me-2"></i>1. Cabeçalho e Dados Pessoais</h5>
                                     <div class="row g-3 mb-5">
                                         <div class="col-md-8">
-                                            <label class="form-label fw-semibold">Nome Completo *</label>
-                                            <input type="text" id="cvNome" class="form-control bg-light" required placeholder="Ex: João da Silva Santos">
+                                            <label class="form-label fw-bold text-dark ms-1 small">Nome Completo *</label>
+                                            <div class="input-group-custom d-flex align-items-center">
+                                                <span class="input-group-text-custom"><i class="bi bi-person"></i></span>
+                                                <input type="text" id="cvNome" class="form-control form-control-custom" required placeholder="Ex: João da Silva Santos">
+                                            </div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-semibold">Data de Nascimento</label>
-                                            <input type="date" id="cvNascimento" class="form-control bg-light">
+                                            <label class="form-label fw-bold text-dark ms-1 small">Data de Nascimento</label>
+                                            <div class="input-group-custom d-flex align-items-center">
+                                                <span class="input-group-text-custom"><i class="bi bi-calendar-date"></i></span>
+                                                <input type="date" id="cvNascimento" class="form-control form-control-custom">
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-semibold">Bairro</label>
-                                            <input type="text" id="cvBairro" class="form-control bg-light" placeholder="Ex: Centro">
+                                            <label class="form-label fw-bold text-dark ms-1 small">Bairro</label>
+                                            <div class="input-group-custom d-flex align-items-center">
+                                                <span class="input-group-text-custom"><i class="bi bi-geo-alt"></i></span>
+                                                <input type="text" id="cvBairro" class="form-control form-control-custom" placeholder="Ex: Centro">
+                                            </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label fw-semibold">Cidade / Estado *</label>
-                                            <input type="text" id="cvCidade" class="form-control bg-light" required placeholder="Ex: Camaçari - BA">
+                                            <label class="form-label fw-bold text-dark ms-1 small">Cidade / Estado *</label>
+                                            <div class="input-group-custom d-flex align-items-center">
+                                                <span class="input-group-text-custom"><i class="bi bi-buildings"></i></span>
+                                                <input type="text" id="cvCidade" class="form-control form-control-custom" required placeholder="Ex: Camaçari - BA">
+                                            </div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-semibold">Celular / WhatsApp *</label>
-                                            <input type="text" id="cvTel1" class="form-control bg-light" required placeholder="(00) 00000-0000">
+                                            <label class="form-label fw-bold text-dark ms-1 small">Celular / WhatsApp *</label>
+                                            <div class="input-group-custom d-flex align-items-center">
+                                                <span class="input-group-text-custom"><i class="bi bi-whatsapp"></i></span>
+                                                <input type="text" id="cvTel1" class="form-control form-control-custom" required placeholder="(00) 00000-0000">
+                                            </div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-semibold">Telefone Recado (Opcional)</label>
-                                            <input type="text" id="cvTel2" class="form-control bg-light" placeholder="(00) 0000-0000">
+                                            <label class="form-label fw-bold text-dark ms-1 small">Telefone Recado (Opcional)</label>
+                                            <div class="input-group-custom d-flex align-items-center">
+                                                <span class="input-group-text-custom"><i class="bi bi-telephone"></i></span>
+                                                <input type="text" id="cvTel2" class="form-control form-control-custom" placeholder="(00) 0000-0000">
+                                            </div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label fw-semibold">E-mail *</label>
-                                            <input type="email" id="cvEmail" class="form-control bg-light" required placeholder="seuemail@email.com">
+                                            <label class="form-label fw-bold text-dark ms-1 small">E-mail *</label>
+                                            <div class="input-group-custom d-flex align-items-center">
+                                                <span class="input-group-text-custom"><i class="bi bi-envelope"></i></span>
+                                                <input type="email" id="cvEmail" class="form-control form-control-custom" required placeholder="seuemail@email.com">
+                                            </div>
                                         </div>
                                     </div>
 
                                     <h5 class="fw-bold text-primary mb-4 border-bottom pb-2"><i class="bi bi-chat-text me-2"></i>2. Apresentação e Objetivos</h5>
                                     <div class="mb-5">
-                                        <label class="form-label fw-semibold">Fale um pouco sobre você, suas pretensões e objetivos profissionais *</label>
-                                        <textarea id="cvResumo" class="form-control bg-light" rows="4" required placeholder="Sou um profissional dedicado, em busca de oportunidades na área de..."></textarea>
+                                        <label class="form-label fw-bold text-dark ms-1 small">Fale um pouco sobre você, suas pretensões e objetivos profissionais *</label>
+                                        <div class="input-group-custom">
+                                            <textarea id="cvResumo" class="form-control form-control-custom" rows="4" required placeholder="Sou um profissional dedicado, em busca de oportunidades na área de..." style="resize: none;"></textarea>
+                                        </div>
                                     </div>
 
                                     <h5 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="bi bi-mortarboard me-2"></i>3. Formação Acadêmica</h5>
                                     <div id="containerFormacao">
-                                        <div class="row g-3 mb-3 p-3 border rounded bg-light position-relative item-formacao">
-                                            <button type="button" class="btn-close position-absolute top-0 end-0 m-2 remover-item" aria-label="Close" style="display:none;"></button>
+                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-light bg-opacity-50 position-relative item-formacao">
+                                            <button type="button" class="btn-close position-absolute top-0 end-0 m-3 remover-item shadow-none" aria-label="Close" style="display:none;"></button>
                                             <div class="col-md-4">
-                                                <label class="form-label fw-semibold small">Nível</label>
-                                                <select class="form-select f-nivel">
-                                                    <option value="Ensino Fundamental">Ensino Fundamental</option>
-                                                    <option value="Ensino Médio" selected>Ensino Médio</option>
-                                                    <option value="Técnico">Técnico</option>
-                                                    <option value="Graduação">Graduação</option>
-                                                    <option value="Pós-Graduação">Pós-Graduação</option>
-                                                </select>
+                                                <label class="form-label fw-bold text-dark ms-1 small">Nível</label>
+                                                <div class="input-group-custom pe-2">
+                                                    <select class="form-select form-control-custom f-nivel bg-transparent border-0" style="cursor: pointer;">
+                                                        <option value="Ensino Fundamental">Ensino Fundamental</option>
+                                                        <option value="Ensino Médio" selected>Ensino Médio</option>
+                                                        <option value="Técnico">Técnico</option>
+                                                        <option value="Graduação">Graduação</option>
+                                                        <option value="Pós-Graduação">Pós-Graduação</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div class="col-md-8">
-                                                <label class="form-label fw-semibold small">Curso / Graduação (Opcional)</label>
-                                                <input type="text" class="form-control f-curso" placeholder="Ex: Administração, ADS, Informática">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Curso / Graduação (Opcional)</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom f-curso" placeholder="Ex: Administração, Informática">
+                                                </div>
                                             </div>
                                             <div class="col-md-12">
-                                                <label class="form-label fw-semibold small">Instituição de Ensino</label>
-                                                <input type="text" class="form-control f-escola" placeholder="Nome da Escola/Faculdade">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Instituição de Ensino</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom f-escola" placeholder="Nome da Escola/Faculdade">
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Status</label>
-                                                <select class="form-select f-status">
-                                                    <option value="Concluído">Concluído</option>
-                                                    <option value="Em Andamento">Em Andamento</option>
-                                                    <option value="Incompleto">Incompleto</option>
-                                                </select>
+                                                <label class="form-label fw-bold text-dark ms-1 small">Status</label>
+                                                <div class="input-group-custom pe-2">
+                                                    <select class="form-select form-control-custom f-status bg-transparent border-0" style="cursor: pointer;">
+                                                        <option value="Concluído">Concluído</option>
+                                                        <option value="Em Andamento">Em Andamento</option>
+                                                        <option value="Incompleto">Incompleto</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Ano (Conclusão ou Previsão)</label>
-                                                <input type="text" class="form-control f-ano" placeholder="Ex: 2025">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Ano (Conclusão ou Previsão)</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom f-ano" placeholder="Ex: 2025">
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold mb-5" onclick="adicionarFormacao()">+ Adicionar outra Formação</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mb-5 px-3" onclick="adicionarFormacao()">+ Adicionar outra Formação</button>
 
                                     <h5 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="bi bi-award me-2"></i>4. Cursos e Aprimorações</h5>
                                     <div id="containerCursos">
-                                        <div class="row g-3 mb-3 p-3 border rounded bg-light position-relative item-curso">
-                                            <button type="button" class="btn-close position-absolute top-0 end-0 m-2 remover-item" aria-label="Close" style="display:none;"></button>
+                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-light bg-opacity-50 position-relative item-curso">
+                                            <button type="button" class="btn-close position-absolute top-0 end-0 m-3 remover-item shadow-none" aria-label="Close" style="display:none;"></button>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Nome do Curso</label>
-                                                <input type="text" class="form-control c-nome" placeholder="Ex: Excel Avançado">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Nome do Curso</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom c-nome" placeholder="Ex: Excel Avançado">
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Instituição</label>
-                                                <input type="text" class="form-control c-escola" placeholder="Ex: OnStude">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Instituição</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom c-escola" placeholder="Ex: OnStude">
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Status</label>
-                                                <select class="form-select c-status">
-                                                    <option value="Concluído">Concluído</option>
-                                                    <option value="Cursando">Cursando</option>
-                                                </select>
+                                                <label class="form-label fw-bold text-dark ms-1 small">Status</label>
+                                                <div class="input-group-custom pe-2">
+                                                    <select class="form-select form-control-custom c-status bg-transparent border-0" style="cursor: pointer;">
+                                                        <option value="Concluído">Concluído</option>
+                                                        <option value="Cursando">Cursando</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Ano de Conclusão</label>
-                                                <input type="text" class="form-control c-ano" placeholder="Ex: 2026">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Ano de Conclusão</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom c-ano" placeholder="Ex: 2026">
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold mb-5" onclick="adicionarCurso()">+ Adicionar outro Curso</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mb-5 px-3" onclick="adicionarCurso()">+ Adicionar outro Curso</button>
 
                                     <h5 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="bi bi-briefcase me-2"></i>5. Experiências Profissionais</h5>
                                     <div id="containerExperiencias">
-                                        <div class="row g-3 mb-3 p-3 border rounded bg-light position-relative item-experiencia">
-                                            <button type="button" class="btn-close position-absolute top-0 end-0 m-2 remover-item" aria-label="Close" style="display:none;"></button>
+                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-light bg-opacity-50 position-relative item-experiencia">
+                                            <button type="button" class="btn-close position-absolute top-0 end-0 m-3 remover-item shadow-none" aria-label="Close" style="display:none;"></button>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Empresa / Local</label>
-                                                <input type="text" class="form-control e-empresa" placeholder="Nome da empresa">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Empresa / Local</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom e-empresa" placeholder="Nome da empresa">
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
-                                                <label class="form-label fw-semibold small">Cargo / Função</label>
-                                                <input type="text" class="form-control e-cargo" placeholder="Ex: Assistente Administrativo">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Cargo / Função</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom e-cargo" placeholder="Ex: Assistente Administrativo">
+                                                </div>
                                             </div>
                                             <div class="col-md-12">
-                                                <label class="form-label fw-semibold small">Período (Início e Fim)</label>
-                                                <input type="text" class="form-control e-periodo" placeholder="Ex: Jan/2022 - Atual (ou Dez/2024)">
+                                                <label class="form-label fw-bold text-dark ms-1 small">Período (Início e Fim)</label>
+                                                <div class="input-group-custom">
+                                                    <input type="text" class="form-control form-control-custom e-periodo" placeholder="Ex: Jan/2022 - Atual (ou Dez/2024)">
+                                                </div>
                                             </div>
                                             <div class="col-md-12">
-                                                <label class="form-label fw-semibold small">Breve descrição das atividades (Opcional)</label>
-                                                <textarea class="form-control e-desc" rows="2" placeholder="Descreva o que fazia nesta função..."></textarea>
+                                                <label class="form-label fw-bold text-dark ms-1 small">Breve descrição das atividades (Opcional)</label>
+                                                <div class="input-group-custom">
+                                                    <textarea class="form-control form-control-custom e-desc" rows="2" placeholder="Descreva o que fazia nesta função..." style="resize: none;"></textarea>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold mb-5" onclick="adicionarExperiencia()">+ Adicionar outra Experiência</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mb-5 px-3" onclick="adicionarExperiencia()">+ Adicionar outra Experiência</button>
 
                                     <div class="text-center border-top pt-5 mt-4">
-                                        <button type="submit" class="btn btn-success btn-lg fw-bold px-5 py-3 rounded-pill shadow" id="btnGerarPDF">
+                                        <button type="submit" class="btn btn-success btn-custom w-100 w-md-auto fw-bold px-5 shadow rounded-pill" id="btnGerarPDF">
                                             <i class="bi bi-file-earmark-pdf-fill me-2 fs-5"></i> Gerar Currículo em PDF
                                         </button>
                                     </div>
@@ -412,8 +480,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                             
                             <h4 class="fw-bold text-dark mb-4 fs-4 lh-base text-center" id="quizPergunta">Pergunta?</h4>
                             
-                            <div id="quizOpcoesDinâmico" class="mb-4 w-100">
-                                </div>
+                            <div id="quizOpcoesDinâmico" class="mb-4 w-100"></div>
                             
                             <div id="quizFeedback" class="alert rounded-4 mb-0 shadow border" style="display: none;">
                                 <div class="d-flex align-items-start">
@@ -449,33 +516,33 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
 
         <footer class="bg-dark text-white pt-5 pb-3 mt-5">
             <div class="container">
-                <div class="row mb-4">
+                <div class="row mb-4 text-center text-md-start">
                     <div class="col-lg-5 mb-4 mb-lg-0">
                         <h3 class="fw-bold text-primary mb-3">OnStude<span class="text-white">.</span></h3>
                         <p class="text-white-50 small pe-lg-5">Aprenda com especialistas, no seu ritmo, e conquiste novas oportunidades no mercado de trabalho.</p>
                     </div>
                     <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
-                        <h5 class="fw-bold mb-4 text-light">Acesso Rápido</h5>
-                        <ul class="list-unstyled">
+                        <h6 class="fw-bold mb-3 text-light">Acesso Rápido</h6>
+                        <ul class="list-unstyled small">
                             <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white">Quem Somos</a></li>
                             <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white">Fale Conosco</a></li>
                             <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white">Termos de Uso</a></li>
                         </ul>
                     </div>
                     <div class="col-lg-3 col-md-6">
-                        <h5 class="fw-bold mb-4 text-light">Suporte</h5>
+                        <h6 class="fw-bold mb-3 text-light">Suporte</h6>
                         <p class="text-white-50 small mb-1"><i class="bi bi-envelope me-2"></i> suporte@onstude.com</p>
                     </div>
                 </div>
-                <hr class="border-secondary mb-4 opacity-25">
+                <hr class="border-secondary mb-3 opacity-25">
                 <div class="row align-items-center">
-                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        <small class="text-white-50">&copy; 2026 OnStude. Todos os direitos reservados.</small>
+                    <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
+                        <small class="text-white-50" style="font-size: 0.75rem;">&copy; 2026 OnStude. Todos os direitos reservados.</small>
                     </div>
                     <div class="col-md-6 text-center text-md-end d-flex align-items-center justify-content-center justify-content-md-end">
-                        <small class="text-white-50 me-3">Desenvolvido por <strong class="text-light">71dev</strong></small>
-                        <a href="https://www.instagram.com/71dev_/" target="_blank" class="text-white-50 text-decoration-none fs-5 mx-2 hover-white transition"><i class="bi bi-instagram"></i></a>
-                        <a href="https://wa.me/5571983174920" target="_blank" class="text-white-50 text-decoration-none fs-5 ms-2 hover-white transition"><i class="bi bi-whatsapp"></i></a>
+                        <small class="text-white-50 me-2" style="font-size: 0.75rem;">Desenvolvido por <strong class="text-light">71dev</strong></small>
+                        <a href="https://www.instagram.com/71dev_/" target="_blank" class="text-white-50 text-decoration-none fs-6 mx-2 hover-white transition"><i class="bi bi-instagram"></i></a>
+                        <a href="https://wa.me/5571983174920" target="_blank" class="text-white-50 text-decoration-none fs-6 ms-1 hover-white transition"><i class="bi bi-whatsapp"></i></a>
                     </div>
                 </div>
             </div>
@@ -499,6 +566,15 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
         <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
         <script>
+            // Lógica do Loader Visual
+            window.addEventListener('pageshow', function() {
+                const loader = document.getElementById('globalLoader');
+                if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 400); }
+            });
+
+            // Variavel de login do backend
+            const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
+
             // ==========================================
             // ANIMAÇÃO DE FALA DO MENTOR BOT E FOGUETE
             // ==========================================
@@ -523,45 +599,38 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             let currentPhraseIdx = 0;
             let botInterval;
             
-            // Lógica para esconder completamente o robô
             window.fecharMentorBot = function(event) {
-                event.stopPropagation(); // Impede que o clique acione o quiz
+                event.stopPropagation();
                 const bot = document.getElementById('mentorBot');
                 if (bot) {
                     bot.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                     bot.style.transform = 'scale(0)';
                     bot.style.opacity = '0';
-                    // Limpa o loop de frases para não rodar no fundo
                     if(botInterval) clearInterval(botInterval); 
                     setTimeout(() => bot.remove(), 400); 
                 }
             };
             
-            // Controle da Animação do Foguete e do Robô
             setTimeout(() => {
                 const bot = document.getElementById('mentorBot');
                 if (bot) bot.classList.add('bot-ativo'); 
-                
                 setTimeout(() => {
                     const rocket = document.getElementById('rocketIntro');
                     if (rocket) rocket.remove();
                 }, 2500); 
-                
             }, 1000); 
             
-            // Começa o loop de frases DEPOIS que o robô aparece
             setTimeout(() => { 
                 const balaoBot = document.getElementById('botBalaoTexto');
-                if(!balaoBot) return; // Se o usuário fechou antes de carregar
+                if(!balaoBot) return;
                 
                 currentPhraseIdx = Math.floor(Math.random() * botPhrases.length);
                 balaoBot.innerText = botPhrases[currentPhraseIdx];
                 balaoBot.classList.add('show'); 
                 
-                // Loop a cada 12 segundos
                 botInterval = setInterval(() => {
                     const balaoAtual = document.getElementById('botBalaoTexto');
-                    if (!balaoAtual) { clearInterval(botInterval); return; } // Segurança extra
+                    if (!balaoAtual) { clearInterval(botInterval); return; }
                     
                     balaoAtual.classList.remove('show');
                     setTimeout(() => {
@@ -579,7 +648,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
 
 
             // ==========================================
-            // LÓGICA DO QUIZ GAMIFICADO (MÚLTIPLAS MECÂNICAS)
+            // LÓGICA DO QUIZ GAMIFICADO
             // ==========================================
             const bancoPerguntas = [
                 {
@@ -592,14 +661,14 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 {
                     tipo: "mito-verdade",
                     pergunta: "A seção 'Objetivo' deve conter um texto longo sobre os seus sonhos de vida e o quanto você quer aprender na empresa.",
-                    correta: false, // Falso = Mito
+                    correta: false,
                     dica: "Objetivo não é carta de amor! Deve ter no máximo 2 linhas indicando o cargo exato que você quer (ex: 'Assistente Administrativo')."
                 },
                 {
                     tipo: "balao",
                     pergunta: "Estoure o balão que contém algo que você NUNCA deve colocar no seu currículo!",
                     opcoes: ["Email Profissional", "Número de CPF / RG", "Link do LinkedIn", "Cursos Extracurriculares"],
-                    correta: 1, // O balão do CPF deve ser estourado (é o erro)
+                    correta: 1,
                     dica: "Nunca coloque CPF, RG ou dados sensíveis. Isso é um risco de segurança (LGPD) e o RH só pedirá isso na hora da contratação."
                 },
                 {
@@ -612,7 +681,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 {
                     tipo: "mito-verdade",
                     pergunta: "As Experiências Profissionais devem ser listadas da mais recente para a mais antiga.",
-                    correta: true, // Verdade
+                    correta: true,
                     dica: "Sempre use a Ordem Cronológica Inversa! O recrutador quer saber o que você fez por último, não o seu primeiro emprego há 10 anos."
                 },
                 {
@@ -663,7 +732,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 document.getElementById('quizContainer').style.display = 'none';
                 document.getElementById('quizResultado').style.display = 'none';
                 
-                // Sorteia 5 perguntas pro jogo não ser repetitivo
                 let copiaBanco = [...bancoPerguntas];
                 perguntasSelecionadas = embaralharArray(copiaBanco).slice(0, 5);
             }
@@ -686,9 +754,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 containerDinâmico.innerHTML = '';
                 document.getElementById('quizFeedback').style.display = 'none';
 
-                // ===================================
-                // RENDERIZAR JOGO COM BASE NO TIPO
-                // ===================================
                 if (p.tipo === "classico") {
                     const grid = document.createElement('div');
                     grid.className = 'd-grid gap-3';
@@ -705,7 +770,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     const row = document.createElement('div');
                     row.className = 'row g-3 px-3';
                     
-                    // Botão Verdade
                     const colV = document.createElement('div'); colV.className = 'col-6';
                     const btnV = document.createElement('div');
                     btnV.className = 'card-mito-verdade card-verdade p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center';
@@ -713,7 +777,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     btnV.onclick = () => processarRespostaBooleana(row, btnV, true, p.correta, p.dica);
                     colV.appendChild(btnV);
 
-                    // Botão Mito
                     const colM = document.createElement('div'); colM.className = 'col-6';
                     const btnM = document.createElement('div');
                     btnM.className = 'card-mito-verdade card-mito p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center';
@@ -738,7 +801,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 }
             }
 
-            // --- Lógica: Jogo Clássico ---
             function processarRespostaClassica(btnSelecionado, gridConteiner, indiceSelecionado, indiceCorreto, dica) {
                 const botoes = gridConteiner.querySelectorAll('button');
                 botoes.forEach(b => b.disabled = true);
@@ -758,12 +820,11 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 mostrarFeedback(acertou, dica);
             }
 
-            // --- Lógica: Mito ou Verdade ---
             function processarRespostaBooleana(rowContainer, btnClicado, escolhaDoUser, respostaCorreta, dica) {
                 const cards = rowContainer.querySelectorAll('.card-mito-verdade');
                 cards.forEach(c => { c.classList.add('disabled'); c.onclick = null; });
                 
-                btnClicado.classList.remove('disabled'); // Destaca o escolhido
+                btnClicado.classList.remove('disabled'); 
                 const acertou = (escolhaDoUser === respostaCorreta);
                 
                 if (acertou) {
@@ -774,25 +835,22 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 mostrarFeedback(acertou, dica);
             }
 
-            // --- Lógica: Estourar Balão ---
             function processarRespostaBalao(container, balaoClicado, indiceClicado, indiceCorreto, dica) {
                 const baloes = container.querySelectorAll('.balao-item');
-                baloes.forEach(b => b.onclick = null); // Bloqueia
+                baloes.forEach(b => b.onclick = null);
 
                 const acertou = (indiceClicado === indiceCorreto);
                 
                 if (acertou) {
                     pontuacao++;
-                    balaoClicado.classList.add('popped'); // Estoura a opção ruim
-                    
-                    // Oculta os outros suavemente
+                    balaoClicado.classList.add('popped'); 
                     setTimeout(() => {
                         baloes.forEach(b => { if(b !== balaoClicado) b.style.opacity = '0.3'; });
                     }, 300);
                 } else {
                     balaoClicado.classList.add('shake-animation');
-                    baloes[indiceCorreto].style.border = '4px solid #198754'; // Mostra qual era o certo pra estourar
-                    baloes[indiceCorreto].classList.add('popped'); // A IA estoura por ele
+                    baloes[indiceCorreto].style.border = '4px solid #198754'; 
+                    baloes[indiceCorreto].classList.add('popped'); 
                 }
                 mostrarFeedback(acertou, dica);
             }
@@ -816,8 +874,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
 
                 document.getElementById('quizFeedbackTexto').innerHTML = '<strong>Anotação do Mentor:</strong> ' + dica;
                 feedbackDiv.style.display = 'block';
-                
-                // Rola para o feedback caso a tela seja pequena
                 feedbackDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
 
@@ -833,7 +889,6 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             function mostrarResultadoFinal() {
                 document.getElementById('quizContainer').style.display = 'none';
                 document.getElementById('quizResultado').style.display = 'block';
-                
                 document.getElementById('resultadoPontos').innerText = pontuacao;
                 
                 const icone = document.getElementById('resultadoIcone');
@@ -855,12 +910,28 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     titulo.innerText = 'Especialista em RH!';
                     titulo.className = 'fw-bold text-warning mb-2';
                     mensagem.innerHTML = 'Você gabaritou! Tem a visão exata do que o mercado de trabalho procura hoje em dia. Preencha seus dados reais no nosso sistema agora mesmo, baixe seu PDF campeão e parta para o abraço!';
+
+                    // SALVAR CONQUISTA SE LOGADO
+                    if (isUsuarioLogado) {
+                        fetch('/aluno/api/conquistas/mentor-bot', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.nova) {
+                                mensagem.innerHTML += '<br><br><span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill"><i class="bi bi-unlock-fill me-1"></i> Nova Conquista: Sobrevivente do RH!</span>';
+                            }
+                        })
+                        .catch(console.error);
+                    } else {
+                        mensagem.innerHTML += '<br><br><span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25 px-3 py-2 rounded-pill"><i class="bi bi-info-circle me-1"></i> Faça login para salvar esta conquista no seu mural!</span>';
+                    }
                 }
             }
 
-
             // ==========================================
-            // INICIALIZAR O SLIDER DE MODELOS
+            // SLIDER E MODAL
             // ==========================================
             document.addEventListener('DOMContentLoaded', function () {
                 var swiper = new Swiper(".mySwiper", {
@@ -884,7 +955,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             }
 
             // ==========================================
-            // LÓGICA DO FORMULÁRIO (ADD/REMOVE) - INTACTO
+            // LÓGICA DE FORMULÁRIO DINÂMICO
             // ==========================================
             function attachRemoveEvent(containerId, itemClass) {
                 const container = document.getElementById(containerId);
@@ -925,7 +996,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             }
 
             // ==========================================
-            // LÓGICA DE ENVIO PARA O BACKEND (PDFKIT) - INTACTO
+            // GERAR PDF
             // ==========================================
             document.getElementById('formCurriculo').addEventListener('submit', function(e) {
                 e.preventDefault(); 

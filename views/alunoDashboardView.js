@@ -4,13 +4,26 @@ const renderAlunoMenuLateral = require('./alunoMenuLateral');
 
 function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
     
-    // Injeta o novo menu lateral indicando que a página ativa é o 'dashboard'
     const htmlSidebar = renderAlunoMenuLateral(aluno, 'dashboard');
+    // Adicionado novamente o fallback do melhoresCursos
+    const kpis = kpiData || { notaMedia: '0.0', aulasConcluidas: '0', melhoresCursos: 'Ainda sem notas', totalXp: '0' };
 
-    const kpis = kpiData || { notaMedia: '0.0', aulasConcluidas: '0 / 0', melhoresCursos: 'Ainda sem notas' };
+    // ==========================================
+    // LÓGICA DO SELETOR DE RANKING
+    // ==========================================
+    let opcoesRankingCursos = '';
+    if (cursosMatriculados.length === 0) {
+        opcoesRankingCursos = '<option disabled selected>Nenhum curso matriculado</option>';
+    } else {
+        cursosMatriculados.forEach((curso, index) => {
+            opcoesRankingCursos += `<option value="${curso.curso_id}" ${index === 0 ? 'selected' : ''}>${curso.titulo}</option>`;
+        });
+    }
 
+    // ==========================================
+    // LÓGICA DE CURSOS
+    // ==========================================
     let htmlCursos = '';
-
     if (cursosMatriculados.length === 0) {
         htmlCursos = `
             <div class="col-12 text-center py-5 mt-4 bg-white border-0 rounded-4 shadow-sm">
@@ -62,18 +75,41 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>O Meu Painel - OnStude</title>
+        <title>Área do aluno - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
             body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
-                .main-content { height: calc(100vh - 60px); } /* Desconta o topo mobile */
+                .main-content { height: calc(100vh - 60px); } 
             }
             .hover-card:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; transform: translateY(-5px); }
             .transition-all { transition: all .3s ease; }
-            .kpi-icon { font-size: 1.5rem; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+            
+            /* Gamificação & Ranking CSS */
+            .leaderboard-card { background: linear-gradient(180deg, #ffffff 0%, #fcfcfc 100%); }
+            .rank-item { transition: all 0.3s ease; border-left: 4px solid transparent; }
+            .rank-item:hover { transform: translateX(5px); background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+            
+            .rank-1 { border-left-color: #ffd700; background-color: rgba(255, 215, 0, 0.05); }
+            .rank-2 { border-left-color: #c0c0c0; background-color: rgba(192, 192, 192, 0.05); }
+            .rank-3 { border-left-color: #cd7f32; background-color: rgba(205, 127, 50, 0.05); }
+            .rank-user { border-left-color: #0d6efd; background-color: rgba(13, 110, 253, 0.05); }
+            
+            /* Animações de Ranking */
+            @keyframes rankUpEffect {
+                0% { background-color: rgba(25, 135, 84, 0.3); transform: translateY(15px); opacity: 0; box-shadow: 0 0 20px rgba(25, 135, 84, 0.5); }
+                100% { background-color: rgba(13, 110, 253, 0.05); transform: translateY(0); opacity: 1; box-shadow: none; }
+            }
+            .anim-rank-up { animation: rankUpEffect 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+            
+            @keyframes pulseLive { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+            .anim-pulse { animation: pulseLive 2s infinite; }
+            
+            @keyframes blinkUp { 0% { transform: translateY(0); } 50% { transform: translateY(-3px); color: #198754 !important; } 100% { transform: translateY(0); } }
+            .blink-up { animation: blinkUp 1s ease infinite; }
+
             .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
         </style>
     </head>
@@ -90,7 +126,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             <div class="flex-grow-1 main-content bg-light">
                 <div class="container-fluid p-4 p-md-5">
 
-                    <div class="row mb-5 align-items-center">
+                    <div class="row mb-4 align-items-center">
                         <div class="col-12">
                             <h2 class="fw-bold text-dark mb-1">Olá, ${aluno.nome.split(' ')[0]} 👋</h2>
                             <p class="text-muted">Bem-vindo de volta! Que tal continuarmos a sua jornada de aprendizagem?</p>
@@ -98,39 +134,70 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     </div>
 
                     <div class="row mb-5 g-4">
-                        <div class="col-md-4">
-                            <div class="card border-0 shadow-sm rounded-4 h-100 p-4 border-start border-warning border-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="text-muted fw-bold mb-0">Nota Média Geral</h6>
-                                    <div class="bg-warning bg-opacity-10 text-warning kpi-icon fw-bold"><i class="bi bi-star-fill"></i></div>
-                                </div>
-                                <h2 class="fw-bold text-dark mb-0">${kpis.notaMedia}</h2>
-                            </div>
-                        </div>
                         
-                        <div class="col-md-4">
-                            <div class="card border-0 shadow-sm rounded-4 h-100 p-4 border-start border-success border-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="text-muted fw-bold mb-0">Aulas Concluídas</h6>
-                                    <div class="bg-success bg-opacity-10 text-success kpi-icon fw-bold"><i class="bi bi-check-circle-fill"></i></div>
+                        <div class="col-lg-4 col-xl-3 d-flex flex-column gap-3">
+                            <h6 class="fw-bold text-secondary text-uppercase mb-1" style="font-size: 0.8rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Minhas Conquistas</h6>
+                            
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                                <div class="w-100 overflow-hidden">
+                                    <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Total de XP (Experiência)</h6>
+                                    <h5 class="fw-bold text-dark mb-0 text-truncate">🏆 ${kpis.totalXp} XP</h5>
                                 </div>
-                                <h2 class="fw-bold text-dark mb-0">${kpis.aulasConcluidas}</h2>
+                            </div>
+
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                                <div class="w-100 overflow-hidden">
+                                    <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Melhor Desempenho</h6>
+                                    <h5 class="fw-bold text-dark mb-0 text-truncate" title="${kpis.melhoresCursos}">🏅 ${kpis.melhoresCursos}</h5>
+                                </div>
+                            </div>
+
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                                <div class="w-100 overflow-hidden">
+                                    <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Aulas Concluídas</h6>
+                                    <h5 class="fw-bold text-dark mb-0 text-truncate">📚 ${kpis.aulasConcluidas}</h5>
+                                </div>
+                            </div>
+
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                                <div class="w-100 overflow-hidden">
+                                    <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Nota Média Geral</h6>
+                                    <h5 class="fw-bold text-dark mb-0 text-truncate">⭐ ${kpis.notaMedia}</h5>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="col-md-4">
-                            <div class="card border-0 shadow-sm rounded-4 h-100 p-4 border-start border-primary border-4">
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h6 class="text-muted fw-bold mb-0">Melhor Desempenho</h6>
-                                    <div class="bg-primary bg-opacity-10 text-primary kpi-icon fw-bold"><i class="bi bi-trophy-fill"></i></div>
+                        <div class="col-lg-8 col-xl-9">
+                            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 mt-4 mt-lg-0 gap-2">
+                                <h6 class="fw-bold text-secondary text-uppercase mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
+                                    <i class="bi bi-trophy-fill text-primary me-2"></i> Top Alunos
+                                    <span class="badge bg-danger rounded-pill ms-2 px-2 py-1 anim-pulse" style="font-size: 0.65rem;">AO VIVO</span>
+                                </h6>
+                                <select class="form-select form-select-sm shadow-sm border-0 fw-bold text-primary rounded-pill px-3" id="seletorRankingCurso" style="width: auto; min-width: 200px; max-width: 100%;">
+                                    ${opcoesRankingCursos}
+                                </select>
+                            </div>
+                            
+                            <div class="card border-0 shadow-sm rounded-4 overflow-hidden leaderboard-card">
+                                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between small text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">
+                                    <span>Posição</span>
+                                    <span>Aluno / XP</span>
                                 </div>
-                                <h6 class="fw-bold text-dark mb-0 lh-base text-truncate" title="${kpis.melhoresCursos}">${kpis.melhoresCursos}</h6>
+                                <div class="d-flex flex-column" id="containerListaRanking" style="min-height: 200px; position: relative;">
+                                    <div class="d-flex justify-content-center align-items-center h-100 w-100 position-absolute" id="rankingLoader">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light border-0 text-center py-2">
+                                    <small class="text-muted fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-info-circle me-1"></i> Ganhe XP ao concluir aulas e avaliações!</small>
+                                </div>
                             </div>
                         </div>
+
                     </div>
 
-                    <div class="row mb-4">
-                        <div class="col-12 d-flex justify-content-between align-items-center">
+                    <div class="row mb-4 mt-3">
+                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-3">
                             <h4 class="fw-bold text-dark mb-0"><i class="bi bi-collection-play text-primary me-2"></i>Meus Cursos</h4>
                         </div>
                     </div>
@@ -142,8 +209,6 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                 </div>
             </div>
         </div>
-
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
         <div class="modal fade" id="modalNotificacao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -182,19 +247,228 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             </div>
         </div>
 
+        <div class="modal fade" id="modalConquistaDesbloqueada" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="background: linear-gradient(135deg, #ffffff, #fcfcfc);">
+                    <div class="modal-body text-center p-5 position-relative" id="conquistaExplosionContainer">
+                        <div id="conquistaIcon" class="mb-3 d-inline-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10 mx-auto shadow-sm" style="width: 120px; height: 120px; font-size: 5rem; filter: drop-shadow(0 10px 15px rgba(255, 193, 7, 0.4)); transform: scale(0); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                            🏆
+                        </div>
+                        <br>
+                        <span class="badge bg-success mb-3 px-3 py-2 rounded-pill text-uppercase" style="letter-spacing: 1px;"><i class="bi bi-unlock-fill me-1"></i> Nova Conquista!</span>
+                        <h2 class="fw-bold text-dark mb-2" id="conquistaTitulo">Título da Conquista</h2>
+                        <p class="text-secondary fs-6 mb-4" id="conquistaDescricao">Descrição detalhada...</p>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-warning text-dark rounded-pill py-2 fw-bold shadow-sm" data-bs-dismiss="modal">Incrível!</button>
+                            <a href="/aluno/conquistas" class="btn btn-light border rounded-pill py-2 fw-semibold text-secondary">Ver Mural Completo</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
         <script>
+            const NOME_ALUNO = "${aluno.nome.split(' ')[0]}";
             let listaNotificacoesGlobal = [];
             let notificacaoAtualId = null;
 
             document.addEventListener('DOMContentLoaded', function() {
                 verificarNotificacoesPendentesModal();
                 carregarListaNotificacoesSino();
+                
+                // Inicializa o ranking do primeiro curso selecionado
+                const seletorRanking = document.getElementById('seletorRankingCurso');
+                if(seletorRanking && seletorRanking.value) {
+                    carregarRanking(seletorRanking.value);
+                }
+
+                // Evento para quando o aluno troca de curso no dropdown
+                if(seletorRanking) {
+                    seletorRanking.addEventListener('change', function() {
+                        carregarRanking(this.value);
+                    });
+                }
+
+                // ==========================================
+                // LÓGICA DE DISPARO DA NOVA CONQUISTA
+                // ==========================================
+                const novaConquistaBackend = ${kpiData && kpiData.novaConquista ? JSON.stringify(kpiData.novaConquista) : 'null'};
+                if (novaConquistaBackend) {
+                    // Delay para a animação da dashboard carregar antes
+                    setTimeout(() => {
+                        window.exibirModalConquista(novaConquistaBackend.icone, novaConquistaBackend.titulo, novaConquistaBackend.descricao);
+                    }, 800);
+                }
             });
+
+            // ==========================================
+            // FUNÇÕES DE ÁUDIO E ANIMAÇÃO DA CONQUISTA
+            // ==========================================
+            function tocarAudioConquista() {
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if(!AudioContext) return;
+                    const ctx = new AudioContext();
+                    
+                    function playTone(freq, type, time, duration, vol) {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = type;
+                        osc.frequency.setValueAtTime(freq, ctx.currentTime + time);
+                        gain.gain.setValueAtTime(vol, ctx.currentTime + time);
+                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + time + duration);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(ctx.currentTime + time);
+                        osc.stop(ctx.currentTime + time + duration);
+                    }
+                    
+                    // Toque Fanfarra mais "Épico" (D - F# - A - D High)
+                    playTone(587.33, 'triangle', 0, 0.15, 0.5); 
+                    playTone(739.99, 'triangle', 0.15, 0.15, 0.5); 
+                    playTone(880.00, 'triangle', 0.3, 0.15, 0.5); 
+                    playTone(1174.66, 'triangle', 0.45, 0.6, 0.5);
+                } catch(e) { console.log("Áudio não suportado"); }
+            }
+
+            function criarExplosaoConquista() {
+                const container = document.getElementById('conquistaExplosionContainer');
+                const cores = ['text-warning', 'text-primary', 'text-success', 'text-danger', 'text-info'];
+                const icones = ['bi-star-fill', 'bi-circle-fill', 'bi-suit-diamond-fill'];
+                
+                for(let i=0; i<35; i++) {
+                    const star = document.createElement('i');
+                    const cor = cores[Math.floor(Math.random() * cores.length)];
+                    const icone = icones[Math.floor(Math.random() * icones.length)];
+                    
+                    star.className = \`bi \${icone} \${cor} position-absolute\`;
+                    star.style.fontSize = (Math.random() * 15 + 10) + 'px';
+                    star.style.left = '50%';
+                    star.style.top = '35%';
+                    star.style.transition = 'all 1.2s cubic-bezier(0.25, 1, 0.5, 1)';
+                    star.style.transform = 'translate(-50%, -50%)';
+                    star.style.zIndex = '1060';
+                    container.appendChild(star);
+                    
+                    setTimeout(() => {
+                        const angle = Math.random() * Math.PI * 2;
+                        const distance = Math.random() * 200 + 80;
+                        const tx = Math.cos(angle) * distance;
+                        const ty = Math.sin(angle) * distance;
+                        star.style.transform = \`translate(calc(-50% + \${tx}px), calc(-50% + \${ty}px)) rotate(\${Math.random()*360}deg)\`;
+                        star.style.opacity = '0';
+                    }, 50);
+                    
+                    setTimeout(() => star.remove(), 1250);
+                }
+            }
+
+            window.exibirModalConquista = function(icone, titulo, descricao) {
+                document.getElementById('conquistaIcon').innerText = icone;
+                document.getElementById('conquistaTitulo').innerText = titulo;
+                document.getElementById('conquistaDescricao').innerText = descricao;
+                
+                const modalEl = document.getElementById('modalConquistaDesbloqueada');
+                const modal = new bootstrap.Modal(modalEl);
+                
+                modalEl.addEventListener('shown.bs.modal', function handler() {
+                    tocarAudioConquista();
+                    criarExplosaoConquista();
+                    document.getElementById('conquistaIcon').style.transform = 'scale(1) rotate(360deg)';
+                    modalEl.removeEventListener('shown.bs.modal', handler);
+                });
+                
+                modalEl.addEventListener('hidden.bs.modal', function handler() {
+                    document.getElementById('conquistaIcon').style.transform = 'scale(0)';
+                    modalEl.removeEventListener('hidden.bs.modal', handler);
+                });
+
+                modal.show();
+            };
+
+            // ==========================================
+            // LÓGICA DINÂMICA DO RANKING (CLIENT-SIDE)
+            // ==========================================
+            function carregarRanking(cursoId) {
+                const container = document.getElementById('containerListaRanking');
+                const loader = document.getElementById('rankingLoader');
+                
+                // Limpa e mostra loader
+                Array.from(container.children).forEach(child => { if(child.id !== 'rankingLoader') child.remove(); });
+                loader.classList.remove('d-none');
+
+                fetch('/aluno/api/ranking/' + cursoId)
+                    .then(response => {
+                        if(!response.ok) throw new Error('Rota não existe ainda');
+                        return response.json();
+                    })
+                    .then(data => {
+                        renderizarHTMLRanking(container, loader, data.ranking);
+                    })
+                    .catch(err => {
+                        // FALLBACK MOCK: Enquanto a rota não for criada
+                        console.warn("Rota de ranking não encontrada. Usando dados fictícios.");
+                        setTimeout(() => {
+                            const mockRanking = [
+                                { pos: 1, nome: 'Maria S.', xp: Math.floor(Math.random() * 500) + 1000, trend: 'up' },
+                                { pos: 2, nome: 'João P.', xp: Math.floor(Math.random() * 300) + 700, trend: 'down' },
+                                { pos: 3, nome: NOME_ALUNO + ' (Você)', xp: Math.floor(Math.random() * 200) + 500, trend: 'up', isUser: true },
+                                { pos: 4, nome: 'Ana C.', xp: 450, trend: 'flat' },
+                                { pos: 5, nome: 'Carlos E.', xp: 300, trend: 'down' }
+                            ];
+                            mockRanking.sort((a, b) => b.xp - a.xp);
+                            mockRanking.forEach((r, i) => r.pos = i + 1);
+                            
+                            renderizarHTMLRanking(container, loader, mockRanking);
+                        }, 600);
+                    });
+            }
+
+            function renderizarHTMLRanking(container, loader, rankingArray) {
+                loader.classList.add('d-none');
+                
+                if(!rankingArray || rankingArray.length === 0) {
+                    container.innerHTML += '<div class="text-center text-muted p-4">Nenhum aluno pontuou neste curso ainda.</div>';
+                    return;
+                }
+
+                rankingArray.forEach(r => {
+                    let medalha = r.pos;
+                    if(r.pos === 1) medalha = '🥇';
+                    if(r.pos === 2) medalha = '🥈';
+                    if(r.pos === 3) medalha = '🥉';
+
+                    let iconTrend = '<i class="bi bi-dash text-muted"></i>';
+                    if(r.trend === 'up') iconTrend = '<i class="bi bi-caret-up-fill text-success fs-6 blink-up"></i>';
+                    if(r.trend === 'down') iconTrend = '<i class="bi bi-caret-down-fill text-danger fs-6"></i>';
+
+                    let classRank = '';
+                    if(r.pos <= 3) classRank = 'rank-' + r.pos;
+                    if(r.isUser) classRank += ' rank-user anim-rank-up';
+
+                    const itemHTML = \`
+                        <div class="d-flex align-items-center p-3 border-bottom rank-item \${classRank}">
+                            <div class="fw-bold fs-5 text-center" style="width: 40px; color: #6c757d;">\${medalha}</div>
+                            <div class="ms-2 flex-grow-1">
+                                <div class="text-dark mb-0 \${r.isUser ? 'fw-bolder text-primary' : 'fw-semibold'}" style="font-size: 0.9rem;">\${r.nome}</div>
+                                <div class="text-muted small" style="font-size: 0.75rem;">\${r.xp} XP</div>
+                            </div>
+                            <div class="ms-3 text-end d-flex align-items-center gap-2">
+                                \${r.isUser ? '<span class="badge bg-success rounded-pill d-none d-sm-inline-block" style="font-size: 0.6rem;">Você subiu!</span>' : ''}
+                                \${iconTrend}
+                            </div>
+                        </div>
+                    \`;
+                    container.insertAdjacentHTML('beforeend', itemHTML);
+                });
+            }
 
             // ==========================================
             // LÓGICA DO MENU SUSPENSO DO SINO (DROPDOWN)
             // ==========================================
-
             function carregarListaNotificacoesSino() {
                 fetch('/aluno/api/notificacoes/lista')
                     .then(response => response.json())
@@ -204,7 +478,6 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             const badge = document.getElementById('badgeNotificacoes');
                             const listaDropdown = document.getElementById('listaNotificacoesDropdown');
                             
-                            // Atualiza o contador APENAS se tiver pendentes (senão esconde)
                             if (data.naoLidas > 0) {
                                 badge.textContent = data.naoLidas;
                                 badge.classList.remove('d-none');
@@ -217,7 +490,6 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                                 return;
                             }
 
-                            // Cabeçalho fixo com o botão de limpar tudo
                             let htmlLista = \`
                                 <li class="d-flex justify-content-between align-items-center p-3 border-bottom bg-light sticky-top rounded-top-4" style="z-index: 10;">
                                     <span class="fw-bold text-secondary" style="font-size: 0.85rem;"><i class="bi bi-envelope-open me-2"></i>Notificações</span>
@@ -256,9 +528,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
 
             window.limparTodasNotificacoes = function() {
                 fetch('/aluno/api/notificacoes/limpar', { method: 'POST' })
-                    .then(() => {
-                        carregarListaNotificacoesSino();
-                    })
+                    .then(() => { carregarListaNotificacoesSino(); })
                     .catch(console.error);
             };
 
@@ -271,7 +541,6 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             // ==========================================
             // LÓGICA DO MODAL
             // ==========================================
-
             function verificarNotificacoesPendentesModal() {
                 fetch('/aluno/api/notificacoes/pendente')
                     .then(response => response.json())
@@ -343,9 +612,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     document.getElementById('inputAvaliacaoEstrelas').value = valor;
                     resetarEstrelas(valor);
                 });
-                estrela.addEventListener('mouseover', function() {
-                    resetarEstrelas(this.getAttribute('data-val'), true);
-                });
+                estrela.addEventListener('mouseover', function() { resetarEstrelas(this.getAttribute('data-val'), true); });
             });
             document.getElementById('estrelasContainer').addEventListener('mouseleave', function() {
                 resetarEstrelas(document.getElementById('inputAvaliacaoEstrelas').value);

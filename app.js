@@ -165,7 +165,7 @@ app.get('/plano-de-carreira', async (req, res) => {
     try {
         // Busca os modelos na tabela que criámos
         const [modelosCV] = await db.execute('SELECT * FROM curriculo_modelos ORDER BY id DESC');
-        
+
         const renderPlanoCarreiraView = require('./views/planoCarreiraView');
         // Passa os modelosCV para a view
         res.send(renderPlanoCarreiraView(req.session.usuario || null, modelosCV));
@@ -194,7 +194,7 @@ app.get('/plano-de-carreira', async (req, res) => {
 app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
     try {
         const dados = req.body;
-        
+
         // Inicializa o documento A4 com margens padrão
         const doc = new PDFDocument({ margin: 50, size: 'A4' });
 
@@ -219,7 +219,7 @@ app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
         // 1. Cabeçalho (Nome e Contatos)
         doc.fontSize(22).font('Helvetica-Bold').fillColor(corPrimaria).text(dados.nome.toUpperCase(), { align: 'center' });
         doc.moveDown(0.3);
-        
+
         // Organiza os contatos numa única linha elegante
         let contatos = [];
         if (dados.cidade) {
@@ -255,7 +255,7 @@ app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
         // 3. Experiências Profissionais
         if (dados.experiencias && dados.experiencias.length > 0) {
             desenharSessao('Experiência Profissional');
-            
+
             dados.experiencias.forEach(e => {
                 // Truque: Cargo à esquerda, Período alinhado à direita na mesma linha
                 doc.fontSize(11).font('Helvetica-Bold').fillColor(corPrimaria).text(e.cargo, { continued: true });
@@ -280,7 +280,7 @@ app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
         // 4. Formação Acadêmica
         if (dados.formacao && dados.formacao.length > 0) {
             desenharSessao('Formação Acadêmica');
-            
+
             dados.formacao.forEach(f => {
                 // Monta o título dinâmico (Ex: "Graduação em ADS" ou só "Ensino Médio")
                 let tituloFormacao = f.nivel;
@@ -295,13 +295,13 @@ app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
 
                 // Nível e Curso do lado esquerdo, Status/Ano do lado direito
                 doc.fontSize(11).font('Helvetica-Bold').fillColor(corPrimaria).text(tituloFormacao, { continued: true });
-                
+
                 let compl = [];
                 if (f.status) compl.push(f.status);
                 if (f.ano) compl.push(f.ano);
-                
+
                 if (compl.length > 0) {
-                     doc.font('Helvetica-Oblique').fillColor(corSecundaria).text(`     ${compl.join(' - ')}`, { align: 'right' });
+                    doc.font('Helvetica-Oblique').fillColor(corSecundaria).text(`     ${compl.join(' - ')}`, { align: 'right' });
                 } else {
                     doc.text('', { align: 'right' });
                 }
@@ -315,18 +315,18 @@ app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
         // 5. Cursos e Aprimorações
         if (dados.cursos && dados.cursos.length > 0) {
             desenharSessao('Cursos e Qualificações');
-            
+
             dados.cursos.forEach(c => {
                 doc.fontSize(10).font('Helvetica-Bold').fillColor(corPrimaria).text(c.nome, { continued: true });
-                
+
                 let detalhes = [];
                 if (c.instituicao) detalhes.push(c.instituicao);
                 if (c.status) detalhes.push(c.status);
                 if (c.ano) detalhes.push(c.ano);
 
                 if (detalhes.length > 0) {
-                     // Adiciona os detalhes na mesma linha com cor mais suave
-                     doc.font('Helvetica').fillColor(corTexto).text(`   |   ${detalhes.join(' - ')}`);
+                    // Adiciona os detalhes na mesma linha com cor mais suave
+                    doc.font('Helvetica').fillColor(corTexto).text(`   |   ${detalhes.join(' - ')}`);
                 } else {
                     doc.text('');
                 }
@@ -347,7 +347,7 @@ app.post('/plano-de-carreira/gerar-pdf', async (req, res) => {
 app.get('/admin/curriculos', verificarAdmin, async (req, res) => {
     try {
         const [modelosCV] = await db.execute('SELECT * FROM curriculo_modelos ORDER BY id DESC');
-        
+
         const renderAdminCurriculosView = require('./views/adminCurriculosView');
         res.send(renderAdminCurriculosView(req.session.usuario, modelosCV));
     } catch (error) {
@@ -387,7 +387,7 @@ app.post('/admin/curriculos/:id/editar', verificarAdmin, uploadCV.fields([{ name
     try {
         const id = req.params.id;
         const { titulo } = req.body;
-        
+
         let query = 'UPDATE curriculo_modelos SET titulo = ?';
         let params = [titulo];
 
@@ -578,11 +578,11 @@ app.get('/admin/cursos', verificarAdmin, async (req, res) => {
             ORDER BY c.criado_em DESC
             LIMIT ${limit} OFFSET ${offset}
         `;
-        
+
         const [cursos] = await db.execute(mainQuery, queryParams);
 
         res.send(renderAdminCursosView(req.session.usuario, cursos, currentPage, totalPages, search));
-        
+
     } catch (error) {
         console.error('Erro ao listar cursos:', error);
         res.status(500).send('Erro interno do servidor.');
@@ -696,7 +696,7 @@ app.get('/admin', verificarAdmin, async (req, res) => {
         // Renderiza a view passando APENAS as variáveis pertinentes ao Dashboard
         const renderAdminDashboardView = require('./views/adminDashboardView');
         res.send(renderAdminDashboardView(req.session.usuario, kpiGeral, cursosKpi, notifKpi, notifCursos));
-        
+
     } catch (error) {
         console.error('Erro ao carregar Dashboard:', error);
         res.status(500).send('Erro interno ao carregar o painel.');
@@ -1073,7 +1073,7 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
                         resolve(data);
                     });
                 });
-                
+
                 if (metadata && metadata.format && metadata.format.duration) {
                     duracaoFinal = Math.round(metadata.format.duration);
                     console.log(`Duração extraída: ${duracaoFinal}s`);
@@ -1128,7 +1128,7 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [moduloId, titulo, parseInt(ordem), descricao || null, duracaoFinal, thumbPathPublic, arquivoAdicionalPath]
         );
-        
+
         const aulaId = resultadoAula.insertId;
 
         // Salva na tabela 'aula_conteudos'
@@ -1362,21 +1362,21 @@ app.post('/admin/cursos/:id/excluir', verificarAdmin, async (req, res) => {
         );
 
         // 2. Limpar os Favoritos (se algum aluno favoritou este curso)
-        await db.execute('DELETE FROM cursos_favoritos WHERE curso_id = ?', [cursoId]).catch(() => {});
+        await db.execute('DELETE FROM cursos_favoritos WHERE curso_id = ?', [cursoId]).catch(() => { });
 
         // 3. Limpar os dados dos Alunos Matriculados (Progresso, Avaliações, Certificados)
         const [matriculas] = await db.execute('SELECT id FROM matriculas WHERE curso_id = ?', [cursoId]);
-        
+
         for (let mat of matriculas) {
             // Apaga tudo o que o aluno fez dentro deste curso
-            await db.execute('DELETE FROM progresso_aula WHERE matricula_id = ?', [mat.id]).catch(() => {});
-            await db.execute('DELETE FROM avaliacao_tentativas WHERE matricula_id = ?', [mat.id]).catch(() => {});
-            await db.execute('DELETE FROM certificados WHERE matricula_id = ?', [mat.id]).catch(() => {});
-            
+            await db.execute('DELETE FROM progresso_aula WHERE matricula_id = ?', [mat.id]).catch(() => { });
+            await db.execute('DELETE FROM avaliacao_tentativas WHERE matricula_id = ?', [mat.id]).catch(() => { });
+            await db.execute('DELETE FROM certificados WHERE matricula_id = ?', [mat.id]).catch(() => { });
+
             // ADICIONADO: Apaga o progresso geral do curso amarrado a esta matrícula
-            await db.execute('DELETE FROM progresso_curso WHERE matricula_id = ?', [mat.id]).catch(() => {});
+            await db.execute('DELETE FROM progresso_curso WHERE matricula_id = ?', [mat.id]).catch(() => { });
         }
-        
+
         // Agora podemos excluir as matrículas em si, pois não têm mais dependências
         await db.execute('DELETE FROM matriculas WHERE curso_id = ?', [cursoId]);
 
@@ -1385,12 +1385,12 @@ app.post('/admin/cursos/:id/excluir', verificarAdmin, async (req, res) => {
         for (let mod of modulos) {
             const [aulas] = await db.execute('SELECT id FROM aulas WHERE modulo_id = ?', [mod.id]);
             for (let aula of aulas) {
-                await db.execute('DELETE FROM aula_conteudos WHERE aula_id = ?', [aula.id]).catch(() => {});
-                await db.execute('DELETE FROM apostila_imagens WHERE aula_id = ?', [aula.id]).catch(() => {});
+                await db.execute('DELETE FROM aula_conteudos WHERE aula_id = ?', [aula.id]).catch(() => { });
+                await db.execute('DELETE FROM apostila_imagens WHERE aula_id = ?', [aula.id]).catch(() => { });
             }
-            await db.execute('DELETE FROM aulas WHERE modulo_id = ?', [mod.id]).catch(() => {});
+            await db.execute('DELETE FROM aulas WHERE modulo_id = ?', [mod.id]).catch(() => { });
         }
-        await db.execute('DELETE FROM modulos WHERE curso_id = ?', [cursoId]).catch(() => {});
+        await db.execute('DELETE FROM modulos WHERE curso_id = ?', [cursoId]).catch(() => { });
 
         // 5. O Comando Final: Exclui o curso (agora o MySQL vai permitir!)
         await db.execute('DELETE FROM cursos WHERE id = ?', [cursoId]);
@@ -1463,7 +1463,7 @@ app.post('/admin/aulas/:id/excluir', verificarAdmin, async (req, res) => {
 // GET: Renderiza a lista de todos os Usuários (Admin) com Paginação, Busca e Cards Interativos
 app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
     try {
-        const limit = 12; 
+        const limit = 12;
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
         const search = req.query.search || '';
@@ -1530,7 +1530,7 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
         // ==========================================
         // Faz um loop paralelo extremamente rápido apenas nos 12 usuários da página atual
         const usuariosComKPIs = await Promise.all(usuariosRaw.map(async (u) => {
-            
+
             // Se for ADMIN, não precisa calcular notas, retorna zerado
             if (u.tipo === 'ADMIN') {
                 return { ...u, aulas_concluidas: '0 / 0', nota_media_geral: '-', melhor_curso: '-' };
@@ -1856,10 +1856,10 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
             LEFT JOIN progresso_aula pa ON pa.aula_id = a.id AND pa.matricula_id = ?
             WHERE m.curso_id = ? 
             ORDER BY m.ordem ASC, a.ordem ASC
-        `, [matriculaId, matriculaId, cursoId]); 
+        `, [matriculaId, matriculaId, cursoId]);
 
         // LÓGICA DE BLOQUEIO LINEAR (INTER-AULAS) - Mantida
-        let anteriorConcluida = true; 
+        let anteriorConcluida = true;
         aulas.forEach(aula => {
             aula.isLiberada = anteriorConcluida;
             if (aula.progresso_status !== 'CONCLUIDA') {
@@ -1949,7 +1949,7 @@ app.post('/aluno/aulas/:aulaId/notas', verificarAluno, async (req, res) => {
             'SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ? AND status IN ("ATIVA", "CONCLUIDA")',
             [alunoId, curso_id]
         );
-        
+
         if (matriculas.length === 0) {
             return res.status(403).json({ success: false, message: 'Acesso negado' });
         }
@@ -1982,7 +1982,7 @@ app.post('/aluno/aulas/notas/:notaId/excluir', verificarAluno, async (req, res) 
             SELECT n.id 
             FROM aula_notas n
             JOIN matriculas m ON n.matricula_id = m.id
-            WHERE n.id = ? AND m.aluno_id = ?`, 
+            WHERE n.id = ? AND m.aluno_id = ?`,
             [notaId, alunoId]
         );
 
@@ -2012,7 +2012,7 @@ app.post('/aluno/aulas/:aulaId/tempo', verificarAluno, async (req, res) => {
             'SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ? AND status IN ("ATIVA", "CONCLUIDA")',
             [alunoId, curso_id]
         );
-        
+
         if (matriculas.length === 0) {
             return res.status(403).json({ success: false, message: 'Acesso negado' });
         }
@@ -2090,7 +2090,7 @@ app.post('/aluno/aulas/:aulaId/etapa', verificarAluno, async (req, res) => {
     }
 });
 
-// POST: Submeter Avaliação (Agora com cálculo real da nota e RESET nas 3 falhas)
+// POST: Submeter Avaliação (Cálculo da nota, RESET nas 3 falhas e GANHO DE XP)
 app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
     const aulaId = req.params.aulaId;
     const { curso_id, resultado, score, total_questions } = req.body;
@@ -2127,8 +2127,24 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
         let cursoFoiConcluidoNestaEtapa = false; // Flag de controle
 
         if (foiAprovado) {
+            // ==========================================
+            // [NOVO] VERIFICAÇÃO ANTI-FARM DE XP
+            // ==========================================
+            // Verifica se a aula JÁ estava concluída antes para não dar XP repetido
+            const [aulaProgresso] = await db.execute('SELECT status FROM progresso_aula WHERE matricula_id = ? AND aula_id = ?', [matriculaId, aulaId]);
+            const jaEstavaConcluida = aulaProgresso.length > 0 && aulaProgresso[0].status === 'CONCLUIDA';
+
             // 1. Marca a aula atual como 100% concluída
             await db.execute('UPDATE progresso_aula SET progresso_percentual = 100.00, status = "CONCLUIDA", concluida_em = NOW() WHERE matricula_id = ? AND aula_id = ?', [matriculaId, aulaId]);
+
+            // ==========================================
+            // [NOVO] GANHO DE XP NA MATRÍCULA
+            // ==========================================
+            if (!jaEstavaConcluida) {
+                // Cálculo Gamificado: 50 XP fixo + bónus pela nota (Ex: Nota 10 = +50 XP. Total: 100 XP)
+                const xpGanho = 50 + Math.round(notaReal * 5);
+                await db.execute('UPDATE matriculas SET xp = xp + ? WHERE id = ?', [xpGanho, matriculaId]);
+            }
 
             // 2. Conta Total de Aulas vs Aulas Concluídas
             const [totalQuery] = await db.execute('SELECT COUNT(*) as total FROM aulas a JOIN modulos m ON a.modulo_id = m.id WHERE m.curso_id = ?', [curso_id]);
@@ -2142,9 +2158,7 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
             const concluidas = concluidasQuery[0].concluidas;
             const percentualGeral = totalAulas > 0 ? ((concluidas / totalAulas) * 100).toFixed(2) : 0;
 
-            // ==========================================
-            // 3. CORREÇÃO: INSERIR OU ATUALIZAR PROGRESSO
-            // ==========================================
+            // 3. INSERIR OU ATUALIZAR PROGRESSO
             const [progCurso] = await db.execute('SELECT id FROM progresso_curso WHERE matricula_id = ?', [matriculaId]);
 
             if (progCurso.length > 0) {
@@ -2155,25 +2169,24 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
                 await db.execute(`INSERT INTO progresso_curso (matricula_id, percentual, aulas_concluidas, total_aulas) VALUES (?, ?, ?, ?)`, [matriculaId, percentualGeral, concluidas, totalAulas]);
             }
 
-            // ==========================================
-            // 4. CORREÇÃO: LIBERAR CERTIFICADO
-            // ==========================================
+            // 4. LIBERAR CERTIFICADO
             if (parseFloat(percentualGeral) >= 100) {
                 // Aluno concluiu 100% do curso!
                 await db.execute('UPDATE matriculas SET status = "CONCLUIDA", concluida_em = NOW() WHERE id = ?', [matriculaId]);
-                
+
                 // Verifica como está a situação do certificado
                 const [certExiste] = await db.execute('SELECT id FROM certificados WHERE matricula_id = ?', [matriculaId]);
-                
+
                 if (certExiste.length === 0) {
                     // Fallback de segurança com o novo padrão de token
+                    const crypto = require('crypto'); // Certifique-se de que o crypto está importado no topo do seu app.js
                     const tokenCertificado = crypto.randomBytes(4).toString('hex').toUpperCase();
                     await db.execute('INSERT INTO certificados (matricula_id, token, emitido_em) VALUES (?, ?, NOW())', [matriculaId, tokenCertificado]);
                 } else {
                     // Destranca o certificado existente
                     await db.execute('UPDATE certificados SET emitido_em = NOW() WHERE matricula_id = ? AND emitido_em IS NULL', [matriculaId]);
                 }
-                
+
                 cursoFoiConcluidoNestaEtapa = true;
             }
 
@@ -2189,7 +2202,6 @@ app.post('/aluno/aulas/:aulaId/avaliacao', verificarAluno, async (req, res) => {
             // LÓGICA DE REPROVAÇÃO E RESET
             // ==========================================
             const totalFalhas = tentativasAtuais + 1; // Soma a falha atual
-            // ... (mantenha o resto do código do bloco else exatamente igual)
 
             if (totalFalhas >= 3) {
                 // ESTOUROU O LIMITE! Reseta o progresso para 0
@@ -2536,7 +2548,7 @@ app.get('/aluno', verificarAluno, async (req, res) => {
         // LÓGICA DOS INDICADORES (KPIs) DO ALUNO
         // ==========================================
 
-        // 2. Aulas Concluídas vs Total Geral (Calculando o total real de todos os cursos que o aluno tem)
+        // 2. Aulas Concluídas vs Total Geral
         const [aulasQuery] = await db.execute(`
             SELECT 
                 SUM(COALESCE(p.aulas_concluidas, 0)) AS concluidas_geral,
@@ -2553,7 +2565,7 @@ app.get('/aluno', verificarAluno, async (req, res) => {
         const totalGeral = aulasQuery[0].total_geral || 0;
         const stringAulasKpi = `${concluidasGeral} / ${totalGeral}`;
 
-        // 3. Nota Média Geral (Baseada na nota máxima)
+        // 3. Nota Média Geral
         const [notaQuery] = await db.execute(`
             SELECT AVG(max_nota) AS nota_media FROM (
                 SELECT MAX(at.nota) AS max_nota 
@@ -2581,11 +2593,103 @@ app.get('/aluno', verificarAluno, async (req, res) => {
 
         const melhoresCursos = melhorCursoQuery.length > 0 ? melhorCursoQuery[0].titulo : 'Ainda sem notas';
 
-        // 5. Objeto final que será enviado para a View
+        // 5. Total de XP
+        const [xpQuery] = await db.execute(`
+            SELECT SUM(xp) as total_xp
+            FROM matriculas
+            WHERE aluno_id = ? AND status IN ('ATIVA', 'CONCLUIDA')
+        `, [alunoId]);
+
+        const totalXp = xpQuery[0].total_xp || 0;
+
+
+        // =========================================================================
+        // 6. MOTOR DE AVALIAÇÃO DE CONQUISTAS (NOVO)
+        // =========================================================================
+        let novaConquistaDetectada = null;
+
+        // A) Busca as conquistas que o aluno já tem salvas para não repetir o modal
+        const [conquistasSalvas] = await db.execute('SELECT conquista_id FROM aluno_conquistas WHERE aluno_id = ?', [alunoId]);
+        const idsSalvos = conquistasSalvas.map(c => c.conquista_id);
+
+        // B) Busca os cursos 100% concluídos para mapear as categorias usando apenas a coluna "mercado"
+        const [cursosConcluidos] = await db.execute(`
+            SELECT c.titulo, c.mercado FROM progresso_curso p
+            JOIN matriculas m ON p.matricula_id = m.id 
+            JOIN cursos c ON m.curso_id = c.id
+            WHERE m.aluno_id = ? AND p.percentual >= 100
+        `, [alunoId]);
+
+        let countDesign = 0, countTech = 0, countNegocios = 0, countEscritorio = 0, countMarketing = 0, countIdiomas = 0;
+        let motivoDesign = '', motivoTech = '', motivoNegocios = '', motivoEscritorio = '', motivoMarketing = '', motivoIdiomas = '';
+
+        cursosConcluidos.forEach(curso => {
+            const tags = (curso.mercado || '').toLowerCase();
+
+            if (tags.includes('design')) {
+                countDesign++;
+                if (!motivoDesign) motivoDesign = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+            }
+            if (tags.includes('tecnologia') || tags.includes('programação') || tags.includes('software')) {
+                countTech++;
+                if (!motivoTech) motivoTech = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+            }
+            if (tags.includes('negócio') || tags.includes('negocio') || tags.includes('administração')) {
+                countNegocios++;
+                if (!motivoNegocios) motivoNegocios = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+            }
+            if (tags.includes('escritório') || tags.includes('escritorio') || tags.includes('office')) {
+                countEscritorio++;
+                if (!motivoEscritorio) motivoEscritorio = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+            }
+            if (tags.includes('marketing') || tags.includes('vendas')) {
+                countMarketing++;
+                if (!motivoMarketing) motivoMarketing = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+            }
+            if (tags.includes('idioma') || tags.includes('inglês') || tags.includes('espanhol')) {
+                countIdiomas++;
+                if (!motivoIdiomas) motivoIdiomas = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+            }
+        });
+
+        // C) Define as Regras. O sistema cruza os KPIs atuais com as metas
+        const regrasConquistas = [
+            { id: 'aulas_1', titulo: 'Primeiros Passos', desc: 'Você concluiu a sua primeira aula.', icone: '🏃', atingiu: concluidasGeral >= 1 },
+            { id: 'aulas_50', titulo: 'Estudante Focado', desc: 'Você concluiu 50 aulas.', icone: '📚', atingiu: concluidasGeral >= 50 },
+            { id: 'aulas_100', titulo: 'Mestre da Maratona', desc: 'Você concluiu 100 aulas.', icone: '🔥', atingiu: concluidasGeral >= 100 },
+            { id: 'xp_1000', titulo: 'Nível Bronze', desc: 'Você alcançou 1.000 XP.', icone: '🥉', atingiu: totalXp >= 1000 },
+            { id: 'xp_5000', titulo: 'Nível Prata', desc: 'Você alcançou 5.000 XP.', icone: '🥈', atingiu: totalXp >= 5000 },
+            { id: 'xp_10000', titulo: 'Nível Ouro', desc: 'Você alcançou 10.000 XP.', icone: '🥇', atingiu: totalXp >= 10000 },
+            { id: 'xp_50000', titulo: 'Lenda Viva', desc: 'Você alcançou incríveis 50.000 XP.', icone: '👑', atingiu: totalXp >= 50000 },
+            { id: 'cat_design', titulo: 'Artista Digital', desc: motivoDesign, icone: '🎨', atingiu: countDesign >= 1 },
+            { id: 'cat_tech', titulo: 'Mago dos Códigos', desc: motivoTech, icone: '💻', atingiu: countTech >= 1 },
+            { id: 'cat_negocios', titulo: 'Lobo de Wall Street', desc: motivoNegocios, icone: '📊', atingiu: countNegocios >= 1 },
+            { id: 'cat_escritorio', titulo: 'Produtividade Máxima', desc: motivoEscritorio, icone: '🗂️', atingiu: countEscritorio >= 1 },
+            { id: 'cat_marketing', titulo: 'Gênio da Persuasão', desc: motivoMarketing, icone: '📈', atingiu: countMarketing >= 1 },
+            { id: 'cat_idiomas', titulo: 'Cidadão do Mundo', desc: motivoIdiomas, icone: '🗣️', atingiu: countIdiomas >= 1 }
+        ];
+
+        // D) Salva a nova conquista no banco e engatilha para o Front-End mostrar
+        for (const regra of regrasConquistas) {
+            // Se o aluno atingiu a meta E o ID não estiver nos idsSalvos do banco de dados:
+            if (regra.atingiu && !idsSalvos.includes(regra.id)) {
+                await db.execute('INSERT INTO aluno_conquistas (aluno_id, conquista_id, data_desbloqueio) VALUES (?, ?, NOW())', [alunoId, regra.id]);
+                
+                // Define apenas a primeira conquista detectada nesta requisição para não abrir vários modais ao mesmo tempo
+                if (!novaConquistaDetectada) {
+                    novaConquistaDetectada = { icone: regra.icone, titulo: regra.titulo, descricao: regra.desc };
+                }
+            }
+        }
+        // =========================================================================
+
+        // 7. Objeto final enviado para a View
         const kpiData = {
             notaMedia: notaMedia,
             aulasConcluidas: stringAulasKpi,
-            melhoresCursos: melhoresCursos
+            melhoresCursos: melhoresCursos,
+            totalXp: totalXp,
+            novaConquista: novaConquistaDetectada // O front-end usa isto para disparar o Modal!
         };
 
         res.send(renderAlunoDashboardView(req.session.usuario, cursosMatriculados, kpiData));
@@ -2593,6 +2697,203 @@ app.get('/aluno', verificarAluno, async (req, res) => {
     } catch (error) {
         console.error('Erro ao carregar dashboard do aluno:', error);
         res.status(500).send('<h1>Erro interno ao carregar seus cursos.</h1>');
+    }
+});
+
+// GET: Mural de Conquistas do Aluno
+app.get('/aluno/conquistas', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+
+    try {
+        // 1. Buscar total de aulas concluídas
+        const [aulas] = await db.execute(`
+            SELECT COUNT(*) as concluidas 
+            FROM progresso_aula pa
+            JOIN matriculas m ON pa.matricula_id = m.id
+            WHERE m.aluno_id = ? AND pa.status = 'CONCLUIDA'
+        `, [alunoId]);
+
+        // 2. Buscar o total de XP
+        const [xp] = await db.execute(`
+            SELECT SUM(xp) as total_xp 
+            FROM matriculas 
+            WHERE aluno_id = ? AND status IN ('ATIVA', 'CONCLUIDA')
+        `, [alunoId]);
+
+        // 3. Buscar se ele tem a conquista especial do Mentor Bot
+        const [conquistaBot] = await db.execute(`
+            SELECT id FROM aluno_conquistas 
+            WHERE aluno_id = ? AND conquista_id = 'desafio_mentor'
+        `, [alunoId]);
+
+        // 4. Buscar TODOS os cursos concluídos pelo aluno (Removido c.categoria)
+        const [cursosConcluidos] = await db.execute(`
+            SELECT c.titulo, c.mercado 
+            FROM progresso_curso p
+            JOIN matriculas m ON p.matricula_id = m.id
+            JOIN cursos c ON m.curso_id = c.id
+            WHERE m.aluno_id = ? AND p.percentual >= 100
+        `, [alunoId]);
+
+        // Estrutura inicial do progresso do aluno para enviar à View
+        const progressoAtual = {
+            totalAulas: aulas[0].concluidas || 0,
+            xpTotal: xp[0].total_xp || 0,
+            notaMaxMentorBot: conquistaBot.length > 0,
+            cursosDesign: 0,
+            cursosTech: 0,
+            cursosNegocios: 0,
+            cursosEscritorio: 0,
+            cursosMarketing: 0,
+            cursosIdiomas: 0,
+            detalhes: {}
+        };
+
+        // 5. Mapeia os cursos concluídos para as categorias baseando-se na tag 'mercado'
+        cursosConcluidos.forEach(curso => {
+            // Pegamos o mercado e convertemos para minúsculo para facilitar a comparação
+            const tagsDoCurso = (curso.mercado || '').toLowerCase();
+
+            // --- TECNOLOGIA ---
+            if (tagsDoCurso.includes('tecnologia') || tagsDoCurso.includes('programação') || tagsDoCurso.includes('software')) {
+                progressoAtual.cursosTech++;
+                if (!progressoAtual.detalhes['cat_tech']) {
+                    progressoAtual.detalhes['cat_tech'] = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+                }
+            }
+
+            // --- NEGÓCIOS ---
+            if (tagsDoCurso.includes('negócio') || tagsDoCurso.includes('negocio') || tagsDoCurso.includes('administração')) {
+                progressoAtual.cursosNegocios++;
+                if (!progressoAtual.detalhes['cat_negocios']) {
+                    progressoAtual.detalhes['cat_negocios'] = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+                }
+            }
+
+            // --- ESCRITÓRIO ---
+            if (tagsDoCurso.includes('escritório') || tagsDoCurso.includes('escritorio') || tagsDoCurso.includes('office')) {
+                progressoAtual.cursosEscritorio++;
+                if (!progressoAtual.detalhes['cat_escritorio']) {
+                    progressoAtual.detalhes['cat_escritorio'] = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+                }
+            }
+
+            // --- DESIGN ---
+            if (tagsDoCurso.includes('design')) {
+                progressoAtual.cursosDesign++;
+                if (!progressoAtual.detalhes['cat_design']) {
+                    progressoAtual.detalhes['cat_design'] = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+                }
+            }
+
+            // --- MARKETING ---
+            if (tagsDoCurso.includes('marketing') || tagsDoCurso.includes('vendas')) {
+                progressoAtual.cursosMarketing++;
+                if (!progressoAtual.detalhes['cat_marketing']) {
+                    progressoAtual.detalhes['cat_marketing'] = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+                }
+            }
+
+            // --- IDIOMAS ---
+            if (tagsDoCurso.includes('idioma') || tagsDoCurso.includes('inglês') || tagsDoCurso.includes('espanhol')) {
+                progressoAtual.cursosIdiomas++;
+                if (!progressoAtual.detalhes['cat_idiomas']) {
+                    progressoAtual.detalhes['cat_idiomas'] = `Você desbloqueou esta conquista porque concluiu o curso: ${curso.titulo}.`;
+                }
+            }
+        });
+
+        // Envia o objeto montado para a View
+        const renderAlunoConquistasView = require('./views/alunoConquistasView');
+        res.send(renderAlunoConquistasView(req.session.usuario, progressoAtual));
+
+    } catch (err) {
+        console.error('Erro ao carregar conquistas:', err);
+        res.status(500).send("Erro interno ao carregar o mural de conquistas.");
+    }
+});
+
+app.post('/aluno/api/conquistas/mentor-bot', verificarAluno, async (req, res) => {
+    const alunoId = req.session.usuario.id;
+    
+    try {
+        // Tenta registar ou verificar se o aluno já tem a conquista
+        // O ideal é você ter uma tabela 'aluno_conquistas' (aluno_id, conquista_id, data_desbloqueio)
+        
+        const [existente] = await db.execute(
+            'SELECT id FROM aluno_conquistas WHERE aluno_id = ? AND conquista_id = ?', 
+            [alunoId, 'desafio_mentor']
+        );
+        
+        if (existente.length === 0) {
+            // Se não tinha a conquista ainda, salva no banco!
+            await db.execute(
+                'INSERT INTO aluno_conquistas (aluno_id, conquista_id, data_desbloqueio) VALUES (?, ?, NOW())', 
+                [alunoId, 'desafio_mentor']
+            );
+            return res.json({ success: true, nova: true, message: "Conquista desbloqueada!" });
+        }
+        
+        // Se já tinha, não faz nada mas retorna sucesso
+        res.json({ success: true, nova: false, message: "Conquista já estava desbloqueada." });
+
+    } catch (error) {
+        console.error('Erro ao salvar conquista:', error);
+        res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+});
+
+// GET: Ranking de alunos por curso (Top 10)
+app.get('/aluno/api/ranking/:cursoId', verificarAluno, async (req, res) => {
+    const cursoId = req.params.cursoId;
+
+    // Pega o ID do aluno logado
+    const alunoLogadoId = req.session.usuario.id;
+
+    try {
+        // ATENÇÃO: Mudei para JOIN usuarios u (Se a sua tabela for "alunos", mude u para a e usuarios para alunos)
+        const [alunos] = await db.execute(`
+            SELECT 
+                u.id AS aluno_id,
+                u.nome,
+                COALESCE(m.xp, 0) AS xp
+            FROM matriculas m
+            JOIN usuarios u ON m.aluno_id = u.id
+            WHERE m.curso_id = ? 
+              AND m.status IN ('ATIVA', 'CONCLUIDA')
+            ORDER BY m.xp DESC, m.atualizado_em ASC
+            LIMIT 10
+        `, [cursoId]);
+
+        const rankingMapeado = alunos.map((a, index) => {
+            // Formata o nome "João da Silva" para "João S."
+            const partesNome = a.nome.trim().split(' ');
+            let nomeFormatado = partesNome[0];
+            if (partesNome.length > 1) {
+                nomeFormatado += ' ' + partesNome[partesNome.length - 1].charAt(0) + '.';
+            }
+
+            const isCurrentUser = a.aluno_id === alunoLogadoId;
+
+            return {
+                pos: index + 1,
+                nome: isCurrentUser ? `${nomeFormatado} (Você)` : nomeFormatado,
+                xp: a.xp,
+                trend: isCurrentUser && a.xp > 0 ? 'up' : 'flat',
+                isUser: isCurrentUser
+            };
+        });
+
+        res.json({ success: true, ranking: rankingMapeado });
+
+    } catch (error) {
+        // ISTO VAI MOSTRAR O ERRO REAL NO SEU TERMINAL (VS Code / CMD)
+        console.error('=========================================');
+        console.error('ERRO NA ROTA DE RANKING:');
+        console.error(error.message);
+        console.error('=========================================');
+
+        res.status(500).json({ success: false, error: 'Erro interno ao gerar ranking.' });
     }
 });
 
@@ -2767,7 +3068,7 @@ app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
             ORDER BY n.criado_em DESC
             LIMIT ${limit} OFFSET ${offset}
         `;
-        
+
         const [notificacoesRaw] = await db.execute(mainQuery, queryParams);
 
         // 2. Busca as respostas (Usando Promise.all para carregar todas simultaneamente de forma rápida)

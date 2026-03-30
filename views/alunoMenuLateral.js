@@ -48,12 +48,17 @@ function renderAlunoMenuLateral(aluno, activePage) {
             <ul class="nav nav-pills flex-column mb-auto gap-2 w-100">
                 <li class="nav-item">
                     <a href="/aluno" class="nav-link px-3 ${activePage === 'dashboard' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
-                        <i class="bi bi-play-btn-fill me-3 ${activePage === 'dashboard' ? '' : 'text-secondary'}"></i> Meus Cursos
+                        <i class="bi bi-play-btn-fill me-3 ${activePage === 'dashboard' ? '' : 'text-secondary'}"></i> Cursos
+                    </a>
+                </li>
+                <li>
+                    <a href="/aluno/conquistas" class="nav-link px-3 ${activePage === 'conquistas' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
+                        <i class="bi bi-trophy-fill me-3 ${activePage === 'conquistas' ? '' : 'text-secondary'}"></i> Conquistas
                     </a>
                 </li>
                 <li>
                     <a href="/aluno/certificados" class="nav-link px-3 ${activePage === 'certificados' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
-                        <i class="bi bi-award-fill me-3 ${activePage === 'certificados' ? '' : 'text-secondary'}"></i> Meus Certificados
+                        <i class="bi bi-award-fill me-3 ${activePage === 'certificados' ? '' : 'text-secondary'}"></i> Certificados
                     </a>
                 </li>
                 <li>
@@ -63,7 +68,7 @@ function renderAlunoMenuLateral(aluno, activePage) {
                 </li>
                 <li>
                     <a href="/aluno/favoritos" class="nav-link px-3 ${activePage === 'favoritos' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
-                        <i class="bi bi-heart-fill me-3 ${activePage === 'favoritos' ? '' : 'text-secondary'}"></i> Meus Favoritos
+                        <i class="bi bi-heart-fill me-3 ${activePage === 'favoritos' ? '' : 'text-secondary'}"></i> Favoritos
                     </a>
                 </li>
                 
@@ -92,7 +97,7 @@ function renderAlunoMenuLateral(aluno, activePage) {
             <hr class="text-secondary opacity-25 mt-4 mb-3">
             
             <a href="/logout" class="nav-link link-danger fw-bold px-3 py-2 rounded-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 transition text-center" style="transition: all 0.2s;">
-                <i class="bi bi-box-arrow-right me-2"></i> Sair da Plataforma
+                <i class="bi bi-box-arrow-right me-2"></i> Sair
             </a>
         </div>
     </div>

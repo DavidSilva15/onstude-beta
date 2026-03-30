@@ -1,4 +1,5 @@
 // views/homeView.js
+const renderMainHeader = require('./mainHeader');
 
 function renderHomeView(usuarioLogado, cursos) {
     let htmlCursosSlider = '';
@@ -48,26 +49,26 @@ function renderHomeView(usuarioLogado, cursos) {
                 <div class="swiper-slide h-auto curso-slide" data-tags="${tagsDoCurso}">
                     <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative hover-shadow transition">
                         
-                        <button class="btn btn-light btn-sm rounded-circle shadow-sm position-absolute top-0 end-0 m-3 z-2 text-danger btn-favoritar" data-curso-id="${curso.id}" title="Adicionar aos favoritos">
+                        <button class="btn btn-light btn-sm rounded-circle shadow-sm position-absolute top-0 end-0 m-2 z-2 text-danger btn-favoritar" data-curso-id="${curso.id}" title="Adicionar aos favoritos" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-heart"></i>
                         </button>
                         
-                        <img src="${capa}" class="card-img-top" alt="${curso.titulo}" style="height: 180px; object-fit: cover;">
+                        <img src="${capa}" class="card-img-top" alt="${curso.titulo}" style="height: 160px; object-fit: cover;">
                         
-                        <div class="card-body d-flex flex-column p-4">
-                            <h5 class="fw-bold text-dark text-truncate" title="${curso.titulo}">${curso.titulo}</h5>
-                            <p class="text-muted small mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        <div class="card-body d-flex flex-column p-3">
+                            <h6 class="fw-bold text-dark text-truncate mb-2" title="${curso.titulo}">${curso.titulo}</h6>
+                            <p class="text-muted small mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.85rem; line-height: 1.4;">
                                 ${curso.descricao || 'Aprenda as melhores práticas e destaque-se no mercado com este curso completo.'}
                             </p>
                             
-                            <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold">
+                            <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold" style="font-size: 0.8rem;">
                                 <span class="me-3" title="Soma do tempo de todas as aulas"><i class="bi bi-clock text-primary me-1"></i> ${duracao}</span>
                                 <span title="Estimativa baseada em 2h de estudo/dia"><i class="bi bi-calendar-check text-success me-1"></i> ${conclusao}</span>
                             </div>
                             
                             <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
-                                <span class="fw-bold fs-5 text-primary">${preco}</span>
-                                <a href="/cursos/${curso.id}" class="btn btn-primary fw-bold px-4 rounded-pill">Comprar</a>
+                                <span class="fw-bold text-primary">${preco}</span>
+                                <a href="/cursos/${curso.id}" class="btn btn-primary btn-sm fw-bold px-3 rounded-pill">Comprar</a>
                             </div>
                         </div>
                     </div>
@@ -77,15 +78,13 @@ function renderHomeView(usuarioLogado, cursos) {
     }
 
     const linksCategorias = `
-        <a href="#" class="btn btn-dark rounded-pill me-2 mb-2 fw-bold px-4 btn-filter" data-filter="all">⭐ Em Alta</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2 fw-semibold btn-filter" data-filter="tecnologia">💻 Tecnologia</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2 fw-semibold btn-filter" data-filter="negócio">📊 Negócios</a>
-        
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2 fw-semibold btn-filter" data-filter="escritório">🗂️ Escritório</a>
-        
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2 fw-semibold btn-filter" data-filter="design">🎨 Design</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2 fw-semibold btn-filter" data-filter="marketing">📈 Marketing</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 mb-2 fw-semibold btn-filter" data-filter="idioma">🗣️ Idiomas</a>
+        <a href="#" class="btn btn-dark rounded-pill me-2 fw-bold px-4 btn-filter flex-shrink-0" data-filter="all">⭐ Em Alta</a>
+        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="tecnologia">💻 Tecnologia</a>
+        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="negócio">📊 Negócios</a>
+        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="escritório">🗂️ Escritório</a>
+        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="design">🎨 Design</a>
+        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="marketing">📈 Marketing</a>
+        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="idioma">🗣️ Idiomas</a>
     `;
 
     return `
@@ -110,86 +109,59 @@ function renderHomeView(usuarioLogado, cursos) {
             .hero-section { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); padding: 80px 0; }
             .hero-title { font-size: 3rem; font-weight: 800; color: #1a1a1a; line-height: 1.2; letter-spacing: -1px; }
             .hero-subtitle { font-size: 1.25rem; color: #6c757d; line-height: 1.6; }
-            
             .hero-img { border-radius: 24px; object-fit: cover; height: 450px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
             
-            .swiper-button-next, .swiper-button-prev { background-color: white; color: #0d6efd; width: 45px; height: 45px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-            .swiper-button-next:after, .swiper-button-prev:after { font-size: 1.2rem; font-weight: bold; }
+            .swiper-button-next, .swiper-button-prev { background-color: white; color: #0d6efd; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+            .swiper-button-next:after, .swiper-button-prev:after { font-size: 1.1rem; font-weight: bold; }
 
             .hover-white { transition: color 0.3s; }
             .hover-white:hover { color: #ffffff !important; }
+
+            /* Mobile Horizontal Scroll for Filters */
+            .hide-scrollbar {
+                -ms-overflow-style: none;  /* IE and Edge */
+                scrollbar-width: none;  /* Firefox */
+            }
+            .hide-scrollbar::-webkit-scrollbar {
+                display: none; /* Chrome, Safari and Opera */
+            }
+
+            /* Responsive Adjustments */
+            @media (max-width: 991.98px) {
+                .search-bar-header { margin-top: 15px; width: 100%; }
+            }
+            
+            @media (max-width: 767.98px) {
+                .hero-section { padding: 40px 0; }
+                .hero-title { font-size: 2.2rem; }
+                .hero-subtitle { font-size: 1rem; mb-4; }
+                .hero-img { height: 280px; }
+                .btn-lg { padding: 0.6rem 1.5rem; font-size: 1rem; }
+                .career-banner-img { max-height: 200px !important; }
+            }
         </style>
     </head>
     <body>
 
-        <nav class="navbar navbar-expand-lg navbar-custom sticky-top py-3">
-            <div class="container">
-                <a class="navbar-brand fw-bold text-primary fs-3" href="/">OnStude<span class="text-dark">.</span></a>
-                
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-
-                <div class="collapse navbar-collapse" id="navbarMain">
-                    <ul class="navbar-nav ms-lg-4 me-auto align-items-lg-center">
-                        <li class="nav-item me-lg-2">
-                            <a class="nav-link fw-semibold text-dark hover-primary" href="/plano-de-carreira">Plano de Carreira</a>
-                        </li>
-                        <li class="nav-item me-lg-3">
-                            <a class="nav-link fw-semibold text-dark hover-primary" href="#">Categorias</a>
-                        </li>
-                        <li class="nav-item mt-3 mt-lg-0" style="min-width: 300px;">
-                            <form class="position-relative">
-                                <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                                <input type="search" class="form-control search-bar-header py-2" placeholder="O que você quer aprender hoje?">
-                            </form>
-                        </li>
-                    </ul>
-
-                    <div class="d-flex flex-column flex-lg-row align-items-lg-center mt-3 mt-lg-0 gap-3">
-                        <a href="#" class="text-dark text-decoration-none position-relative me-lg-2 fs-5">
-                            <i class="bi bi-cart3"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" style="width: 10px; height: 10px;"></span>
-                        </a>
-                        
-                        ${usuarioLogado ? `
-                            <div class="d-flex align-items-center ms-lg-2">
-                                <div class="d-flex align-items-center me-3 text-dark">
-                                    ${usuarioLogado.foto_perfil_url 
-                                        ? `<img src="${usuarioLogado.foto_perfil_url}" alt="Foto" class="rounded-circle me-2" style="width: 36px; height: 36px; object-fit: cover; border: 2px solid #0d6efd;">` 
-                                        : `<div class="rounded-circle me-2 d-flex align-items-center justify-content-center bg-primary text-white fw-bold" style="width: 36px; height: 36px; border: 2px solid #0d6efd; font-size: 14px;">${usuarioLogado.nome.charAt(0).toUpperCase()}</div>`
-                                    }
-                                    <span class="d-none d-md-inline">Olá, <strong>${usuarioLogado.nome.split(' ')[0]}</strong></span>
-                                </div>
-                                <a href="${usuarioLogado.tipo === 'ADMIN' ? '/admin' : '/aluno'}" class="btn btn-primary fw-bold px-4 rounded-pill me-2">Meu Painel</a>
-                                <a href="/logout" class="btn btn-outline-danger fw-bold px-4 rounded-pill">Sair</a>
-                            </div>
-                        ` : `
-                            <a href="/login?returnTo=/" class="btn btn-outline-dark fw-bold px-4 rounded-pill">Entrar</a>
-                            <a href="/cadastro" class="btn btn-primary fw-bold px-4 rounded-pill">Criar Conta</a>
-                        `}
-                    </div>
-                </div>
-            </div>
-        </nav>
+        ${renderMainHeader(usuarioLogado)}
 
         <section class="hero-section overflow-hidden">
             <div class="container">
                 <div class="row align-items-center">
                     
-                    <div class="col-lg-6 mb-5 mb-lg-0 pe-lg-5 text-center text-lg-start">
+                    <div class="col-lg-6 mb-4 mb-lg-0 pe-lg-5 text-center text-lg-start">
                         <span class="badge bg-primary bg-opacity-10 text-primary mb-3 px-3 py-2 rounded-pill fw-bold">🚀 Plataforma E-learning #1</span>
-                        <h1 class="hero-title mb-4">Transforme seu futuro com nossos <span class="text-primary">cursos profissionalizantes</span> online.</h1>
-                        <p class="hero-subtitle mb-5">Aprenda com especialistas, no seu ritmo, e conquiste novas oportunidades no mercado de trabalho com certificados reconhecidos.</p>
+                        <h1 class="hero-title mb-3">Transforme seu futuro com nossos <span class="text-primary">cursos profissionalizantes</span> online.</h1>
+                        <p class="hero-subtitle mb-4">Aprenda com especialistas, no seu ritmo, e conquiste novas oportunidades no mercado de trabalho com certificados reconhecidos.</p>
                         
                         <div class="d-flex flex-column flex-sm-row justify-content-center justify-content-lg-start gap-3">
-                            <a href="#secao-cursos" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow-sm">Explorar Cursos</a>
+                            <a href="#secao-cursos" class="btn btn-primary btn-lg fw-bold px-4 py-2 rounded-pill shadow-sm">Explorar Cursos</a>
                         </div>
                     </div>
 
                     <div class="col-lg-6 position-relative">
-                        <div class="position-absolute top-0 end-0 bg-warning rounded-circle opacity-50 blur" style="width: 300px; height: 300px; filter: blur(60px); z-index: 0; transform: translate(20%, -20%);"></div>
-                        <div class="position-absolute bottom-0 start-0 bg-primary rounded-circle opacity-25 blur" style="width: 250px; height: 250px; filter: blur(60px); z-index: 0; transform: translate(-20%, 20%);"></div>
+                        <div class="position-absolute top-0 end-0 bg-warning rounded-circle opacity-50 blur d-none d-md-block" style="width: 300px; height: 300px; filter: blur(60px); z-index: 0; transform: translate(20%, -20%);"></div>
+                        <div class="position-absolute bottom-0 start-0 bg-primary rounded-circle opacity-25 blur d-none d-md-block" style="width: 250px; height: 250px; filter: blur(60px); z-index: 0; transform: translate(-20%, 20%);"></div>
 
                         <div id="heroCarousel" class="carousel slide carousel-fade shadow-lg rounded-4 overflow-hidden position-relative z-1" data-bs-ride="carousel" data-bs-interval="4000">
                             <div class="carousel-inner">
@@ -211,22 +183,22 @@ function renderHomeView(usuarioLogado, cursos) {
         </section>
 
         <section id="secao-cursos" class="pt-5 pb-4 bg-white">
-            <div class="container py-4">
+            <div class="container py-3">
                 
-                <div class="row mb-4 align-items-end">
-                    <div class="col-lg-8">
-                        <h2 class="fw-bold text-dark mb-3">Uma ampla seleção de cursos</h2>
-                        <p class="text-muted fs-5 mb-0">Escolha o seu caminho e comece a estudar hoje mesmo.</p>
+                <div class="row mb-3 align-items-end">
+                    <div class="col-lg-8 text-center text-md-start">
+                        <h2 class="fw-bold text-dark mb-2">Uma ampla seleção de cursos</h2>
+                        <p class="text-muted fs-6 mb-0">Escolha o seu caminho e comece a estudar hoje mesmo.</p>
                     </div>
                 </div>
 
-                <div class="d-flex flex-wrap mb-5">
+                <div class="d-flex overflow-x-auto hide-scrollbar mb-4 pb-2" style="-webkit-overflow-scrolling: touch;">
                     ${linksCategorias}
                 </div>
 
-                <div class="p-4 rounded-4 border bg-light position-relative">
+                <div class="p-3 p-md-4 rounded-4 border bg-light position-relative">
                     <div class="swiper mySwiper">
-                        <div class="swiper-wrapper py-3">
+                        <div class="swiper-wrapper py-2">
                             ${htmlCursosSlider}
                         </div>
                     </div>
@@ -234,79 +206,79 @@ function renderHomeView(usuarioLogado, cursos) {
                     <div class="swiper-button-prev d-none d-md-flex"></div>
                 </div>
                 
-                <div class="text-center mt-5">
-                    <a href="#" class="btn btn-outline-primary fw-bold px-5 py-3 rounded-pill">Ver Todos os Cursos</a>
+                <div class="text-center mt-4">
+                    <a href="#" class="btn btn-outline-primary fw-bold px-4 py-2 rounded-pill">Ver Todos os Cursos</a>
                 </div>
 
             </div>
         </section>
 
-        <section class="py-5 bg-white">
+        <section class="py-4 py-md-5 bg-white">
             <div class="container">
-                <div class="row align-items-center bg-light border rounded-4 p-4 p-md-5 mx-0 shadow-sm position-relative overflow-hidden">
+                <div class="row align-items-center bg-light border rounded-4 p-3 p-md-4 mx-0 shadow-sm position-relative overflow-hidden">
                     
-                    <div class="position-absolute top-0 end-0 bg-primary opacity-10 rounded-circle" style="width: 250px; height: 250px; transform: translate(30%, -30%);"></div>
+                    <div class="position-absolute top-0 end-0 bg-primary opacity-10 rounded-circle d-none d-md-block" style="width: 250px; height: 250px; transform: translate(30%, -30%);"></div>
 
-                    <div class="col-lg-7 position-relative z-1 mb-4 mb-lg-0 pe-lg-5">
-                        <h2 class="fw-bold text-dark mb-3">O plano de carreira melhora seu currículo</h2>
+                    <div class="col-lg-7 position-relative z-1 mb-4 mb-lg-0 pe-lg-4 text-center text-md-start">
+                        <h2 class="fw-bold text-dark mb-2 fs-3">O plano de carreira melhora seu currículo</h2>
                         <h6 class="fw-bold text-primary mb-3">Tenha mais visibilidade nos processos seletivos</h6>
-                        <p class="small text-muted mb-0 lh-lg" style="text-align: justify;">
+                        <p class="small text-muted mb-0 lh-base text-start">
                             É uma ferramenta que auxilia os usuários na construção de currículos e na
                             análise de expectativas profissionais. Com orientações personalizadas e recursos
                             de análise de mercado, a ferramenta ajuda a alinhar habilidades e objetivos com
                             as demandas atuais, potencializando as perspectivas de carreira.
                         </p>
-                        <a href="/plano-de-carreira" class="btn btn-primary fw-bold px-4 rounded-pill mt-4 shadow-sm">Construir meu currículo</a>
+                        <a href="/plano-de-carreira" class="btn btn-primary btn-sm fw-bold px-4 rounded-pill mt-4 shadow-sm">Construir meu currículo</a>
                     </div>
                     
                     <div class="col-lg-5 position-relative z-1 text-center">
-                        <img src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80" alt="Análise de Carreira e Currículo" class="img-fluid rounded-4 shadow" style="max-height: 280px; object-fit: cover; width: 100%;">
+                        <img src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80" alt="Análise de Carreira e Currículo" class="img-fluid rounded-4 shadow career-banner-img" style="max-height: 280px; object-fit: cover; width: 100%;">
                     </div>
 
                 </div>
             </div>
         </section>
 
-        <footer class="bg-dark text-white pt-5 pb-3 mt-5">
+        <footer class="bg-dark text-white pt-5 pb-3 mt-4">
             <div class="container">
-                <div class="row mb-4">
+                <div class="row mb-4 text-center text-md-start">
                     
                     <div class="col-lg-5 mb-4 mb-lg-0">
                         <h3 class="fw-bold text-primary mb-3">OnStude<span class="text-white">.</span></h3>
-                        <p class="text-white-50 small pe-lg-5">
+                        <p class="text-white-50 small pe-lg-5 mb-0">
                             Aprenda com especialistas, no seu ritmo, e conquiste novas oportunidades no mercado de trabalho com certificados reconhecidos.
                         </p>
                     </div>
                     
-                    <div class="col-lg-4 col-md-6 mb-4 mb-lg-0">
-                        <h5 class="fw-bold mb-4 text-light">Acesso Rápido</h5>
-                        <ul class="list-unstyled">
+                    <div class="col-md-6 col-lg-4 mb-4 mb-md-0">
+                        <h6 class="fw-bold mb-3 text-light">Acesso Rápido</h6>
+                        <ul class="list-unstyled small">
                             <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white">Quem Somos</a></li>
                             <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white">Fale Conosco</a></li>
                             <li class="mb-2"><a href="#" class="text-white-50 text-decoration-none hover-white">Termos de Uso</a></li>
                         </ul>
                     </div>
 
-                    <div class="col-lg-3 col-md-6">
-                        <h5 class="fw-bold mb-4 text-light">Suporte</h5>
+                    <div class="col-md-6 col-lg-3">
+                        <h6 class="fw-bold mb-3 text-light">Suporte</h6>
                         <p class="text-white-50 small mb-1"><i class="bi bi-envelope me-2"></i> suporte@onstude.com</p>
                     </div>
 
                 </div>
 
-                <hr class="border-secondary mb-4 opacity-25">
+                <hr class="border-secondary mb-3 opacity-25">
 
                 <div class="row align-items-center">
-                    <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        <small class="text-white-50">&copy; 2026 OnStude. Todos os direitos reservados.</small>
+                    <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
+                        <small class="text-white-50" style="font-size: 0.75rem;">&copy; 2026 OnStude. Todos os direitos reservados.</small>
                     </div>
                     
                     <div class="col-md-6 text-center text-md-end d-flex align-items-center justify-content-center justify-content-md-end">
-                        <small class="text-white-50 me-3">Desenvolvido por <strong class="text-light">71dev</strong></small>
-                        <a href="https://www.instagram.com/71dev_/" target="_blank" class="text-white-50 text-decoration-none fs-5 mx-2 hover-white transition" title="Instagram 71dev">
+                        <small class="text-white-50 me-2" style="font-size: 0.75rem;">Desenvolvido por <strong class="text-light">71dev</strong></small>
+                        <a href="https://www.instagram.com/71dev_/" target="_blank" class="text-white-50 text-decoration-none fs-6 mx-2 hover-white transition" title="Instagram 71dev">
                             <i class="bi bi-instagram"></i>
                         </a>
-                        <a href="https://wa.me/5571983174920" target="_blank" class="text-white-50 text-decoration-none fs-5 ms-2 hover-white transition" title="WhatsApp 71dev">
+                        <a href="https://wa.me/5571983174920" target="_blank" class="text-white-50 text-decoration-none fs-6 ms-1 hover-white transition" title="WhatsApp 71dev">
                             <i class="bi bi-whatsapp"></i>
                         </a>
                     </div>
@@ -323,7 +295,7 @@ function renderHomeView(usuarioLogado, cursos) {
             document.addEventListener('DOMContentLoaded', function () {
                 var swiper = new Swiper(".mySwiper", {
                     slidesPerView: 1,
-                    spaceBetween: 20,
+                    spaceBetween: 15,
                     autoplay: {
                         delay: 3000,
                         disableOnInteraction: false,
@@ -335,8 +307,8 @@ function renderHomeView(usuarioLogado, cursos) {
                     },
                     breakpoints: {
                         576: { slidesPerView: 2, spaceBetween: 20 },
-                        992: { slidesPerView: 3, spaceBetween: 30 },
-                        1200: { slidesPerView: 4, spaceBetween: 30 },
+                        992: { slidesPerView: 3, spaceBetween: 20 },
+                        1200: { slidesPerView: 4, spaceBetween: 25 },
                     },
                 });
 
@@ -349,11 +321,11 @@ function renderHomeView(usuarioLogado, cursos) {
                         e.preventDefault();
 
                         botoesFiltro.forEach(b => {
-                            b.classList.remove('btn-dark', 'fw-bold', 'px-4');
+                            b.classList.remove('btn-dark', 'fw-bold');
                             b.classList.add('btn-outline-secondary', 'fw-semibold');
                         });
                         this.classList.remove('btn-outline-secondary', 'fw-semibold');
-                        this.classList.add('btn-dark', 'fw-bold', 'px-4');
+                        this.classList.add('btn-dark', 'fw-bold');
 
                         const filtro = this.getAttribute('data-filter').toLowerCase();
                         swiper.removeAllSlides();

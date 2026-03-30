@@ -76,6 +76,51 @@ function renderAlunoEditarPerfilView(aluno) {
                 .main-wrapper { flex-direction: column; height: auto; }
                 .content-area { height: auto; padding: 20px; }
             }
+
+            /* ==========================================
+               RESPONSIVIDADE EXTREMA (MOBILE)
+               ========================================== */
+            @media (max-width: 767.98px) {
+                .content-area { padding: 15px 0 0 0 !important; background-color: #ffffff; }
+                .container-fluid { padding-left: 0 !important; padding-right: 0 !important; }
+                
+                /* Título e botão de voltar */
+                .header-mobile-wrapper { padding: 0 1.5rem; margin-bottom: 1rem !important; }
+                .header-mobile-wrapper h2 { font-size: 1.6rem; }
+                .header-mobile-wrapper p { font-size: 0.85rem; margin-bottom: 0; }
+
+                /* Card e Formulário full width */
+                .card { border-radius: 0 !important; box-shadow: none !important; border: none !important; }
+                .card-body { padding: 1.5rem 1.5rem !important; }
+
+                .form-label { font-size: 0.8rem !important; margin-bottom: 0.2rem !important; }
+                
+                /* Reduz tamanho dos inputs */
+                .form-control-custom {
+                    padding: 0.5rem 0.8rem 0.5rem 0.4rem;
+                    font-size: 0.9rem;
+                }
+                .input-group-text-custom {
+                    padding-left: 0.8rem;
+                    font-size: 0.9rem;
+                }
+                .input-group-custom { border-radius: 10px; }
+
+                /* Reduz margens */
+                .row.g-4 { --bs-gutter-y: 1rem; --bs-gutter-x: 1rem; }
+                .mb-5 { margin-bottom: 1.5rem !important; }
+                
+                .btn-lg {
+                    padding: 0.7rem; 
+                    font-size: 0.95rem;
+                    border-radius: 10px !important;
+                }
+                
+                /* Diminui a foto no mobile para dar mais espaço à tela */
+                .avatar-preview { width: 100px; height: 100px; font-size: 40px !important; }
+                .btn-camera-float { width: 32px; height: 32px; bottom: 0; right: 0; }
+                .btn-camera-float i { font-size: 0.9rem; }
+            }
         </style>
     </head>
     <body>
@@ -92,7 +137,7 @@ function renderAlunoEditarPerfilView(aluno) {
             <main class="content-area p-4 p-lg-5">
                 <div class="container-fluid" style="max-width: 850px;">
                     
-                    <div class="mb-4 d-flex align-items-center justify-content-between">
+                    <div class="mb-4 d-flex align-items-center justify-content-between header-mobile-wrapper">
                         <div>
                             <h2 class="fw-bold text-dark mb-1">Meu Perfil</h2>
                             <p class="text-secondary">Atualize as suas informações pessoais e foto de exibição.</p>
@@ -144,7 +189,7 @@ function renderAlunoEditarPerfilView(aluno) {
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold text-dark ms-1 small">Nova Senha</label>
                                             <div class="input-group-custom d-flex align-items-center">
-                                                <span class="ps-3 text-muted"><i class="bi bi-shield-lock"></i></span>
+                                                <span class="ps-3 text-muted"><i class="bi bi-shield-lock fs-5"></i></span>
                                                 <input type="password" class="form-control form-control-custom flex-grow-1" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres">
                                             </div>
                                             <small class="text-muted ms-1 mt-1 d-block" style="font-size: 0.75rem;">Deixe em branco para manter a atual.</small>
@@ -153,7 +198,7 @@ function renderAlunoEditarPerfilView(aluno) {
                                         <div class="col-md-6">
                                             <label class="form-label fw-bold text-dark ms-1 small">Confirmar Nova Senha</label>
                                             <div class="input-group-custom d-flex align-items-center">
-                                                <span class="ps-3 text-muted"><i class="bi bi-check2-circle"></i></span>
+                                                <span class="ps-3 text-muted"><i class="bi bi-check2-circle fs-5"></i></span>
                                                 <input type="password" class="form-control form-control-custom flex-grow-1" id="confirmar_senha" name="confirmar_senha" placeholder="Repita a nova senha">
                                             </div>
                                         </div>
