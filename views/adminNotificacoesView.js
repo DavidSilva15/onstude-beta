@@ -29,14 +29,13 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
             // ==========================================
             let alvoVisual = '';
             if (n.tipo_alvo === 'TODOS') {
-                alvoVisual = '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 shadow-sm">Todos os Alunos</span>';
+                alvoVisual = '<span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 shadow-sm" style="font-size: 0.65rem;">Todos os Alunos</span>';
             } else {
                 if (n.cursos_alvo_nomes) {
-                    // Divide a string separada por vírgulas que vem do BD e cria um badge para cada curso
                     const cursosArray = n.cursos_alvo_nomes.split(',');
-                    alvoVisual = cursosArray.map(c => `<span class="badge bg-secondary bg-opacity-10 text-dark border border-secondary border-opacity-25 shadow-sm me-1 mb-1">${c.trim()}</span>`).join('');
+                    alvoVisual = cursosArray.map(c => `<span class="badge bg-secondary bg-opacity-10 text-dark border border-secondary border-opacity-25 shadow-sm me-1 mb-1" style="font-size: 0.65rem;">${c.trim()}</span>`).join('');
                 } else {
-                    alvoVisual = '<span class="badge bg-secondary shadow-sm">Cursos Específicos</span>';
+                    alvoVisual = '<span class="badge bg-secondary shadow-sm" style="font-size: 0.65rem;">Cursos Específicos</span>';
                 }
             }
 
@@ -57,9 +56,8 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
             let badgeStatus = 'bg-warning text-dark';
             let cardCustomClass = 'bg-white border-0';
 
-            // Alterado de 'CONCLUÍDO' para 'PÚBLICO ALCANÇADO'
             if (totalEnviados > 0 && totalLidos >= totalEnviados) {
-                statusVisual = 'PÚBLICO ALCANÇADO';
+                statusVisual = 'ALCANCE MAX';
                 badgeStatus = 'bg-success';
                 cardCustomClass = 'bg-success bg-opacity-10 border border-success border-opacity-25';
             } else if (totalEnviados === 0) {
@@ -122,51 +120,51 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
             if(n.tipo_interacao === 'AVALIACAO_ESTRELAS') badgeTipo = 'bg-primary';
 
             // ==========================================
-            // CARD DA NOTIFICAÇÃO
+            // CARD DA NOTIFICAÇÃO OTIMIZADO
             // ==========================================
             htmlNotificacoes += `
                 <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
                     <div class="card shadow-sm rounded-4 h-100 hover-card transition-all ${cardCustomClass}">
-                        <div class="card-body p-4 d-flex flex-column">
+                        <div class="card-body p-3 d-flex flex-column">
                             
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <h5 class="fw-bold text-dark mb-0 text-truncate pe-2" title="${n.titulo}">${n.titulo}</h5>
-                                <span class="badge ${badgeStatus} rounded-pill shadow-sm" style="font-size: 0.65rem;">${statusVisual}</span>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="fw-bold text-dark mb-0 text-truncate pe-2" title="${n.titulo}">${n.titulo}</h6>
+                                <span class="badge ${badgeStatus} rounded-pill shadow-sm flex-shrink-0" style="font-size: 0.65rem;">${statusVisual}</span>
                             </div>
                             
-                            <div class="mb-3">
-                                <span class="badge ${badgeTipo} mb-2 shadow-sm">${n.tipo_interacao.replace('_', ' ')}</span>
-                                <small class="d-block text-muted mb-1">Público Alvo:</small>
+                            <div class="mb-2">
+                                <span class="badge ${badgeTipo} mb-1 shadow-sm" style="font-size: 0.65rem;">${n.tipo_interacao.replace('_', ' ')}</span>
+                                <small class="d-block text-muted mb-1 lh-1" style="font-size: 0.7rem;">Público Alvo:</small>
                                 <div class="d-flex flex-wrap gap-1">
                                     ${alvoVisual}
                                 </div>
                             </div>
 
-                            <div class="row g-2 mb-4 mt-auto p-3 bg-white bg-opacity-75 rounded-4 border border-light shadow-sm">
-                                <div class="col-6 mb-2">
-                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Data de Início</small>
-                                    <strong class="text-dark small"><i class="bi bi-calendar-check text-success me-1"></i>${dInicio.split(' ')[0]}</strong>
+                            <div class="row g-2 mb-3 mt-auto p-2 bg-white bg-opacity-75 rounded-3 border border-light shadow-sm align-items-center">
+                                <div class="col-6 mb-1">
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Início</small>
+                                    <strong class="text-dark d-block text-truncate" style="font-size: 0.8rem;"><i class="bi bi-calendar-check text-success me-1"></i>${dInicio.split(' ')[0]}</strong>
                                 </div>
-                                <div class="col-6 mb-2">
-                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Data de Fim</small>
-                                    <strong class="text-dark small"><i class="bi bi-calendar-x text-danger me-1"></i>${dFim.split(' ')[0]}</strong>
-                                </div>
-                                <div class="col-6 border-top border-light pt-2">
-                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Lidos</small>
-                                    <strong class="text-success fs-6"><i class="bi bi-check-all me-1"></i>${totalLidos}</strong>
+                                <div class="col-6 mb-1">
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Expira em</small>
+                                    <strong class="text-dark d-block text-truncate" style="font-size: 0.8rem;"><i class="bi bi-calendar-x text-danger me-1"></i>${dFim.split(' ')[0]}</strong>
                                 </div>
                                 <div class="col-6 border-top border-light pt-2">
-                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Faltam Ler</small>
-                                    <strong class="text-warning text-dark fs-6"><i class="bi bi-hourglass-split me-1"></i>${faltamLer}</strong>
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Lidos</small>
+                                    <strong class="text-success d-block text-truncate" style="font-size: 0.85rem;"><i class="bi bi-check-all me-1"></i>${totalLidos}</strong>
+                                </div>
+                                <div class="col-6 border-top border-light pt-2">
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Faltam Ler</small>
+                                    <strong class="text-warning text-dark d-block text-truncate" style="font-size: 0.85rem;"><i class="bi bi-hourglass-split me-1"></i>${faltamLer}</strong>
                                 </div>
                             </div>
 
-                            <div class="d-flex gap-2 mt-auto">
-                                <button class="btn btn-outline-primary bg-white w-50 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#${modalDetalhesId}">
-                                    <i class="bi bi-eye me-1"></i> Detalhes
+                            <div class="d-flex flex-wrap gap-2 mt-auto">
+                                <button class="btn btn-outline-primary bg-white flex-grow-1 btn-sm fw-bold rounded-pill shadow-sm text-truncate" data-bs-toggle="modal" data-bs-target="#${modalDetalhesId}" title="Detalhes">
+                                    <i class="bi bi-eye"></i> Detalhes
                                 </button>
-                                <button class="btn btn-primary w-50 fw-bold rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#${modalEditId}">
-                                    <i class="bi bi-pencil-square me-1"></i> Editar
+                                <button class="btn btn-primary flex-grow-1 btn-sm fw-bold rounded-pill shadow-sm text-truncate" data-bs-toggle="modal" data-bs-target="#${modalEditId}" title="Editar">
+                                    <i class="bi bi-pencil-square"></i> Editar
                                 </button>
                             </div>
                         </div>
@@ -175,7 +173,7 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
             `;
 
             // ==========================================
-            // MODAL DE DETALHES E RESPOSTAS
+            // MODAIS MANTIDOS INTACTOS
             // ==========================================
             htmlModais += `
                 <div class="modal fade" id="${modalDetalhesId}" tabindex="-1" aria-hidden="true">

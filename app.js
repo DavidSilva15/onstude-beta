@@ -7,6 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const PDFDocument = require('pdfkit');
+const { MercadoPagoConfig, Preference } = require('mercadopago');
+const client = new MercadoPagoConfig({ accessToken: 'APP_USR-SEU_ACCESS_TOKEN_AQUI' });
 // Lembre-se que você já tem o 'fs' e 'path' importados das etapas anteriores.
 
 // Configuração forçada dos caminhos para o ambiente Windows
@@ -39,7 +41,8 @@ const renderForumNovoTopicoView = require('./views/forumNovoTopicoView');
 const renderForumTopicoView = require('./views/forumTopicoView');
 const renderAdminIntegracoesView = require('./views/renderAdminIntegracoesView');
 const renderHomeView = require('./views/homeView');
-const renderCursoPublicoView = require('./views/cursoPublicoView')
+const renderCursoPublicoView = require('./views/cursoPublicoView');
+const renderAlunoCarrinhoView = require('./views/alunoCarrinhoView');
 
 const app = express();
 const port = 3000;
@@ -823,6 +826,262 @@ app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
     } catch (error) {
         console.error(error);
         res.status(500).send('Erro interno ao salvar o curso.');
+    }
+});
+
+app.use((req, res, next) => {
+    if (req.session && !req.session.carrinho) {
+        req.session.carrinho = [];
+    }
+    next();
+});
+
+// ==========================================
+// CARRINHO DE COMPRAS E CHECKOUT (ALUNO)
+// ==========================================
+
+// POST: Adicionar curso ao carrinho (Agora no Banco de Dados)
+app.post('/aluno/carrinho/adicionar', verificarAluno, async (req, res) => {
+    const { curso_id } = req.body;
+    const alunoId = req.session.usuario.id;
+
+    try {
+        // 1. Verifica se o aluno já tem este curso (Ativo ou Concluído)
+        const [matriculas] = await db.execute(
+            'SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ? AND status IN ("ATIVA", "CONCLUIDA")',
+            [alunoId, curso_id]
+        );
+        if (matriculas.length > 0) {
+            return res.json({ success: false, message: 'Você já possui este curso.' });
+        }
+
+        // 2. Tenta inserir no carrinho (A restrição UNIQUE do banco impede duplicados automaticamente)
+        try {
+            await db.execute('INSERT INTO carrinho_itens (aluno_id, curso_id) VALUES (?, ?)', [alunoId, curso_id]);
+        } catch (insertError) {
+            if (insertError.code === 'ER_DUP_ENTRY') {
+                return res.json({ success: false, message: 'Curso já está no carrinho.' });
+            }
+            throw insertError;
+        }
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Erro ao adicionar ao carrinho:', error);
+        res.status(500).json({ success: false, message: 'Erro interno ao adicionar curso.' });
+    }
+});
+
+// POST: Remover curso do carrinho
+app.post('/aluno/carrinho/remover', verificarAluno, async (req, res) => {
+    const { curso_id } = req.body;
+    const alunoId = req.session.usuario.id;
+
+    try {
+        await db.execute('DELETE FROM carrinho_itens WHERE aluno_id = ? AND curso_id = ?', [alunoId, curso_id]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Erro ao remover do carrinho:', error);
+        res.status(500).json({ success: false });
+    }
+});
+
+// GET: Renderiza a página visual do Carrinho de Compras
+app.get('/aluno/carrinho', verificarAluno, async (req, res) => {
+    const aluno = req.session.usuario;
+
+    try {
+        // Busca os detalhes dos cursos diretamente da nova tabela do carrinho cruzando com a tabela cursos
+        const [cursosCarrinho] = await db.execute(`
+            SELECT c.id, c.titulo, c.capa_url, c.preco, c.desconto_percentual 
+            FROM carrinho_itens ci
+            JOIN cursos c ON ci.curso_id = c.id
+            WHERE ci.aluno_id = ? AND c.status = 'PUBLICADO'
+        `, [aluno.id]);
+
+        const renderAlunoCarrinhoView = require('./views/alunoCarrinhoView');
+        res.send(renderAlunoCarrinhoView(aluno, cursosCarrinho));
+
+    } catch (error) {
+        console.error('Erro ao carregar o carrinho:', error);
+        res.status(500).send('Erro ao carregar o carrinho.');
+    }
+});
+
+// POST: Finalizar Compra (Gera o Checkout do Mercado Pago)
+app.post('/aluno/checkout', verificarAluno, async (req, res) => {
+    const aluno = req.session.usuario;
+
+    try {
+        const [cursosCarrinho] = await db.execute(`
+            SELECT c.id, c.titulo, c.preco, c.desconto_percentual 
+            FROM carrinho_itens ci
+            JOIN cursos c ON ci.curso_id = c.id
+            WHERE ci.aluno_id = ?
+        `, [aluno.id]);
+
+        if (cursosCarrinho.length === 0) return res.redirect('/aluno/carrinho');
+
+        let totalComDesconto = 0;
+        let itensParaMercadoPago = [];
+
+        cursosCarrinho.forEach(curso => {
+            const precoReal = parseFloat(curso.preco) || 0;
+            const desc = parseInt(curso.desconto_percentual) || 0;
+            const precoFinal = precoReal - (precoReal * (desc / 100));
+
+            totalComDesconto += precoFinal;
+
+            itensParaMercadoPago.push({
+                id: curso.id.toString(),
+                title: curso.titulo,
+                quantity: 1,
+                unit_price: Number(precoFinal.toFixed(2)),
+                currency_id: 'BRL'
+            });
+        });
+
+        // 1. Regista o Pedido (PENDENTE) no Banco de Dados
+        const [resultadoPedido] = await db.execute(
+            'INSERT INTO pedidos (aluno_id, total) VALUES (?, ?)',
+            [aluno.id, totalComDesconto]
+        );
+        const pedidoId = resultadoPedido.insertId;
+
+        // 2. Associa os itens ao pedido
+        for (const curso of cursosCarrinho) {
+            const precoReal = parseFloat(curso.preco) || 0;
+            const desc = parseInt(curso.desconto_percentual) || 0;
+            const precoFinal = precoReal - (precoReal * (desc / 100));
+
+            await db.execute(
+                'INSERT INTO pedido_itens (pedido_id, curso_id, preco_pago) VALUES (?, ?, ?)',
+                [pedidoId, curso.id, precoFinal]
+            );
+        }
+
+        // 3. Esvazia o carrinho agora que o pedido foi gerado!
+        await db.execute('DELETE FROM carrinho_itens WHERE aluno_id = ?', [aluno.id]);
+
+        // 4. Cria a Preferência (Intenção de Compra) no Mercado Pago
+        const preference = new Preference(client);
+        const urlRetornoBase = 'http://localhost:3000'; // ALERTA: Mude em produção!
+
+        const respostaMP = await preference.create({
+            body: {
+                items: itensParaMercadoPago,
+                payer: { name: aluno.nome, email: aluno.email },
+                back_urls: {
+                    success: `${urlRetornoBase}/aluno/checkout/sucesso?pedido_id=${pedidoId}`,
+                    failure: `${urlRetornoBase}/aluno/carrinho`, // Você pode criar uma rota de falha específica depois
+                    pending: `${urlRetornoBase}/aluno/checkout/pendente?pedido_id=${pedidoId}`
+                },
+                auto_return: 'approved',
+                external_reference: pedidoId.toString()
+            }
+        });
+
+        // 5. Atualiza o pedido com o ID do Mercado Pago
+        await db.execute('UPDATE pedidos SET mp_preference_id = ? WHERE id = ?', [respostaMP.id, pedidoId]);
+
+        // 6. Redireciona o aluno para a tela de pagamento seguro
+        res.redirect(respostaMP.init_point);
+
+    } catch (error) {
+        console.error('Erro ao gerar checkout:', error);
+        res.status(500).send('Erro ao processar o checkout.');
+    }
+});
+
+// GET: Retorna a quantidade de itens no carrinho (Usado pelo Header Principal)
+app.get('/api/carrinho/count', async (req, res) => {
+    if (!req.session.usuario || req.session.usuario.tipo !== 'ALUNO') {
+        return res.json({ count: 0 });
+    }
+
+    try {
+        const [total] = await db.execute('SELECT COUNT(*) as qtd FROM carrinho_itens WHERE aluno_id = ?', [req.session.usuario.id]);
+        res.json({ count: total[0].qtd });
+    } catch (error) {
+        console.error('Erro ao contar itens do carrinho:', error);
+        res.json({ count: 0 });
+    }
+});
+
+app.get('/categorias', async (req, res) => {
+    try {
+        // Busca todos os cursos publicados
+        const [cursos] = await db.execute(`
+            SELECT id, titulo, descricao, capa_url, preco, duracao_horas, mercado 
+            FROM cursos 
+            WHERE status = 'PUBLICADO' 
+            ORDER BY criado_em DESC
+        `);
+
+        // Objeto para agrupar os cursos pelo campo "mercado"
+        const categoriasMap = {};
+
+        cursos.forEach(curso => {
+            // Se o mercado for nulo ou vazio, agrupa em "Geral"
+            let chaveMercado = (curso.mercado && curso.mercado.trim() !== '') ? curso.mercado.trim().toLowerCase() : 'default';
+            
+            // Tratamento das strings do banco para encaixar nas chaves da view
+            if (chaveMercado.includes('tech') || chaveMercado.includes('tecnologia') || chaveMercado.includes('programação')) chaveMercado = 'tecnologia';
+            else if (chaveMercado.includes('negócio') || chaveMercado.includes('negocio') || chaveMercado.includes('admin')) chaveMercado = 'negocios';
+            else if (chaveMercado.includes('design') || chaveMercado.includes('arte')) chaveMercado = 'design';
+            else if (chaveMercado.includes('marketing') || chaveMercado.includes('venda')) chaveMercado = 'marketing';
+            else if (chaveMercado.includes('escritorio') || chaveMercado.includes('escritório') || chaveMercado.includes('office')) chaveMercado = 'escritorio';
+            
+            if (!categoriasMap[chaveMercado]) {
+                categoriasMap[chaveMercado] = {
+                    chave: chaveMercado,
+                    nome: curso.mercado, // Nome original que veio do banco
+                    cursos: []
+                };
+            }
+            categoriasMap[chaveMercado].cursos.push(curso);
+        });
+
+        // Transforma o mapa num array para passar para a view
+        const categoriasArray = Object.values(categoriasMap);
+
+        const renderCategoriasView = require('./views/categoriasView');
+        res.send(renderCategoriasView(req.session.usuario || null, categoriasArray));
+
+    } catch (error) {
+        console.error('Erro ao carregar categorias:', error);
+        res.status(500).send('Erro interno do servidor.');
+    }
+});
+
+// ==========================================
+// API PARA BUSCA DINÂMICA DE CURSOS (HEADER)
+// ==========================================
+app.get('/api/cursos/search', async (req, res) => {
+    const query = req.query.q;
+    
+    if (!query || query.trim() === '') {
+        return res.json({ success: true, cursos: [] });
+    }
+
+    try {
+        const searchTerm = `%${query}%`;
+        
+        // Adicionado o 'OR mercado LIKE ?' para buscar também por palavras-chave/categorias
+        const [cursos] = await db.execute(`
+            SELECT id, titulo, descricao, capa_url, mercado
+            FROM cursos 
+            WHERE status = 'PUBLICADO' 
+            AND (titulo LIKE ? OR descricao LIKE ? OR mercado LIKE ?)
+            ORDER BY criado_em DESC 
+            LIMIT 5
+        `, [searchTerm, searchTerm, searchTerm]); // Passamos o searchTerm 3 vezes agora
+
+        res.json({ success: true, cursos });
+    } catch (error) {
+        console.error('Erro na busca dinâmica de cursos:', error);
+        res.status(500).json({ success: false, error: 'Erro interno.' });
     }
 });
 

@@ -306,7 +306,7 @@ function renderLoginView(erro = null, returnTo = '') {
                                     <i class="bi bi-eraser-fill fs-5"></i>
                                 </button>
                                 <button type="submit" class="btn btn-primary btn-custom shadow-sm flex-grow-1 d-flex align-items-center justify-content-center">
-                                    Entrar na Plataforma <i class="bi bi-arrow-right ms-2 fs-5"></i>
+                                    Entrar
                                 </button>
                             </div>
                         </form>

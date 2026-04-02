@@ -62,7 +62,7 @@ function renderAdminMenuLateral(admin, activePage = 'dashboard') {
             <ul class="dropdown-menu text-small shadow w-100 rounded-3 border-0">
                 <li><a class="dropdown-item fw-semibold" href="#"><i class="bi bi-gear me-2"></i> Configurações</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item text-danger fw-bold" href="/logout"><i class="bi bi-box-arrow-right me-2"></i> Sair do Painel</a></li>
+                <li><a class="dropdown-item text-danger fw-bold" href="/logout"><i class="bi bi-box-arrow-right me-2"></i> Sair</a></li>
             </ul>
         </div>
     `;

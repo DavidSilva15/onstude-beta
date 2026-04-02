@@ -8,6 +8,23 @@ function renderAlunoMenuLateral(aluno, activePage) {
         : `<div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-bold shadow-sm border border-light border-2" style="width: 45px; height: 45px; font-size: 1.1rem;">${aluno.nome.charAt(0).toUpperCase()}</div>`;
 
     return `
+    <style>
+        /* Correção para o Dropdown de Notificações não cortar no Mobile (Offcanvas) */
+        @media (max-width: 991.98px) {
+            #listaNotificacoesDropdown {
+                position: static !important;
+                transform: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                box-shadow: inset 0 4px 6px rgba(0,0,0,0.05) !important;
+                border: 1px solid #dee2e6 !important;
+                margin-top: 10px !important;
+                margin-left: 0 !important;
+                background-color: #f8f9fa !important;
+            }
+        }
+    </style>
+
     <div class="d-lg-none d-flex justify-content-between align-items-center bg-primary text-white p-3 shadow-sm w-100 z-3">
         <h5 class="mb-0 fw-bold d-flex align-items-center">
             <i class="bi bi-mortarboard-fill me-2 fs-3"></i> OnStude
@@ -47,8 +64,13 @@ function renderAlunoMenuLateral(aluno, activePage) {
 
             <ul class="nav nav-pills flex-column mb-auto gap-2 w-100">
                 <li class="nav-item">
+                    <a href="/" class="nav-link px-3 ${activePage === 'home' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
+                        <i class="bi bi-house-door-fill me-3 ${activePage === 'home' ? '' : 'text-secondary'}"></i> Início
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="/aluno" class="nav-link px-3 ${activePage === 'dashboard' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
-                        <i class="bi bi-play-btn-fill me-3 ${activePage === 'dashboard' ? '' : 'text-secondary'}"></i> Cursos
+                        <i class="bi bi-play-btn-fill me-3 ${activePage === 'dashboard' ? '' : 'text-secondary'}"></i> Meus Cursos
                     </a>
                 </li>
                 <li>
@@ -74,6 +96,13 @@ function renderAlunoMenuLateral(aluno, activePage) {
                 <li>
                     <a href="/aluno/favoritos" class="nav-link px-3 ${activePage === 'favoritos' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
                         <i class="bi bi-heart-fill me-3 ${activePage === 'favoritos' ? '' : 'text-secondary'}"></i> Favoritos
+                    </a>
+                </li>
+                
+                <li>
+                    <a href="/aluno/carrinho" class="nav-link px-3 d-flex justify-content-between align-items-center ${activePage === 'carrinho' ? 'active shadow-sm fw-bold' : 'link-dark fw-semibold'}">
+                        <div><i class="bi bi-cart3 me-3 ${activePage === 'carrinho' ? '' : 'text-secondary'}"></i> Carrinho</div>
+                        <span class="badge bg-danger rounded-pill cart-badge-count-sidebar d-none" style="font-size: 0.7rem;">0</span>
                     </a>
                 </li>
                 
@@ -106,6 +135,23 @@ function renderAlunoMenuLateral(aluno, activePage) {
             </a>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/carrinho/count')
+                .then(res => res.json())
+                .then(data => {
+                    const badges = document.querySelectorAll('.cart-badge-count-sidebar');
+                    badges.forEach(badge => {
+                        if (data.count > 0) {
+                            badge.textContent = data.count;
+                            badge.classList.remove('d-none');
+                        }
+                    });
+                })
+                .catch(err => console.error('Erro ao buscar quantidade do carrinho:', err));
+        });
+    </script>
     `;
 }
 

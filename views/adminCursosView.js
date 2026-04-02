@@ -41,7 +41,7 @@ function renderAdminCursosView(admin, cursos, currentPage = 1, totalPages = 1, s
                             ? formatarDuracao(curso.duracao_total_segundos) 
                             : (curso.duracao_horas ? `${curso.duracao_horas}h` : '-');
 
-            // NOVIDADE: Cálculo de Conclusão baseado na duração (2h por dia)
+            // Cálculo de Conclusão baseado na duração (2h por dia)
             let conclusao = '-';
             if (curso.duracao_total_segundos > 0) {
                 const horasTotais = curso.duracao_total_segundos / 3600;
@@ -62,7 +62,7 @@ function renderAdminCursosView(admin, cursos, currentPage = 1, totalPages = 1, s
                 if (valor > 0) {
                     precoFormatado = `R$ ${valor.toFixed(2).replace('.', ',')}`;
                 } else {
-                    precoFormatado = '<span class="text-success border border-success bg-success bg-opacity-10 px-2 py-1 rounded-pill fs-6">Gratuito</span>';
+                    precoFormatado = '<span class="text-success border border-success bg-success bg-opacity-10 px-2 py-1 rounded-pill" style="font-size: 0.8rem;">Gratuito</span>';
                 }
             }
 
@@ -71,43 +71,43 @@ function renderAdminCursosView(admin, cursos, currentPage = 1, totalPages = 1, s
                     <div class="card shadow-sm rounded-4 h-100 hover-card transition-all overflow-hidden border-0">
                         
                         <div class="position-relative bg-dark">
-                            <img src="${capa}" onerror="this.onerror=null;this.src='${fallbackCapa}';" class="card-img-top border-bottom" alt="Capa" style="height: 160px; object-fit: cover; width: 100%;">
-                            <span class="badge ${badgeClass} position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill">${curso.status}</span>
+                            <img src="${capa}" onerror="this.onerror=null;this.src='${fallbackCapa}';" class="card-img-top border-bottom" alt="Capa" style="height: 140px; object-fit: cover; width: 100%;">
+                            <span class="badge ${badgeClass} position-absolute top-0 end-0 m-2 shadow-sm px-2 py-1 rounded-pill" style="font-size: 0.7rem;">${curso.status}</span>
                         </div>
                         
-                        <div class="card-body p-4 d-flex flex-column">
+                        <div class="card-body p-3 d-flex flex-column">
                             
-                            <div class="mb-3">
-                                <span class="badge bg-light text-dark border mb-2"><i class="bi bi-upc-scan me-1"></i>${curso.codigo_unico}</span>
-                                <h5 class="fw-bold text-dark mb-2 lh-sm text-truncate" title="${curso.titulo}">${curso.titulo}</h5>
-                                <h5 class="text-primary fw-bold mb-0">${precoFormatado}</h5>
+                            <div class="mb-2">
+                                <span class="badge bg-light text-dark border mb-1" style="font-size: 0.7rem;"><i class="bi bi-upc-scan me-1"></i>${curso.codigo_unico}</span>
+                                <h6 class="fw-bold text-dark mb-1 lh-sm text-truncate" title="${curso.titulo}">${curso.titulo}</h6>
+                                <div class="text-primary fw-bold" style="font-size: 0.95rem;">${precoFormatado}</div>
                             </div>
 
-                            <div class="row g-2 mb-4 mt-auto p-3 bg-light rounded-4 border">
-                                <div class="col-6 mb-2">
-                                    <small class="d-block text-muted lh-1" style="font-size: 0.7rem;">Matriculados</small>
-                                    <strong class="text-dark"><i class="bi bi-people-fill text-info me-1 small"></i>${qtdAlunos}</strong>
+                            <div class="row g-2 mb-3 mt-auto p-2 bg-light rounded-3 border align-items-center">
+                                <div class="col-6 mb-1">
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Matriculados</small>
+                                    <strong class="text-dark d-block text-truncate" style="font-size: 0.8rem;"><i class="bi bi-people-fill text-info me-1"></i>${qtdAlunos}</strong>
                                 </div>
-                                <div class="col-6 mb-2">
-                                    <small class="d-block text-muted lh-1" style="font-size: 0.7rem;">Nota Média</small>
-                                    <strong class="text-dark"><i class="bi bi-star-fill text-warning me-1 small"></i>${notaMedia}</strong>
-                                </div>
-                                <div class="col-6 border-top pt-2">
-                                    <small class="d-block text-muted lh-1" style="font-size: 0.7rem;">Duração</small>
-                                    <strong class="text-dark" title="Soma do tempo de todas as aulas"><i class="bi bi-clock-history text-secondary me-1 small"></i>${duracao}</strong>
+                                <div class="col-6 mb-1">
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Nota Média</small>
+                                    <strong class="text-dark d-block text-truncate" style="font-size: 0.8rem;"><i class="bi bi-star-fill text-warning me-1"></i>${notaMedia}</strong>
                                 </div>
                                 <div class="col-6 border-top pt-2">
-                                    <small class="d-block text-muted lh-1" style="font-size: 0.7rem;">Conclusão</small>
-                                    <strong class="text-dark" title="Estimativa baseada em 2h de estudo/dia"><i class="bi bi-calendar-check text-success me-1 small"></i>${conclusao}</strong>
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Duração</small>
+                                    <strong class="text-dark d-block text-truncate" title="Soma do tempo de todas as aulas" style="font-size: 0.8rem;"><i class="bi bi-clock-history text-secondary me-1"></i>${duracao}</strong>
+                                </div>
+                                <div class="col-6 border-top pt-2">
+                                    <small class="d-block text-muted lh-1 mb-1" style="font-size: 0.65rem;">Conclusão</small>
+                                    <strong class="text-dark d-block text-truncate" title="Estimativa baseada em 2h de estudo/dia" style="font-size: 0.8rem;"><i class="bi bi-calendar-check text-success me-1"></i>${conclusao}</strong>
                                 </div>
                             </div>
 
-                            <div class="d-flex gap-2 mt-auto">
-                                <a href="/admin/cursos/${curso.id}" class="btn btn-outline-primary w-50 fw-bold rounded-pill shadow-sm">
-                                    <i class="bi bi-list-task me-1"></i> Módulos
+                            <div class="d-flex flex-wrap gap-2 mt-auto">
+                                <a href="/admin/cursos/${curso.id}" class="btn btn-outline-primary flex-grow-1 btn-sm fw-bold rounded-pill shadow-sm text-truncate" title="Módulos">
+                                    <i class="bi bi-list-task"></i> Módulos
                                 </a>
-                                <a href="/admin/cursos/${curso.id}/editar" class="btn btn-primary w-50 fw-bold rounded-pill shadow-sm">
-                                    <i class="bi bi-pencil-square me-1"></i> Editar
+                                <a href="/admin/cursos/${curso.id}/editar" class="btn btn-primary flex-grow-1 btn-sm fw-bold rounded-pill shadow-sm text-truncate" title="Editar">
+                                    <i class="bi bi-pencil-square"></i> Editar
                                 </a>
                             </div>
 

@@ -1,6 +1,9 @@
 // views/cursoPublicoView.js
+const renderMainHeader = require('./mainHeader');
 
 function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado) {
+    const headerHTML = renderMainHeader(usuarioLogado);
+    
     const capa = curso.capa_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80';
     const preco = parseFloat(curso.preco);
     const isGratuito = preco === 0;
@@ -30,6 +33,18 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
     } else {
         // Não está logado
         btnAcaoHTML = `<a href="/login?returnTo=/cursos/${curso.id}" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow w-100 mb-3">${isGratuito ? 'Faça Login para Adicionar' : `Comprar por ${precoFormatado}`}</a>`;
+    }
+
+    // ==========================================
+    // LÓGICA DO BOTÃO SECUNDÁRIO (CARRINHO)
+    // ==========================================
+    let btnCarrinhoHTML = '';
+    if (!isMatriculado && !isGratuito) {
+        btnCarrinhoHTML = `
+            <button class="btn btn-outline-primary fw-bold px-4 py-3 rounded-pill w-100 d-flex align-items-center justify-content-center mt-3 transition" id="btnAdicionarCarrinhoLateral">
+                <i class="bi bi-cart-plus me-2"></i> Adicionar ao Carrinho
+            </button>
+        `;
     }
 
     // ==========================================
@@ -92,7 +107,7 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
             .hover-bg:hover { background-color: #f1f3f4; }
             .hover-white:hover { color: #ffffff !important; }
             
-            /* Navbar */
+            /* Navbar estilos trazidos para o MainHeader */
             .navbar-custom { background-color: #ffffff; border-bottom: 1px solid #eaeaea; }
             .search-bar-header { background-color: #f1f3f4; border: none; border-radius: 50px; padding-left: 40px; }
             
@@ -127,38 +142,7 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
     </head>
     <body>
 
-        <nav class="navbar navbar-expand-lg navbar-custom sticky-top py-3">
-            <div class="container">
-                <a class="navbar-brand fw-bold text-primary fs-3" href="/">OnStude<span class="text-dark">.</span></a>
-                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarMain">
-                    <ul class="navbar-nav ms-lg-4 me-auto align-items-lg-center">
-                        <li class="nav-item me-lg-2"><a class="nav-link fw-semibold text-dark hover-primary" href="#">Plano de Carreira</a></li>
-                        <li class="nav-item me-lg-3"><a class="nav-link fw-semibold text-dark hover-primary" href="#">Categorias</a></li>
-                        <li class="nav-item mt-3 mt-lg-0" style="min-width: 300px;">
-                            <form class="position-relative">
-                                <i class="bi bi-search position-absolute top-50 translate-middle-y ms-3 text-muted"></i>
-                                <input type="search" class="form-control search-bar-header py-2" placeholder="O que você quer aprender hoje?">
-                            </form>
-                        </li>
-                    </ul>
-                    <div class="d-flex flex-column flex-lg-row align-items-lg-center mt-3 mt-lg-0 gap-3">
-                        <a href="#" class="text-dark text-decoration-none position-relative me-lg-2 fs-5">
-                            <i class="bi bi-cart3"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" style="width: 10px; height: 10px;"></span>
-                        </a>
-                        ${usuarioLogado ? `
-                            <a href="${usuarioLogado.tipo === 'ADMIN' ? '/admin' : '/aluno'}" class="btn btn-primary fw-bold px-4 rounded-pill">Meu Painel</a>
-                        ` : `
-                            <a href="/login?returnTo=/cursos/${curso.id}" class="btn btn-outline-dark fw-bold px-4 rounded-pill">Entrar</a>
-                            <a href="/cadastro" class="btn btn-primary fw-bold px-4 rounded-pill">Criar Conta</a>
-                        `}
-                    </div>
-                </div>
-            </div>
-        </nav>
+        ${headerHTML}
 
         <section class="curso-hero">
             <div class="container hero-content text-white">
@@ -210,6 +194,8 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                             <button class="btn btn-outline-secondary fw-bold px-4 py-3 rounded-pill w-100 d-flex align-items-center justify-content-center" id="btnFavoritarSecundario">
                                 <i class="bi bi-heart me-2" id="iconHeart"></i> Adicionar aos Favoritos
                             </button>
+
+                            ${btnCarrinhoHTML}
                             
                             <hr class="my-4 text-muted">
                             
@@ -267,20 +253,18 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
             const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
             const cursoAtualId = ${curso.id};
 
+            // Lógica Botão Favoritos
             document.getElementById('btnFavoritarSecundario').addEventListener('click', function(e) {
                 e.preventDefault();
 
-                // 1. Redireciona para o login se não tiver conta (guardando a página de retorno)
                 if (!isUsuarioLogado) {
                     window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
                     return;
                 }
 
-                // 2. Lógica visual e chamada à API para utilizadores logados
                 const icon = document.getElementById('iconHeart');
                 const isFavorited = icon.classList.contains('bi-heart-fill');
 
-                // Feedback visual imediato
                 if (isFavorited) {
                     icon.classList.replace('bi-heart-fill', 'bi-heart');
                     icon.classList.remove('text-danger');
@@ -289,7 +273,6 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                     icon.classList.add('text-danger');
                 }
 
-                // Salva no banco de dados chamando a API que criámos
                 fetch('/aluno/api/favoritos/toggle', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -299,7 +282,6 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                 .then(data => {
                     if (!data.success) {
                         alert('Ocorreu um erro ao atualizar os favoritos.');
-                        // Reverte o ícone se a API falhar
                         if (isFavorited) {
                             icon.classList.replace('bi-heart', 'bi-heart-fill');
                             icon.classList.add('text-danger');
@@ -313,6 +295,52 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                     console.error('Erro de conexão:', err);
                 });
             });
+
+            // ==========================================
+            // LÓGICA DO NOVO BOTÃO: ADICIONAR AO CARRINHO
+            // ==========================================
+            const btnCarrinho = document.getElementById('btnAdicionarCarrinhoLateral');
+            if (btnCarrinho) {
+                btnCarrinho.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    // 1. Verifica login
+                    if (!isUsuarioLogado) {
+                        window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
+                        return;
+                    }
+
+                    // 2. Feedback visual imediato (Loader no botão)
+                    const originalText = btnCarrinho.innerHTML;
+                    btnCarrinho.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Adicionando...';
+                    btnCarrinho.disabled = true;
+
+                    // 3. Chamada à API de Carrinho
+                    fetch('/aluno/carrinho/adicionar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ curso_id: cursoAtualId })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Apenas recarrega a página para atualizar o contador do carrinho no header
+                            window.location.reload();
+                        } else {
+                            // Se houver erro (ex: já possui o curso)
+                            alert(data.message || 'Erro ao adicionar ao carrinho.');
+                            btnCarrinho.innerHTML = originalText;
+                            btnCarrinho.disabled = false;
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Erro:', err);
+                        alert('Erro de conexão ao adicionar ao carrinho.');
+                        btnCarrinho.innerHTML = originalText;
+                        btnCarrinho.disabled = false;
+                    });
+                });
+            }
         </script>
     </body>
     </html>

@@ -53,10 +53,10 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             <div class="mt-auto">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <small class="text-muted fw-semibold" style="font-size: 0.7rem;">Progresso <span class="fw-normal">(${concluidas}/${total})</span></small>
-                                    <small class="text-primary fw-bold" style="font-size: 0.75rem;">${percentual.toFixed(0)}%</small>
+                                    <small class="text-primary fw-bold" style="font-size: 0.75rem;"><span class="counter-anim" data-target="${percentual.toFixed(0)}">0</span>%</small>
                                 </div>
                                 <div class="progress mb-3 rounded-pill bg-light border" style="height: 6px;">
-                                    <div class="progress-bar ${corBotao.replace('btn-', 'bg-')}" role="progressbar" style="width: ${percentual}%" aria-valuenow="${percentual}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    <div class="progress-bar ${corBotao.replace('btn-', 'bg-')} progress-bar-anim" role="progressbar" style="width: 0%; transition: width 1.5s ease-out;" data-progress="${percentual}" aria-valuenow="${percentual}" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                                 <div class="d-grid">
                                     <a href="/aluno/cursos/${curso.curso_id}/aula" class="btn ${corBotao} btn-sm fw-bold rounded-pill shadow-sm">${textoBotao}</a>
@@ -111,6 +111,12 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             .blink-up { animation: blinkUp 1s ease infinite; }
 
             .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
+
+            /* Scroll customizado para o ranking */
+            .custom-scroll::-webkit-scrollbar { width: 5px; }
+            .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+            .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+            .custom-scroll:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.25); }
         </style>
     </head>
     <body class="bg-light">
@@ -133,7 +139,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                         </div>
                     </div>
 
-                    <div class="row mb-5 g-4">
+                    <div class="row mb-5 g-4 align-items-stretch">
                         
                         <div class="col-lg-4 col-xl-3 d-flex flex-column gap-3">
                             <h6 class="fw-bold text-secondary text-uppercase mb-1" style="font-size: 0.8rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Minhas Conquistas</h6>
@@ -141,7 +147,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
                                 <div class="w-100 overflow-hidden">
                                     <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Total de XP (Experiência)</h6>
-                                    <h5 class="fw-bold text-dark mb-0 text-truncate">🏆 ${kpis.totalXp} XP</h5>
+                                    <h5 class="fw-bold text-dark mb-0 text-truncate">🏆 <span class="counter-anim" data-target="${kpis.totalXp}">0</span> XP</h5>
                                 </div>
                             </div>
 
@@ -162,12 +168,12 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
                                 <div class="w-100 overflow-hidden">
                                     <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Nota Média Geral</h6>
-                                    <h5 class="fw-bold text-dark mb-0 text-truncate">⭐ ${kpis.notaMedia}</h5>
+                                    <h5 class="fw-bold text-dark mb-0 text-truncate">⭐ <span class="counter-anim-float" data-target="${kpis.notaMedia}">0.0</span></h5>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-lg-8 col-xl-9">
+                        <div class="col-lg-8 col-xl-9 d-flex flex-column">
                             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 mt-4 mt-lg-0 gap-2">
                                 <h6 class="fw-bold text-secondary text-uppercase mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
                                     <i class="bi bi-trophy-fill text-primary me-2"></i> Top Alunos
@@ -178,17 +184,17 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                                 </select>
                             </div>
                             
-                            <div class="card border-0 shadow-sm rounded-4 overflow-hidden leaderboard-card">
+                            <div class="card border-0 shadow-sm rounded-4 overflow-hidden leaderboard-card flex-grow-1 d-flex flex-column">
                                 <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between small text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">
                                     <span>Posição</span>
                                     <span>Aluno / XP</span>
                                 </div>
-                                <div class="d-flex flex-column" id="containerListaRanking" style="min-height: 200px; position: relative;">
+                                <div class="d-flex flex-column custom-scroll" id="containerListaRanking" style="min-height: 150px; max-height: 240px; overflow-y: auto; position: relative;">
                                     <div class="d-flex justify-content-center align-items-center h-100 w-100 position-absolute" id="rankingLoader">
                                         <div class="spinner-border text-primary" role="status"></div>
                                     </div>
                                 </div>
-                                <div class="card-footer bg-light border-0 text-center py-2">
+                                <div class="card-footer bg-light border-0 text-center py-2 mt-auto">
                                     <small class="text-muted fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-info-circle me-1"></i> Ganhe XP ao concluir aulas e avaliações!</small>
                                 </div>
                             </div>
@@ -275,10 +281,78 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             let listaNotificacoesGlobal = [];
             let notificacaoAtualId = null;
 
+            // ==========================================
+            // FUNÇÃO UNIVERSAL DE ANIMAÇÃO DE NÚMEROS
+            // ==========================================
+            function animateCounters(root = document) {
+                const speed = 1500; // Tempo total da animação em milisegundos
+
+                // Anima Números Inteiros (Ex: XP)
+                const counters = root.querySelectorAll('.counter-anim:not(.animated)');
+                counters.forEach(counter => {
+                    counter.classList.add('animated');
+                    const target = +counter.getAttribute('data-target');
+                    if (isNaN(target) || target === 0) {
+                        counter.innerText = target;
+                        return;
+                    }
+                    
+                    let current = 0;
+                    const inc = target / (speed / 16); 
+                    
+                    const updateCount = () => {
+                        current += inc;
+                        if (current < target) {
+                            counter.innerText = Math.ceil(current);
+                            requestAnimationFrame(updateCount);
+                        } else {
+                            counter.innerText = target;
+                        }
+                    };
+                    updateCount();
+                });
+
+                // Anima Números Decimais (Ex: Nota 9.5)
+                const floatCounters = root.querySelectorAll('.counter-anim-float:not(.animated)');
+                floatCounters.forEach(counter => {
+                    counter.classList.add('animated');
+                    const target = parseFloat(counter.getAttribute('data-target'));
+                    if (isNaN(target) || target === 0) {
+                        counter.innerText = target.toFixed(1);
+                        return;
+                    }
+                    let current = 0;
+                    const inc = target / (speed / 16);
+                    const updateCount = () => {
+                        current += inc;
+                        if (current < target) {
+                            counter.innerText = current.toFixed(1);
+                            requestAnimationFrame(updateCount);
+                        } else {
+                            counter.innerText = target.toFixed(1);
+                        }
+                    };
+                    updateCount();
+                });
+
+                // Anima Barras de Progresso (Cursos)
+                const progressBars = root.querySelectorAll('.progress-bar-anim:not(.animated)');
+                progressBars.forEach(bar => {
+                    bar.classList.add('animated');
+                    const targetWidth = bar.getAttribute('data-progress');
+                    setTimeout(() => {
+                        bar.style.width = targetWidth + '%';
+                    }, 150); // Um pequeno atraso garante que a transição CSS dispare
+                });
+            }
+
             document.addEventListener('DOMContentLoaded', function() {
                 verificarNotificacoesPendentesModal();
                 carregarListaNotificacoesSino();
                 
+                // Dispara as animações dos contadores na carga da página
+                animateCounters();
+
                 // Inicializa o ranking do primeiro curso selecionado
                 const seletorRanking = document.getElementById('seletorRankingCurso');
                 if(seletorRanking && seletorRanking.value) {
@@ -433,6 +507,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     }
                 }
 
+                // DIMINUIÇÃO DO PADDING (py-2 px-3) PARA OS CARDS DO RANKING
                 arrayExibicao.forEach(r => {
                     let medalha = r.pos;
                     if(r.pos === 1) medalha = '🥇';
@@ -451,11 +526,11 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     let marginExtra = (r.pos > 5 && !usuarioEncontrado && r.isUser) ? 'border-top border-2 border-primary mt-2' : 'border-bottom';
 
                     const itemHTML = \`
-                        <div class="d-flex align-items-center p-3 \${marginExtra} rank-item \${classRank}">
+                        <div class="d-flex align-items-center py-2 px-3 \${marginExtra} rank-item \${classRank}">
                             <div class="fw-bold fs-5 text-center" style="width: 40px; color: #6c757d;">\${medalha}</div>
                             <div class="ms-2 flex-grow-1">
-                                <div class="text-dark mb-0 \${r.isUser ? 'fw-bolder text-primary' : 'fw-semibold'}" style="font-size: 0.9rem;">\${r.nome}</div>
-                                <div class="text-muted small" style="font-size: 0.75rem;">\${r.xp} XP</div>
+                                <div class="text-dark mb-0 \${r.isUser ? 'fw-bolder text-primary' : 'fw-semibold'}" style="font-size: 0.85rem;">\${r.nome}</div>
+                                <div class="text-muted small" style="font-size: 0.75rem;"><span class="counter-anim" data-target="\${r.xp}">0</span> XP</div>
                             </div>
                             <div class="ms-3 text-end d-flex align-items-center gap-2">
                                 \${r.isUser ? '<span class="badge bg-success rounded-pill d-none d-sm-inline-block" style="font-size: 0.6rem;">Você subiu!</span>' : ''}
@@ -465,6 +540,9 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     \`;
                     container.insertAdjacentHTML('beforeend', itemHTML);
                 });
+
+                // Inicia a animação de contagem especificamente para os novos números do ranking que acabaram de aparecer
+                animateCounters(container);
             }
 
             // ==========================================
