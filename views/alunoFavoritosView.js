@@ -11,7 +11,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
 
     if (cursosFavoritos.length === 0) {
         htmlCursos = `
-            <div class="col-12 text-center py-5 mt-4 bg-white border-0 rounded-4 shadow-sm">
+            <div class="col-12 text-center py-5 mt-4 glass-card border-0 rounded-4 shadow-sm">
                 <div class="mb-3">
                     <i class="bi bi-heart fs-1 text-secondary opacity-25" style="font-size: 3rem;"></i>
                 </div>
@@ -28,13 +28,13 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
             
             htmlCursos += `
                 <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
-                    <div class="card h-100 shadow-sm border-0 hover-card transition-all rounded-4 overflow-hidden position-relative bg-white">
+                    <div class="card h-100 shadow-sm border-0 hover-card transition-all rounded-4 overflow-hidden position-relative glass-card">
                         
-                        <button class="btn btn-light btn-sm rounded-circle shadow position-absolute top-0 end-0 m-3 z-2 text-danger btn-toggle-favorito" data-id="${curso.id}" title="Remover dos favoritos" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <button class="btn btn-light btn-sm rounded-circle shadow position-absolute top-0 end-0 m-3 z-2 text-danger btn-toggle-favorito" data-id="${curso.id}" title="Remover dos favoritos" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px);">
                             <i class="bi bi-heart-fill"></i>
                         </button>
 
-                        <img src="${capa}" class="card-img-top border-bottom" alt="Capa de ${curso.titulo}" style="height: 180px; object-fit: cover;">
+                        <img src="${capa}" class="card-img-top border-bottom border-light" alt="Capa de ${curso.titulo}" style="height: 180px; object-fit: cover;">
                         
                         <div class="card-body d-flex flex-column p-4">
                             <h5 class="card-title fw-bold text-dark mb-2 text-truncate" title="${curso.titulo}">${curso.titulo}</h5>
@@ -42,14 +42,14 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                                 ${curso.descricao || 'Curso incrível para alavancar a sua carreira.'}
                             </p>
                             
-                            <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold bg-light p-2 rounded-3 border">
+                            <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold bg-white bg-opacity-50 p-2 rounded-3 border border-light">
                                 <span class="me-3" title="Duração do Curso"><i class="bi bi-clock text-primary me-1"></i> ${duracao}</span>
                                 <span title="Acesso"><i class="bi bi-calendar-check text-success me-1"></i> Vitalício</span>
                             </div>
                             
-                            <div class="mt-auto pt-3 border-top border-light d-flex justify-content-between align-items-center">
+                            <div class="mt-auto pt-3 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
                                 <span class="fw-bold fs-5 text-dark">${preco}</span>
-                                <a href="/cursos/${curso.id}" class="btn btn-outline-primary fw-bold px-4 rounded-pill shadow-sm">Ver Curso</a>
+                                <a href="/cursos/${curso.id}" class="btn btn-outline-primary bg-white bg-opacity-50 fw-bold px-4 rounded-pill shadow-sm" style="backdrop-filter: blur(4px);">Ver Curso</a>
                             </div>
                         </div>
                     </div>
@@ -68,17 +68,62 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
-            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #212529; background-color: transparent; margin: 0; overflow-x: hidden; position: relative; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
                 .main-content { height: calc(100vh - 60px); } 
             }
             .transition-all { transition: all .3s ease; }
-            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
-            .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
+            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,.1)!important; }
+            .notif-item:hover { background-color: rgba(255,255,255,0.7); cursor: pointer; }
+
+            /* ==========================================
+               GRADIENT MESH BACKGROUND
+               ========================================== */
+            .mesh-bg {
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: -1;
+                background-color: #f4f7f6;
+                overflow: hidden;
+            }
+            .mesh-blob-1, .mesh-blob-2, .mesh-blob-3 {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(90px);
+                opacity: 0.25;
+                animation: floatAnim 20s infinite ease-in-out alternate;
+            }
+            .mesh-blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #0d6efd; animation-delay: 0s; }
+            .mesh-blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #0dcaf0; animation-delay: -5s; }
+            .mesh-blob-3 { top: 30%; left: 40%; width: 45vw; height: 45vw; background: #6610f2; animation-delay: -10s; }
+            
+            @keyframes floatAnim {
+                0% { transform: translate(0, 0) scale(1); }
+                33% { transform: translate(5%, 15%) scale(1.1); }
+                66% { transform: translate(-10%, 5%) scale(0.9); }
+                100% { transform: translate(0, 0) scale(1); }
+            }
+
+            /* ==========================================
+               GLASSMORPHISM CARDS
+               ========================================== */
+            .glass-card {
+                background: rgba(255, 255, 255, 0.65) !important;
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.8) !important;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+            }
         </style>
     </head>
-    <body class="bg-light">
+    <body>
+        <div class="mesh-bg">
+            <div class="mesh-blob-1"></div>
+            <div class="mesh-blob-2"></div>
+            <div class="mesh-blob-3"></div>
+        </div>
+
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
             <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;"></div>
             <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
@@ -88,7 +133,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
             
             ${htmlSidebar}
 
-            <div class="flex-grow-1 main-content bg-light">
+            <div class="flex-grow-1 main-content bg-transparent">
                 <div class="container-fluid p-4 p-md-5">
 
                     <div class="row mb-5 align-items-center">
@@ -97,7 +142,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                             <span class="badge bg-danger rounded-pill fs-6 px-3 shadow-sm">${cursosFavoritos.length} salvos</span>
                         </div>
                         <div class="col-12">
-                            <p class="text-muted mb-0">Acompanhe os cursos que você separou para a sua jornada profissional.</p>
+                            <p class="text-muted mb-0 fw-medium">Acompanhe os cursos que você separou para a sua jornada profissional.</p>
                         </div>
                     </div>
 
@@ -111,7 +156,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
 
         <div class="modal fade" id="modalNotificacao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden glass-card" style="background: rgba(255,255,255,0.9) !important;">
                     <div class="modal-header bg-primary text-white border-0 py-3">
                         <h5 class="modal-title fw-bold" id="notifTitulo">Aviso Importante</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -137,7 +182,7 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                             <input type="hidden" id="inputAvaliacaoEstrelas" value="0">
                         </div>
                     </div>
-                    <div class="modal-footer border-0 bg-light justify-content-center py-3">
+                    <div class="modal-footer border-0 bg-transparent justify-content-center py-3">
                         <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm rounded-pill" id="btnResponderNotificacao">
                             Entendido
                         </button>

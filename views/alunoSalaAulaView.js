@@ -589,11 +589,28 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                     const totalSlides = ${totalSlides};
 
                     // ==========================================
-                    // ALERTAS DE FEEDBACK DA AVALIAÇÃO
+                    // ALERTAS E MODAIS APÓS RELOAD
                     // ==========================================
                     const urlParams = new URLSearchParams(window.location.search);
                     const isResetado = urlParams.has('resetado');
-                    
+                    const concluidoEtapa = urlParams.get('concluido');
+
+                    // 1. Lógica para abrir modal automaticamente após o recarregamento
+                    if (concluidoEtapa === 'VIDEO') {
+                        setTimeout(() => {
+                            const modalEl = document.getElementById('modalVideoConcluido');
+                            if (modalEl) new bootstrap.Modal(modalEl).show();
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }, 500);
+                    } else if (concluidoEtapa === 'APOSTILA') {
+                        setTimeout(() => {
+                            const modalEl = document.getElementById('modalApostilaConcluida');
+                            if (modalEl) new bootstrap.Modal(modalEl).show();
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }, 500);
+                    }
+
+                    // 2. Lógica de Feedback da Avaliação
                     if (isResetado) {
                         const alertDiv = document.createElement('div');
                         alertDiv.className = 'alert alert-danger alert-dismissible fade show shadow-sm mb-4 rounded-4';
@@ -635,7 +652,12 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             body: JSON.stringify({ curso_id: cursoId, etapa: etapa })
                         })
                         .then(res => res.json())
-                        .then(data => { if(data.success) window.location.reload(); })
+                        .then(data => { 
+                            if(data.success) {
+                                // Redireciona com o parâmetro na URL para ativar o Modal na volta
+                                window.location.href = window.location.pathname + '?concluido=' + etapa; 
+                            }
+                        })
                         .catch(err => console.error('Erro:', err));
                     }
 
