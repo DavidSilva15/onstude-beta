@@ -1,0 +1,16 @@
+{
+  "quiz": [
+    {
+      "pergunta": "Qual função do Excel é usada para somar valores em um intervalo?",
+      "opcoes": ["=MEDIA()", "=SOMA()", "=CONT()", "=SE()"],
+      "resposta_correta": 1,
+      "explicacao": "A função SOMA é utilizada para somar valores em células ou intervalos."
+    },
+    {
+      "pergunta": "Qual símbolo inicia uma fórmula no Excel?",
+      "opcoes": ["#", "@", "=", "&"],
+      "resposta_correta": 2,
+      "explicacao": "Todas as fórmulas do Excel começam com o sinal de igual (=)."
+    }
+  ]
+}

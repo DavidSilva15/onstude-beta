@@ -73,10 +73,10 @@ function renderAlunoConquistasView(aluno, progresso) {
         let htmlCards = '';
         
         conquistas.forEach(c => {
-            const cardClass = c.isDesbloqueada ? `border-${c.cor} shadow unlocked-card` : 'border-light locked-card bg-light';
+            const cardClass = c.isDesbloqueada ? `border-${c.cor} shadow-sm unlocked-card glass-card` : 'border-secondary border-opacity-25 locked-card glass-card';
             const iconStyle = c.isDesbloqueada ? `filter: drop-shadow(0 5px 10px rgba(0,0,0,0.15));` : 'filter: grayscale(100%) opacity(0.5);';
             const bgIcon = c.isDesbloqueada ? `bg-${c.cor} bg-opacity-10` : 'bg-secondary bg-opacity-10';
-            const checkBadge = c.isDesbloqueada ? `<div class="position-absolute top-0 end-0 m-2 badge bg-success rounded-circle p-1" title="Desbloqueada!"><i class="bi bi-check fs-6"></i></div>` : '';
+            const checkBadge = c.isDesbloqueada ? `<div class="position-absolute top-0 end-0 m-2 badge bg-success rounded-circle p-1 shadow-sm" title="Desbloqueada!"><i class="bi bi-check fs-6"></i></div>` : '';
             
             const txtProgresso = c.isDesbloqueada ? 'Concluído' : `${c.atual} / ${c.meta}`;
             const barraCor = c.isDesbloqueada ? 'bg-success' : 'bg-primary';
@@ -108,7 +108,7 @@ function renderAlunoConquistasView(aluno, progresso) {
                                     <small class="text-muted" style="font-size: 0.7rem; font-weight: bold;">PROGRESSO</small>
                                     <small class="${c.isDesbloqueada ? 'text-success fw-bold' : 'text-primary fw-bold'}" style="font-size: 0.75rem;">${txtProgresso}</small>
                                 </div>
-                                <div class="progress rounded-pill bg-secondary bg-opacity-10" style="height: 6px;">
+                                <div class="progress rounded-pill bg-white bg-opacity-50 border border-secondary border-opacity-10" style="height: 6px;">
                                     <div class="progress-bar ${barraCor} rounded-pill" role="progressbar" style="width: ${c.progressoPerc}%;"></div>
                                 </div>
                             </div>
@@ -120,7 +120,7 @@ function renderAlunoConquistasView(aluno, progresso) {
 
         htmlGrupos += `
             <div class="mb-5">
-                <h5 class="fw-bold text-dark mb-4 border-bottom pb-2"><i class="bi bi-stars text-warning me-2"></i>${nomeGrupo}</h5>
+                <h5 class="fw-bold text-dark mb-4 border-bottom border-secondary border-opacity-10 pb-2"><i class="bi bi-stars text-warning me-2"></i>${nomeGrupo}</h5>
                 <div class="row">
                     ${htmlCards}
                 </div>
@@ -140,7 +140,7 @@ function renderAlunoConquistasView(aluno, progresso) {
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
-            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; overflow-x: hidden; background-color: transparent; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
                 .main-content { height: calc(100vh - 60px); } 
@@ -154,15 +154,14 @@ function renderAlunoConquistasView(aluno, progresso) {
             
             /* Efeito para conquistas desbloqueadas */
             .unlocked-card { 
-                background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
                 border-width: 2px !important;
             }
             .unlocked-card:hover {
-                box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
             }
 
             /* Efeito para conquistas bloqueadas */
-            .locked-card { opacity: 0.85; border: 1px dashed #dee2e6 !important; }
+            .locked-card { opacity: 0.85; border-style: dashed !important; }
             .locked-card:hover { opacity: 1; }
 
             .hero-conquistas {
@@ -182,9 +181,55 @@ function renderAlunoConquistasView(aluno, progresso) {
                 transform: rotate(15deg);
                 pointer-events: none;
             }
+
+            /* ==========================================
+               GRADIENT MESH BACKGROUND
+               ========================================== */
+            .mesh-bg {
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: -1;
+                background-color: #f4f7f6;
+                overflow: hidden;
+            }
+            .mesh-blob-1, .mesh-blob-2, .mesh-blob-3 {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(90px);
+                opacity: 0.25;
+                animation: floatAnim 20s infinite ease-in-out alternate;
+            }
+            .mesh-blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #0d6efd; animation-delay: 0s; }
+            .mesh-blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #0dcaf0; animation-delay: -5s; }
+            .mesh-blob-3 { top: 30%; left: 40%; width: 45vw; height: 45vw; background: #6610f2; animation-delay: -10s; }
+            
+            @keyframes floatAnim {
+                0% { transform: translate(0, 0) scale(1); }
+                33% { transform: translate(5%, 15%) scale(1.1); }
+                66% { transform: translate(-10%, 5%) scale(0.9); }
+                100% { transform: translate(0, 0) scale(1); }
+            }
+
+            /* ==========================================
+               GLASSMORPHISM CARDS
+               ========================================== */
+            .glass-card {
+                background: rgba(255, 255, 255, 0.65) !important;
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.8) !important;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+            }
         </style>
     </head>
-    <body class="bg-light">
+    <body>
+        
+        <div class="mesh-bg">
+            <div class="mesh-blob-1"></div>
+            <div class="mesh-blob-2"></div>
+            <div class="mesh-blob-3"></div>
+        </div>
+
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
             <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;"></div>
             <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
@@ -194,7 +239,7 @@ function renderAlunoConquistasView(aluno, progresso) {
             
             ${htmlSidebar}
 
-            <div class="flex-grow-1 main-content bg-light">
+            <div class="flex-grow-1 main-content bg-transparent">
                 <div class="container-fluid p-4 p-md-5">
 
                     <div class="hero-conquistas p-4 p-md-5 mb-5 shadow-sm">
@@ -205,7 +250,7 @@ function renderAlunoConquistasView(aluno, progresso) {
                                 <p class="fs-5 text-white-50 mb-0">Desbloqueie troféus e prove que é o melhor aluno da OnStude!</p>
                             </div>
                             <div class="col-md-4 text-center">
-                                <div class="bg-white bg-opacity-10 rounded-4 p-4 border border-white border-opacity-25 backdrop-blur">
+                                <div class="bg-white bg-opacity-10 rounded-4 p-4 border border-white border-opacity-25" style="backdrop-filter: blur(4px);">
                                     <h6 class="text-white-50 fw-bold mb-1 text-uppercase" style="font-size: 0.8rem;">Seu Progresso Total</h6>
                                     <h2 class="fw-bold text-white mb-2">${totalDesbloqueadas} / ${listaConquistas.length}</h2>
                                     <div class="progress rounded-pill bg-dark bg-opacity-25" style="height: 10px;">
@@ -225,7 +270,7 @@ function renderAlunoConquistasView(aluno, progresso) {
 
         <div class="modal fade" id="modalDetalheConquista" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden glass-card" style="background: rgba(255, 255, 255, 0.9) !important;">
                     <div class="modal-body text-center p-5 position-relative">
                         <button type="button" class="btn-close position-absolute top-0 end-0 m-3 shadow-none" data-bs-dismiss="modal"></button>
                         
@@ -238,12 +283,12 @@ function renderAlunoConquistasView(aluno, progresso) {
                         <h3 class="fw-bold text-dark mb-2" id="mdlConqTitulo">Título</h3>
                         <p class="text-secondary fs-6 mb-4" id="mdlConqDesc">Descrição rápida...</p>
                         
-                        <div class="bg-light p-3 p-md-4 rounded-4 text-start border shadow-sm">
+                        <div class="bg-white bg-opacity-50 p-3 p-md-4 rounded-4 text-start border shadow-sm">
                             <h6 class="fw-bold mb-2 text-dark fs-6 d-flex align-items-center">
                                 <i class="bi bi-info-circle-fill text-primary me-2 fs-5"></i> 
                                 <span id="mdlConqMotivoTitle">Detalhes do Desbloqueio:</span>
                             </h6>
-                            <p class="mb-0 text-muted" style="font-size: 0.95rem; line-height: 1.5;" id="mdlConqMotivo">Motivo</p>
+                            <p class="mb-0 text-dark opacity-75 fw-medium" style="font-size: 0.95rem; line-height: 1.5;" id="mdlConqMotivo">Motivo</p>
                         </div>
                     </div>
                 </div>

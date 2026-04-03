@@ -664,7 +664,7 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                         const iconVolume = document.getElementById('iconVolume');
 
                         let isSeekingAllowed = percentualAtual >= 33.33; 
-                        let isHovering = false;
+                        let isHoveringControls = false;
                         let hideControlsTimeout;
 
                         // Função Utilitária para exibir Toasts na tela do vídeo
@@ -716,10 +716,12 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                                 video.play();
                                 btnPlayPause.innerHTML = '<i class="bi bi-pause-fill"></i>';
                                 centerPlayBtn.style.display = 'none';
+                                hideControlsDelay();
                             } else {
                                 video.pause();
                                 btnPlayPause.innerHTML = '<i class="bi bi-play-fill"></i>';
                                 centerPlayBtn.style.display = 'block';
+                                showControls();
                             }
                         }
 
@@ -761,24 +763,34 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
                             video.currentTime = pos * video.duration;
                         });
 
-                        container.addEventListener('touchstart', () => { showControls(); hideControlsDelay(); });
-                        container.addEventListener('mouseenter', () => { isHovering = true; showControls(); });
-                        container.addEventListener('mouseleave', () => { isHovering = false; hideControlsDelay(); });
+                        // Lógica de visualização dos controles (Desktop + Mobile)
+                        controlsOverlay.addEventListener('mouseenter', () => { isHoveringControls = true; });
+                        controlsOverlay.addEventListener('mouseleave', () => { isHoveringControls = false; hideControlsDelay(); });
+                        controlsOverlay.addEventListener('touchstart', () => { isHoveringControls = true; }, {passive: true});
+                        controlsOverlay.addEventListener('touchend', () => { isHoveringControls = false; hideControlsDelay(); }, {passive: true});
+
+                        container.addEventListener('touchstart', () => { showControls(); hideControlsDelay(); }, {passive: true});
                         container.addEventListener('mousemove', () => { showControls(); hideControlsDelay(); });
+                        container.addEventListener('mouseleave', () => { hideControlsDelay(); });
 
                         function showControls() {
                             controlsOverlay.style.opacity = '1';
-                            document.body.style.cursor = 'default';
+                            container.style.cursor = 'default';
                         }
+                        
                         function hideControlsDelay() {
                             clearTimeout(hideControlsTimeout);
-                            if (!video.paused && !isHovering) {
+                            if (!video.paused && !isHoveringControls) {
                                 hideControlsTimeout = setTimeout(() => {
                                     controlsOverlay.style.opacity = '0';
-                                    if(container.matches(':hover')) document.body.style.cursor = 'none';
+                                    container.style.cursor = 'none';
                                 }, 2500);
                             }
                         }
+                        
+                        // Garante que os controles voltem ao pausar
+                        video.addEventListener('pause', showControls);
+                        video.addEventListener('play', hideControlsDelay);
 
                         // Lógica do Volume
                         if(btnVolume && volumeSlider) {
@@ -1405,12 +1417,46 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
         </style>
     </head>
     <body>
+        
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
-            <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
-                <span class="visually-hidden">Carregando...</span>
+            <div class="text-center" style="width: 80%; max-width: 400px;">
+                <div class="mb-4">
+                    <i class="bi bi-mortarboard-fill text-primary" style="font-size: 3.5rem; filter: drop-shadow(0 4px 6px rgba(13,110,253,0.3));"></i>
+                </div>
+                <h4 class="fw-bold text-dark mb-4">Preparando a sala de aula...</h4>
+                <div class="progress bg-secondary bg-opacity-15 rounded-pill shadow-sm" style="height: 12px; overflow: hidden;">
+                    <div id="loaderProgressBar" class="progress-bar bg-primary rounded-pill progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%; transition: width 0.1s linear;"></div>
+                </div>
+                <div class="mt-3 fw-bold text-primary fs-5" id="loaderProgressText">0%</div>
             </div>
-            <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
         </div>
+
+        <script>
+            // Lógica isolada para fazer a barra crescer fluidamente durante o carregamento inicial da página
+            (function() {
+                let progressoLoader = 0;
+                const barraLoader = document.getElementById('loaderProgressBar');
+                const textoLoader = document.getElementById('loaderProgressText');
+                
+                const intervaloLoader = setInterval(() => {
+                    // Incrementos aleatórios para simular processamento real
+                    progressoLoader += Math.random() * 15; 
+                    
+                    if (progressoLoader > 90) {
+                        progressoLoader = 90; // Trava no 90% até que a página (vídeos/imagens) carregue completamente
+                        clearInterval(intervaloLoader);
+                    }
+                    
+                    if (barraLoader && textoLoader) {
+                        barraLoader.style.width = progressoLoader + '%';
+                        textoLoader.innerText = Math.floor(progressoLoader) + '%';
+                    }
+                }, 150);
+                
+                // Guarda o ID do intervalo para limpar quando o carregamento terminar
+                window.loaderIntervalId = intervaloLoader;
+            })();
+        </script>
 
         <div class="d-lg-none bg-white border-bottom p-3 d-flex justify-content-between align-items-center sticky-top" style="z-index: 1040;">
             <div class="d-flex align-items-center">
@@ -1444,25 +1490,61 @@ function renderAlunoSalaAulaView(aluno, curso, modulos, aulaAtual, conteudosAtua
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
         <script>
+            // Lógica de finalização do Loader da Sala de Aula
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
+                const barraLoader = document.getElementById('loaderProgressBar');
+                const textoLoader = document.getElementById('loaderProgressText');
+
                 if (loader) {
                     if (event.persisted) {
                         loader.style.display = 'none';
                         loader.style.opacity = '0';
                     } else {
-                        loader.style.opacity = '0';
-                        setTimeout(() => { loader.style.display = 'none'; }, 400);
+                        // Limpa o loop inicial
+                        if (window.loaderIntervalId) clearInterval(window.loaderIntervalId);
+                        
+                        // Força a barra para 100% como conclusão
+                        if (barraLoader && textoLoader) {
+                            barraLoader.style.width = '100%';
+                            textoLoader.innerText = '100%';
+                        }
+                        
+                        // Dá um pequeno atraso (0.5s) para o usuário ver o 100% e então some com o loader
+                        setTimeout(() => {
+                            loader.style.opacity = '0';
+                            setTimeout(() => { loader.style.display = 'none'; }, 400);
+                        }, 500);
                     }
                 }
             });
 
+            // Lógica para quando o usuário sai da sala de aula (clicou num link)
             window.addEventListener('beforeunload', function() {
                 const loader = document.getElementById('globalLoader');
+                const barraLoader = document.getElementById('loaderProgressBar');
+                const textoLoader = document.getElementById('loaderProgressText');
+                
                 if (loader) {
+                    // Reseta para 0 e exibe
+                    if(barraLoader) barraLoader.style.width = '0%';
+                    if(textoLoader) textoLoader.innerText = '0%';
+                    
                     loader.style.display = 'flex';
                     setTimeout(() => { loader.style.opacity = '1'; }, 10); 
+                    
+                    // Anima rapidamente enquanto o navegador carrega a outra página
+                    let progLoaderUnload = 0;
+                    const unloadInterval = setInterval(() => {
+                        progLoaderUnload += 20;
+                        if(progLoaderUnload > 95) progLoaderUnload = 95;
+                        if (barraLoader && textoLoader) {
+                            barraLoader.style.width = progLoaderUnload + '%';
+                            textoLoader.innerText = Math.floor(progLoaderUnload) + '%';
+                        }
+                    }, 50);
                 }
             });
         </script>

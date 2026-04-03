@@ -1,6 +1,7 @@
 // views/novaAulaView.js
 
 const renderAdminMenuLateral = require('./adminMenuLateral');
+const renderToastProcessamento = require('./toastProcessamento'); // Importação do Toast Universal
 
 function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
 
@@ -23,6 +24,11 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                 .main-content { height: calc(100vh - 60px); }
             }
             .file-feedback { transition: all 0.3s ease; }
+
+            /* Animações do Toast e Etapas Visuais */
+            .toast-stage-item { transition: all 0.4s ease; }
+            .spin-anim { animation: spin 2s linear infinite; }
+            @keyframes spin { 100% { transform: rotate(360deg); } }
         </style>
     </head>
     <body class="bg-light">
@@ -88,10 +94,17 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                                     <div id="localFeedback_video" class="mt-2 d-none align-items-center file-feedback"></div>
                                                     
                                                     <div id="progressContainer_video" class="mt-auto pt-3 d-none">
-                                                        <div class="progress" style="height: 8px;">
-                                                            <div id="progressBar_video" class="progress-bar bg-danger" role="progressbar" style="width: 0%;"></div>
+                                                        <div class="progress rounded-pill shadow-sm" style="height: 10px;">
+                                                            <div id="progressBar_video" class="progress-bar progress-bar-striped progress-bar-animated bg-danger" role="progressbar" style="width: 0%;"></div>
                                                         </div>
-                                                        <small id="progressText_video" class="text-muted d-block mt-1 fw-bold" style="font-size: 0.7rem;">0% enviado</small>
+                                                        <small id="progressText_video" class="text-muted d-block mt-2 fw-bold" style="font-size: 0.75rem;">0% enviado</small>
+                                                        
+                                                        <div id="videoStages" class="d-none justify-content-between mt-3 px-1">
+                                                            <div id="st_up" class="text-center text-white-50 toast-stage-item"><i class="bi bi-cloud-arrow-up mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">Upload</span></div>
+                                                            <div id="st_360" class="text-center text-white-50 toast-stage-item"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">360p</span></div>
+                                                            <div id="st_480" class="text-center text-white-50 toast-stage-item"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">480p</span></div>
+                                                            <div id="st_720" class="text-center text-white-50 toast-stage-item"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">720p</span></div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -105,10 +118,10 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                                     <div id="localFeedback_apostila" class="mt-2 d-none align-items-center file-feedback"></div>
                                                     
                                                     <div id="progressContainer_apostila" class="mt-auto pt-3 d-none">
-                                                        <div class="progress" style="height: 8px;">
-                                                            <div id="progressBar_apostila" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                                                        <div class="progress rounded-pill shadow-sm" style="height: 10px;">
+                                                            <div id="progressBar_apostila" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%;"></div>
                                                         </div>
-                                                        <small id="progressText_apostila" class="text-muted d-block mt-1 fw-bold" style="font-size: 0.7rem;">0% enviado</small>
+                                                        <small id="progressText_apostila" class="text-muted d-block mt-2 fw-bold" style="font-size: 0.75rem;">0% enviado</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -121,10 +134,10 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                                     <div id="localFeedback_avaliacao" class="mt-2 d-none align-items-center file-feedback"></div>
                                                     
                                                     <div id="progressContainer_avaliacao" class="mt-auto pt-3 d-none">
-                                                        <div class="progress" style="height: 8px;">
-                                                            <div id="progressBar_avaliacao" class="progress-bar bg-warning" role="progressbar" style="width: 0%;"></div>
+                                                        <div class="progress rounded-pill shadow-sm" style="height: 10px;">
+                                                            <div id="progressBar_avaliacao" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%;"></div>
                                                         </div>
-                                                        <small id="progressText_avaliacao" class="text-muted d-block mt-1 fw-bold" style="font-size: 0.7rem;">0% enviado</small>
+                                                        <small id="progressText_avaliacao" class="text-muted d-block mt-2 fw-bold" style="font-size: 0.75rem;">0% enviado</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -138,10 +151,10 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                                     <div id="localFeedback_arquivo_adicional" class="mt-2 d-none align-items-center file-feedback"></div>
 
                                                     <div id="progressContainer_arquivo_adicional" class="mt-auto pt-3 d-none">
-                                                        <div class="progress" style="height: 8px;">
-                                                            <div id="progressBar_arquivo_adicional" class="progress-bar bg-primary" role="progressbar" style="width: 0%;"></div>
+                                                        <div class="progress rounded-pill shadow-sm" style="height: 10px;">
+                                                            <div id="progressBar_arquivo_adicional" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
                                                         </div>
-                                                        <small id="progressText_arquivo_adicional" class="text-muted d-block mt-1 fw-bold" style="font-size: 0.7rem;">0% enviado</small>
+                                                        <small id="progressText_arquivo_adicional" class="text-muted d-block mt-2 fw-bold" style="font-size: 0.75rem;">0% enviado</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -164,14 +177,26 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
             </div>
         </div>
 
+        ${renderToastProcessamento()}
+
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         
         <script>
             // ==========================================
+            // VARIÁVEIS GLOBAIS DE PROTEÇÃO
+            // ==========================================
+            window.isUploadingFiles = false;
+            const fileInputs = ['video', 'apostila', 'avaliacao', 'arquivo_adicional'];
+
+            window.onbeforeunload = function() {
+                if (window.isUploadingFiles) {
+                    return "O upload ainda está em andamento. Se fechar ou atualizar agora, o envio será cancelado!";
+                }
+            };
+
+            // ==========================================
             // LÓGICA 1: FEEDBACK DE CARREGAMENTO LOCAL (NO CLIQUE)
             // ==========================================
-            const fileInputs = ['video', 'apostila', 'avaliacao', 'arquivo_adicional'];
-            
             fileInputs.forEach(id => {
                 const inputElement = document.getElementById(id);
                 if (inputElement) {
@@ -180,7 +205,6 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                         const files = this.files;
 
                         if (files.length > 0) {
-                            // Mostra o spinner de processamento temporário
                             feedbackDiv.classList.remove('d-none');
                             feedbackDiv.classList.add('d-flex');
                             feedbackDiv.innerHTML = \`
@@ -188,7 +212,6 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                 <span class="small text-muted fw-semibold">Lendo arquivo local...</span>
                             \`;
 
-                            // Simula uma pequena pausa para dar o feedback visual na interface
                             setTimeout(() => {
                                 let totalSize = 0;
                                 for (let i = 0; i < files.length; i++) {
@@ -197,15 +220,13 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                 const sizeMB = (totalSize / (1024 * 1024)).toFixed(2);
                                 const fileText = files.length > 1 ? \`\${files.length} arquivos selecionados\` : files[0].name;
 
-                                // Troca para o check verde com o peso do ficheiro
                                 feedbackDiv.innerHTML = \`
                                     <i class="bi bi-check-circle-fill text-success me-2 fs-5"></i>
                                     <span class="small text-success fw-bold text-truncate" title="\${fileText}">\${fileText} (\${sizeMB} MB)</span>
                                 \`;
-                            }, 600); // 600ms de feedback visual
+                            }, 600);
 
                         } else {
-                            // Se o utilizador cancelar a escolha
                             feedbackDiv.classList.add('d-none');
                             feedbackDiv.classList.remove('d-flex');
                         }
@@ -214,7 +235,7 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
             });
 
             // ==========================================
-            // LÓGICA 2: UPLOAD AJAX COM BARRA DE PROGRESSO REAL
+            // LÓGICA 2: UPLOAD AJAX ASSÍNCRONO COM TOAST E ETAPAS
             // ==========================================
             document.getElementById('formNovaAula').addEventListener('submit', function(e) {
                 e.preventDefault(); 
@@ -222,11 +243,25 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                 const form = this;
                 const formData = new FormData(form);
                 const btn = document.getElementById('btnSubmit');
+                const hasVideo = document.getElementById('video').files.length > 0;
                 
+                window.isUploadingFiles = true;
                 btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando arquivos pro Servidor...';
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Enviando arquivos...';
                 
-                // Mostra as barras de envio apenas para os inputs que têm arquivos
+                // Ativa o módulo de Toast Universal
+                if (window.GerenciadorProcessamento) {
+                    window.GerenciadorProcessamento.iniciarUpload(hasVideo);
+                }
+
+                // Exibe as etapas também dentro do card do vídeo, se for upload de vídeo
+                if (hasVideo) {
+                    document.getElementById('progressContainer_video').classList.remove('d-none');
+                    document.getElementById('videoStages').classList.remove('d-none');
+                    document.getElementById('videoStages').classList.add('d-flex');
+                }
+
+                // Prepara as barras de progresso visuais de todos os inputs
                 fileInputs.forEach(id => {
                     const input = document.getElementById(id);
                     const container = document.getElementById('progressContainer_' + id);
@@ -235,7 +270,7 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                     const localFeedback = document.getElementById('localFeedback_' + id);
                     
                     if (input && input.files.length > 0) {
-                        localFeedback.classList.add('d-none'); // Esconde o check verde local
+                        localFeedback.classList.add('d-none');
                         container.classList.remove('d-none');
                         status.classList.remove('d-none');
                         bar.style.width = '0%';
@@ -249,6 +284,10 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                     if (e.lengthComputable) {
                         const percentComplete = Math.round((e.loaded / e.total) * 100);
                         
+                        if (window.GerenciadorProcessamento) {
+                            window.GerenciadorProcessamento.atualizarProgressoUpload(percentComplete);
+                        }
+
                         fileInputs.forEach(id => {
                             const input = document.getElementById(id);
                             if (input && input.files.length > 0) {
@@ -256,34 +295,59 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                 const status = document.getElementById('progressText_' + id);
                                 
                                 bar.style.width = percentComplete + '%';
-                                
-                                if (percentComplete === 100) {
-                                    bar.classList.add('progress-bar-striped', 'progress-bar-animated');
-                                    status.innerHTML = '<span class="spinner-border spinner-border-sm text-primary me-1" style="width: 0.8rem; height: 0.8rem;"></span> Salvando no Banco de Dados...';
-                                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processando (pode demorar)...';
-                                } else {
-                                    status.innerText = percentComplete + '% enviado';
-                                }
+                                status.innerText = percentComplete + '% enviado';
                             }
                         });
+
+                        if (percentComplete === 100) {
+                            btn.classList.replace('btn-success', 'btn-dark');
+                            btn.innerHTML = '<i class="bi bi-gear-wide-connected spin-anim me-2"></i>Servidor Processando...';
+                        }
                     }
                 });
 
                 xhr.addEventListener('load', function() {
+                    window.isUploadingFiles = false;
+                    
                     if (xhr.status >= 200 && xhr.status < 300) {
-                        window.location.href = xhr.responseURL;
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                // O servidor guardou e devolveu o Job ID. 
+                                // O módulo continua monitorando em background.
+                                if (window.GerenciadorProcessamento) {
+                                    window.GerenciadorProcessamento.registrarTarefaBackend(response.jobId);
+                                }
+                                window.location.href = response.redirectUrl;
+                            } else {
+                                alert('Erro reportado pelo servidor: ' + response.message);
+                                resetUIOnError(btn);
+                            }
+                        } catch (e) {
+                            // Se a resposta não for JSON (rota não convertida para assíncrona ainda)
+                            window.location.href = xhr.responseURL;
+                        }
                     } else {
-                        alert('Ocorreu um erro no servidor. Verifique o console ou tente novamente.');
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="bi bi-floppy me-2"></i> Salvar Aula e Conteúdos';
+                        alert('Ocorreu um erro no servidor durante o processamento.');
+                        resetUIOnError(btn);
                     }
                 });
 
                 xhr.addEventListener('error', function() {
+                    window.isUploadingFiles = false;
                     alert('Falha na conexão. O upload foi interrompido.');
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-floppy me-2"></i> Salvar Aula e Conteúdos';
+                    resetUIOnError(btn);
                 });
+
+                function resetUIOnError(botao) {
+                    botao.disabled = false;
+                    botao.classList.remove('btn-dark', 'btn-warning');
+                    botao.classList.add('btn-success');
+                    botao.innerHTML = '<i class="bi bi-floppy me-2"></i> Salvar Aula e Conteúdos';
+                    if (window.GerenciadorProcessamento) {
+                        window.GerenciadorProcessamento.hide();
+                    }
+                }
 
                 xhr.open('POST', form.action, true);
                 xhr.send(formData);
@@ -300,7 +364,10 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
 
             window.addEventListener('beforeunload', function() {
                 const loader = document.getElementById('globalLoader');
-                if (loader) { loader.style.display = 'flex'; setTimeout(() => { loader.style.opacity = '1'; }, 10); }
+                if (loader && !window.isUploadingFiles) { 
+                    loader.style.display = 'flex'; 
+                    setTimeout(() => { loader.style.opacity = '1'; }, 10); 
+                }
             });
         </script>
 

@@ -47,9 +47,9 @@ function renderHomeView(usuarioLogado, cursos) {
             
             htmlCursosSlider += `
                 <div class="swiper-slide h-auto curso-slide" data-tags="${tagsDoCurso}">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative hover-shadow transition">
+                    <div class="card h-100 border-0 rounded-4 overflow-hidden position-relative hover-shadow transition glass-card">
                         
-                        <button class="btn btn-light btn-sm rounded-circle shadow-sm position-absolute top-0 end-0 m-2 z-2 text-danger btn-favoritar" data-curso-id="${curso.id}" title="Adicionar aos favoritos" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                        <button class="btn btn-light btn-sm rounded-circle shadow-sm position-absolute top-0 end-0 m-2 z-2 text-danger btn-favoritar" data-curso-id="${curso.id}" title="Adicionar aos favoritos" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px);">
                             <i class="bi bi-heart"></i>
                         </button>
                         
@@ -66,9 +66,9 @@ function renderHomeView(usuarioLogado, cursos) {
                                 <span title="Estimativa baseada em 2h de estudo/dia"><i class="bi bi-calendar-check text-success me-1"></i> ${conclusao}</span>
                             </div>
                             
-                            <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                            <div class="mt-auto pt-3 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
                                 <span class="fw-bold text-primary">${preco}</span>
-                                <a href="/cursos/${curso.id}" class="btn btn-primary btn-sm fw-bold px-3 rounded-pill">Comprar</a>
+                                <a href="/cursos/${curso.id}" class="btn btn-primary btn-sm fw-bold px-3 rounded-pill shadow-sm">Comprar</a>
                             </div>
                         </div>
                     </div>
@@ -78,13 +78,13 @@ function renderHomeView(usuarioLogado, cursos) {
     }
 
     const linksCategorias = `
-        <a href="#" class="btn btn-dark rounded-pill me-2 fw-bold px-4 btn-filter flex-shrink-0" data-filter="all">⭐ Em Alta</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="tecnologia">💻 Tecnologia</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="negócio">📊 Negócios</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="escritório">🗂️ Escritório</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="design">🎨 Design</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="marketing">📈 Marketing</a>
-        <a href="#" class="btn btn-outline-secondary rounded-pill me-2 fw-semibold btn-filter flex-shrink-0" data-filter="idioma">🗣️ Idiomas</a>
+        <a href="#" class="btn btn-dark rounded-pill me-2 fw-bold px-4 btn-filter flex-shrink-0 shadow-sm" data-filter="all">⭐ Em Alta</a>
+        <a href="#" class="btn btn-outline-dark bg-white bg-opacity-50 rounded-pill me-2 fw-semibold btn-filter flex-shrink-0 shadow-sm" data-filter="tecnologia">💻 Tecnologia</a>
+        <a href="#" class="btn btn-outline-dark bg-white bg-opacity-50 rounded-pill me-2 fw-semibold btn-filter flex-shrink-0 shadow-sm" data-filter="negócio">📊 Negócios</a>
+        <a href="#" class="btn btn-outline-dark bg-white bg-opacity-50 rounded-pill me-2 fw-semibold btn-filter flex-shrink-0 shadow-sm" data-filter="escritório">🗂️ Escritório</a>
+        <a href="#" class="btn btn-outline-dark bg-white bg-opacity-50 rounded-pill me-2 fw-semibold btn-filter flex-shrink-0 shadow-sm" data-filter="design">🎨 Design</a>
+        <a href="#" class="btn btn-outline-dark bg-white bg-opacity-50 rounded-pill me-2 fw-semibold btn-filter flex-shrink-0 shadow-sm" data-filter="marketing">📈 Marketing</a>
+        <a href="#" class="btn btn-outline-dark bg-white bg-opacity-50 rounded-pill me-2 fw-semibold btn-filter flex-shrink-0 shadow-sm" data-filter="idioma">🗣️ Idiomas</a>
     `;
 
     return `
@@ -99,19 +99,77 @@ function renderHomeView(usuarioLogado, cursos) {
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
         
         <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; }
-            .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #212529; overflow-x: hidden; position: relative; }
+            .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 1rem 2rem rgba(0,0,0,.15)!important; }
             .transition { transition: all 0.3s ease; }
             
-            .navbar-custom { background-color: #ffffff; border-bottom: 1px solid #eaeaea; }
-            .search-bar-header { background-color: #f1f3f4; border: none; border-radius: 50px; padding-left: 40px; }
+            /* ==========================================
+               GRADIENT MESH BACKGROUND (NOVO)
+               ========================================== */
+            .mesh-bg {
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: -1;
+                background-color: #f4f7f6;
+                overflow: hidden;
+            }
+            .mesh-blob-1, .mesh-blob-2, .mesh-blob-3 {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(90px);
+                opacity: 0.25;
+                animation: floatAnim 20s infinite ease-in-out alternate;
+            }
+            .mesh-blob-1 {
+                top: -10%; left: -10%;
+                width: 50vw; height: 50vw;
+                background: #0d6efd; /* Primary OnStude */
+                animation-delay: 0s;
+            }
+            .mesh-blob-2 {
+                bottom: -20%; right: -10%;
+                width: 60vw; height: 60vw;
+                background: #0dcaf0; /* Info Cyan */
+                animation-delay: -5s;
+            }
+            .mesh-blob-3 {
+                top: 30%; left: 40%;
+                width: 45vw; height: 45vw;
+                background: #6610f2; /* Indigo/Purple Accent */
+                animation-delay: -10s;
+            }
+            @keyframes floatAnim {
+                0% { transform: translate(0, 0) scale(1); }
+                33% { transform: translate(5%, 15%) scale(1.1); }
+                66% { transform: translate(-10%, 5%) scale(0.9); }
+                100% { transform: translate(0, 0) scale(1); }
+            }
+
+            /* ==========================================
+               GLASSMORPHISM CARDS (HARMONIZAÇÃO)
+               ========================================== */
+            .glass-card {
+                background: rgba(255, 255, 255, 0.65) !important;
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.8) !important;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+            }
+            .glass-nav {
+                background: rgba(255, 255, 255, 0.85) !important;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+            }
             
-            .hero-section { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); padding: 80px 0; }
-            .hero-title { font-size: 3rem; font-weight: 800; color: #1a1a1a; line-height: 1.2; letter-spacing: -1px; }
-            .hero-subtitle { font-size: 1.25rem; color: #6c757d; line-height: 1.6; }
-            .hero-img { border-radius: 24px; object-fit: cover; height: 450px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+            .search-bar-header { background-color: rgba(241, 243, 244, 0.8); border: 1px solid rgba(255,255,255,0.5); border-radius: 50px; padding-left: 40px; backdrop-filter: blur(4px); }
             
-            .swiper-button-next, .swiper-button-prev { background-color: white; color: #0d6efd; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+            .hero-section { padding: 80px 0; } /* Removido o fundo sólido para o mesh aparecer */
+            .hero-title { font-size: 3.2rem; font-weight: 800; color: #1a1a1a; line-height: 1.2; letter-spacing: -1px; }
+            .hero-subtitle { font-size: 1.25rem; color: #495057; line-height: 1.6; font-weight: 500; }
+            .hero-img { border-radius: 24px; object-fit: cover; height: 450px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.15); border: 4px solid rgba(255,255,255,0.5); }
+            
+            .swiper-button-next, .swiper-button-prev { background-color: rgba(255,255,255,0.9); color: #0d6efd; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); backdrop-filter: blur(4px); }
             .swiper-button-next:after, .swiper-button-prev:after { font-size: 1.1rem; font-weight: bold; }
 
             .hover-white { transition: color 0.3s; }
@@ -126,6 +184,22 @@ function renderHomeView(usuarioLogado, cursos) {
                 display: none; /* Chrome, Safari and Opera */
             }
 
+            /* ==========================================
+               CLASSES DE ANIMAÇÃO DE SCROLL (REVEAL)
+               ========================================== */
+            .reveal-up { opacity: 0; transform: translateY(50px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            .reveal-left { opacity: 0; transform: translateX(-50px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            .reveal-right { opacity: 0; transform: translateX(50px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            .reveal-scale { opacity: 0; transform: scale(0.9); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            
+            /* Estado Ativo */
+            .reveal-visible { opacity: 1; transform: translate(0) scale(1); }
+            
+            /* Delays para efeito cascata */
+            .delay-100 { transition-delay: 100ms; }
+            .delay-200 { transition-delay: 200ms; }
+            .delay-300 { transition-delay: 300ms; }
+
             /* Responsive Adjustments */
             @media (max-width: 991.98px) {
                 .search-bar-header { margin-top: 15px; width: 100%; }
@@ -134,23 +208,34 @@ function renderHomeView(usuarioLogado, cursos) {
             @media (max-width: 767.98px) {
                 .hero-section { padding: 40px 0; }
                 .hero-title { font-size: 2.2rem; }
-                .hero-subtitle { font-size: 1rem; mb-4; }
+                .hero-subtitle { font-size: 1rem; margin-bottom: 1.5rem !important; }
                 .hero-img { height: 280px; }
                 .btn-lg { padding: 0.6rem 1.5rem; font-size: 1rem; }
                 .career-banner-img { max-height: 200px !important; }
+                
+                /* Reduz animações agressivas no mobile */
+                .reveal-left, .reveal-right { transform: translateY(30px); }
             }
         </style>
     </head>
     <body>
 
-        ${renderMainHeader(usuarioLogado)}
+        <div class="mesh-bg">
+            <div class="mesh-blob-1"></div>
+            <div class="mesh-blob-2"></div>
+            <div class="mesh-blob-3"></div>
+        </div>
+
+        <div class="header-wrapper glass-nav sticky-top">
+            ${renderMainHeader(usuarioLogado)}
+        </div>
 
         <section class="hero-section overflow-hidden">
             <div class="container">
                 <div class="row align-items-center">
                     
-                    <div class="col-lg-6 mb-4 mb-lg-0 pe-lg-5 text-center text-lg-start">
-                        <span class="badge bg-primary bg-opacity-10 text-primary mb-3 px-3 py-2 rounded-pill fw-bold">🚀 Plataforma E-learning #1</span>
+                    <div class="col-lg-6 mb-4 mb-lg-0 pe-lg-5 text-center text-lg-start reveal-left">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 shadow-sm mb-3 px-3 py-2 rounded-pill fw-bold">🚀 Plataforma E-learning #1</span>
                         <h1 class="hero-title mb-3">Transforme seu futuro com nossos <span class="text-primary">cursos profissionalizantes</span> online.</h1>
                         <p class="hero-subtitle mb-4">Aprenda com especialistas, no seu ritmo, e conquiste novas oportunidades no mercado de trabalho com certificados reconhecidos.</p>
                         
@@ -159,11 +244,8 @@ function renderHomeView(usuarioLogado, cursos) {
                         </div>
                     </div>
 
-                    <div class="col-lg-6 position-relative">
-                        <div class="position-absolute top-0 end-0 bg-warning rounded-circle opacity-50 blur d-none d-md-block" style="width: 300px; height: 300px; filter: blur(60px); z-index: 0; transform: translate(20%, -20%);"></div>
-                        <div class="position-absolute bottom-0 start-0 bg-primary rounded-circle opacity-25 blur d-none d-md-block" style="width: 250px; height: 250px; filter: blur(60px); z-index: 0; transform: translate(-20%, 20%);"></div>
-
-                        <div id="heroCarousel" class="carousel slide carousel-fade shadow-lg rounded-4 overflow-hidden position-relative z-1" data-bs-ride="carousel" data-bs-interval="4000">
+                    <div class="col-lg-6 position-relative reveal-right delay-200">
+                        <div id="heroCarousel" class="carousel slide carousel-fade rounded-4 overflow-hidden position-relative z-1" data-bs-ride="carousel" data-bs-interval="4000">
                             <div class="carousel-inner">
                                 <div class="carousel-item active">
                                     <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80" class="d-block hero-img" alt="Estudante feliz">
@@ -182,21 +264,21 @@ function renderHomeView(usuarioLogado, cursos) {
             </div>
         </section>
 
-        <section id="secao-cursos" class="pt-5 pb-4 bg-white">
+        <section id="secao-cursos" class="pt-5 pb-4 overflow-hidden">
             <div class="container py-3">
                 
-                <div class="row mb-3 align-items-end">
+                <div class="row mb-3 align-items-end reveal-up">
                     <div class="col-lg-8 text-center text-md-start">
                         <h2 class="fw-bold text-dark mb-2">Uma ampla seleção de cursos</h2>
                         <p class="text-muted fs-6 mb-0">Escolha o seu caminho e comece a estudar hoje mesmo.</p>
                     </div>
                 </div>
 
-                <div class="d-flex overflow-x-auto hide-scrollbar mb-4 pb-2" style="-webkit-overflow-scrolling: touch;">
+                <div class="d-flex overflow-x-auto hide-scrollbar mb-4 pb-2 reveal-up delay-100" style="-webkit-overflow-scrolling: touch;">
                     ${linksCategorias}
                 </div>
 
-                <div class="p-3 p-md-4 rounded-4 border bg-light position-relative">
+                <div class="p-3 p-md-4 rounded-4 glass-card position-relative reveal-up delay-200">
                     <div class="swiper mySwiper">
                         <div class="swiper-wrapper py-2">
                             ${htmlCursosSlider}
@@ -206,20 +288,18 @@ function renderHomeView(usuarioLogado, cursos) {
                     <div class="swiper-button-prev d-none d-md-flex"></div>
                 </div>
                 
-                <div class="text-center mt-4">
-                    <a href="#" class="btn btn-outline-primary fw-bold px-4 py-2 rounded-pill">Ver Todos os Cursos</a>
+                <div class="text-center mt-4 reveal-up delay-300">
+                    <a href="/categorias" class="btn btn-outline-primary bg-white bg-opacity-50 fw-bold px-4 py-2 rounded-pill shadow-sm" style="backdrop-filter: blur(4px);">Ver Todas as Categorias</a>
                 </div>
 
             </div>
         </section>
 
-        <section class="py-4 py-md-5 bg-white">
+        <section class="py-4 py-md-5 overflow-hidden">
             <div class="container">
-                <div class="row align-items-center bg-light border rounded-4 p-3 p-md-4 mx-0 shadow-sm position-relative overflow-hidden">
+                <div class="row align-items-center glass-card rounded-4 p-3 p-md-4 mx-0 position-relative overflow-hidden">
                     
-                    <div class="position-absolute top-0 end-0 bg-primary opacity-10 rounded-circle d-none d-md-block" style="width: 250px; height: 250px; transform: translate(30%, -30%);"></div>
-
-                    <div class="col-lg-7 position-relative z-1 mb-4 mb-lg-0 pe-lg-4 text-center text-md-start">
+                    <div class="col-lg-7 position-relative z-1 mb-4 mb-lg-0 pe-lg-4 text-center text-md-start reveal-left">
                         <h2 class="fw-bold text-dark mb-2 fs-3">O plano de carreira melhora seu currículo</h2>
                         <h6 class="fw-bold text-primary mb-3">Tenha mais visibilidade nos processos seletivos</h6>
                         <p class="small text-muted mb-0 lh-base text-start">
@@ -231,16 +311,16 @@ function renderHomeView(usuarioLogado, cursos) {
                         <a href="/plano-de-carreira" class="btn btn-primary btn-sm fw-bold px-4 rounded-pill mt-4 shadow-sm">Construir meu currículo</a>
                     </div>
                     
-                    <div class="col-lg-5 position-relative z-1 text-center">
-                        <img src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80" alt="Análise de Carreira e Currículo" class="img-fluid rounded-4 shadow career-banner-img" style="max-height: 280px; object-fit: cover; width: 100%;">
+                    <div class="col-lg-5 position-relative z-1 text-center reveal-right delay-200">
+                        <img src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80" alt="Análise de Carreira e Currículo" class="img-fluid rounded-4 shadow career-banner-img border border-white" style="max-height: 280px; object-fit: cover; width: 100%;">
                     </div>
 
                 </div>
             </div>
         </section>
 
-        <footer class="bg-dark text-white pt-5 pb-3 mt-4">
-            <div class="container">
+        <footer class="bg-dark text-white pt-5 pb-3 mt-4 overflow-hidden" style="border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="container reveal-up">
                 <div class="row mb-4 text-center text-md-start">
                     
                     <div class="col-lg-5 mb-4 mb-lg-0">
@@ -270,7 +350,7 @@ function renderHomeView(usuarioLogado, cursos) {
 
                 <div class="row align-items-center">
                     <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
-                        <small class="text-white-50" style="font-size: 0.75rem;">&copy; 2026 OnStude. Todos os direitos reservados.</small>
+                        <small class="text-white-50" style="font-size: 0.75rem;">&copy; ${new Date().getFullYear()} OnStude. Todos os direitos reservados.</small>
                     </div>
                     
                     <div class="col-md-6 text-center text-md-end d-flex align-items-center justify-content-center justify-content-md-end">
@@ -293,6 +373,33 @@ function renderHomeView(usuarioLogado, cursos) {
             const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
 
             document.addEventListener('DOMContentLoaded', function () {
+                
+                // ==========================================
+                // LÓGICA DE ANIMAÇÃO DE SCROLL (INTERSECTION OBSERVER)
+                // ==========================================
+                const revealElements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right, .reveal-scale');
+                
+                const revealOptions = {
+                    threshold: 0.15,
+                    rootMargin: "0px 0px -50px 0px" 
+                };
+
+                const revealObserver = new IntersectionObserver(function(entries, observer) {
+                    entries.forEach(entry => {
+                        if (!entry.isIntersecting) {
+                            entry.target.classList.remove('reveal-visible');
+                            return;
+                        }
+                        entry.target.classList.add('reveal-visible');
+                    });
+                }, revealOptions);
+
+                revealElements.forEach(el => revealObserver.observe(el));
+
+
+                // ==========================================
+                // LÓGICA DO SWIPER E FILTROS
+                // ==========================================
                 var swiper = new Swiper(".mySwiper", {
                     slidesPerView: 1,
                     spaceBetween: 15,
@@ -322,9 +429,9 @@ function renderHomeView(usuarioLogado, cursos) {
 
                         botoesFiltro.forEach(b => {
                             b.classList.remove('btn-dark', 'fw-bold');
-                            b.classList.add('btn-outline-secondary', 'fw-semibold');
+                            b.classList.add('btn-outline-dark', 'bg-white', 'bg-opacity-50', 'fw-semibold');
                         });
-                        this.classList.remove('btn-outline-secondary', 'fw-semibold');
+                        this.classList.remove('btn-outline-dark', 'bg-white', 'bg-opacity-50', 'fw-semibold');
                         this.classList.add('btn-dark', 'fw-bold');
 
                         const filtro = this.getAttribute('data-filter').toLowerCase();
@@ -349,6 +456,9 @@ function renderHomeView(usuarioLogado, cursos) {
                     });
                 });
 
+                // ==========================================
+                // LÓGICA DE FAVORITOS
+                // ==========================================
                 document.body.addEventListener('click', function(e) {
                     const btn = e.target.closest('.btn-favoritar');
                     if (!btn) return;

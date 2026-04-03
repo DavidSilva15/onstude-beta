@@ -175,6 +175,11 @@ function renderAdminCursosView(admin, cursos, currentPage = 1, totalPages = 1, s
             }
             .transition-all { transition: all 0.3s ease; }
             .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+            
+            /* Animações do Toast Universal */
+            .toast-stage-item { transition: all 0.4s ease; }
+            .spin-anim { animation: spin 2s linear infinite; }
+            @keyframes spin { 100% { transform: rotate(360deg); } }
         </style>
     </head>
     <body class="bg-light">
@@ -226,6 +231,32 @@ function renderAdminCursosView(admin, cursos, currentPage = 1, totalPages = 1, s
             </div> 
         </div>
         
+        <div class="toast-container position-fixed bottom-0 end-0 p-4" style="z-index: 1080;">
+            <div id="universalProcessingToast" class="toast align-items-center text-bg-dark border-0 shadow-lg rounded-4" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+                <div class="toast-header bg-dark text-white border-secondary border-opacity-25 rounded-top-4">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status" id="toastSpinner"></div>
+                    <i class="bi bi-check-circle-fill text-success me-2 d-none" id="toastCheck"></i>
+                    <strong class="me-auto" id="toastProcessTitle">Processando...</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body p-3">
+                    <p id="toastProcessMsg" class="mb-3 small text-light">Aguarde enquanto o servidor processa a sua solicitação.</p>
+                    <div class="progress mb-2 bg-secondary bg-opacity-25 rounded-pill" style="height: 6px;">
+                        <div id="toastProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
+                    </div>
+                    
+                    <div id="toastStages" class="d-flex justify-content-between mt-3 px-1 d-none">
+                        <div id="t_stage_up" class="text-center text-white-50 toast-stage-item"><i class="bi bi-cloud-arrow-up mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">Upload</span></div>
+                        <div id="t_stage_360" class="text-center text-white-50 toast-stage-item"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">360p</span></div>
+                        <div id="t_stage_480" class="text-center text-white-50 toast-stage-item"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">480p</span></div>
+                        <div id="t_stage_720" class="text-center text-white-50 toast-stage-item"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">720p</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        ${require('./toastProcessamento')()}
+
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
         <script>
@@ -244,11 +275,16 @@ function renderAdminCursosView(admin, cursos, currentPage = 1, totalPages = 1, s
 
             window.addEventListener('beforeunload', function() {
                 const loader = document.getElementById('globalLoader');
-                if (loader) {
+                // Adicionada a proteção da variável isUploading caso você implemente upload assíncrono nesta view
+                if (loader && !window.isUploading) {
                     loader.style.display = 'flex';
                     setTimeout(() => { loader.style.opacity = '1'; }, 10); 
                 }
             });
+            
+            // Inicialização básica do Toast (fica pronto para ser chamado em qualquer requisição assíncrona futura)
+            // Exemplo de uso: const toast = new bootstrap.Toast(document.getElementById('universalProcessingToast')); toast.show();
+            window.isUploading = false;
         </script>
     </body>
     </html>

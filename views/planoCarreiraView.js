@@ -20,16 +20,16 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
         modelosCV.forEach(modelo => {
             htmlModelosSlider += `
                 <div class="swiper-slide h-auto">
-                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative hover-shadow transition">
-                        <img src="${modelo.capa_url}" class="card-img-top bg-light" alt="${modelo.titulo}" style="height: 220px; object-fit: cover; border-bottom: 1px solid #eaeaea;">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden position-relative hover-shadow transition glass-card">
+                        <img src="${modelo.capa_url}" class="card-img-top bg-light" alt="${modelo.titulo}" style="height: 220px; object-fit: cover; border-bottom: 1px solid rgba(0,0,0,0.05);">
                         <div class="card-body text-center p-4 d-flex flex-column">
                             <h6 class="fw-bold text-dark mb-4">${modelo.titulo}</h6>
                             
                             <div class="mt-auto d-flex flex-column gap-2">
-                                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold px-4 rounded-pill w-100" onclick="abrirModalVisualizacao('${modelo.capa_url}', '${modelo.titulo}')">
+                                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold px-4 rounded-pill w-100 bg-white bg-opacity-50" onclick="abrirModalVisualizacao('${modelo.capa_url}', '${modelo.titulo}')" style="backdrop-filter: blur(4px);">
                                     <i class="bi bi-eye me-2"></i> Visualizar
                                 </button>
-                                <a href="${modelo.arquivo_url}" target="_blank" download class="btn btn-primary btn-sm fw-bold px-4 rounded-pill w-100">
+                                <a href="${modelo.arquivo_url}" target="_blank" download class="btn btn-primary btn-sm fw-bold px-4 rounded-pill w-100 shadow-sm">
                                     <i class="bi bi-download me-2"></i> Baixar Word
                                 </a>
                             </div>
@@ -52,30 +52,103 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
         <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; overflow-x: hidden; }
-            .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #212529; overflow-x: hidden; position: relative; }
+            .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 1rem 2rem rgba(0,0,0,.15)!important; }
             .transition { transition: all 0.3s ease; }
-            
-            .navbar-custom { background-color: #ffffff; border-bottom: 1px solid #eaeaea; }
-            .search-bar-header { background-color: #f1f3f4; border: none; border-radius: 50px; padding-left: 40px; }
-            
-            .hero-section { background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); padding: 80px 0; }
-            .hero-title { font-size: 2.8rem; font-weight: 800; color: #1a1a1a; line-height: 1.2; letter-spacing: -1px; }
-            .hero-img { border-radius: 24px; object-fit: cover; height: 450px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-            
-            .swiper-button-next, .swiper-button-prev { background-color: white; color: #0d6efd; width: 45px; height: 45px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-            .swiper-button-next:after, .swiper-button-prev:after { font-size: 1.2rem; font-weight: bold; }
 
             .hover-white { transition: color 0.3s; }
             .hover-white:hover { color: #ffffff !important; }
+            
+            /* ==========================================
+               GRADIENT MESH BACKGROUND
+               ========================================== */
+            .mesh-bg {
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: -1;
+                background-color: #f4f7f6;
+                overflow: hidden;
+            }
+            .mesh-blob-1, .mesh-blob-2, .mesh-blob-3 {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(90px);
+                opacity: 0.25;
+                animation: floatAnim 20s infinite ease-in-out alternate;
+            }
+            .mesh-blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #0d6efd; animation-delay: 0s; }
+            .mesh-blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #0dcaf0; animation-delay: -5s; }
+            .mesh-blob-3 { top: 30%; left: 40%; width: 45vw; height: 45vw; background: #6610f2; animation-delay: -10s; }
+            
+            @keyframes floatAnim {
+                0% { transform: translate(0, 0) scale(1); }
+                33% { transform: translate(5%, 15%) scale(1.1); }
+                66% { transform: translate(-10%, 5%) scale(0.9); }
+                100% { transform: translate(0, 0) scale(1); }
+            }
+
+            /* ==========================================
+               GLASSMORPHISM CARDS
+               ========================================== */
+            .glass-card {
+                background: rgba(255, 255, 255, 0.65) !important;
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.8) !important;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+            }
+            .glass-nav {
+                background: rgba(255, 255, 255, 0.85) !important;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;
+            }
+
+            /* ==========================================
+               EFEITO ORIGINAL DO CONTAINER DO TOPO (RESTAURADO)
+               ========================================== */
+            .hero-section {
+                background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+                position: relative;
+                overflow: hidden;
+                padding: 80px 0;
+            }
+            .hero-section::before {
+                content: '';
+                position: absolute;
+                top: -50%; left: -50%; width: 200%; height: 200%;
+                background: radial-gradient(circle, rgba(13,110,253,0.15) 0%, transparent 60%);
+                animation: rotateBg 20s linear infinite;
+            }
+            @keyframes rotateBg { 100% { transform: rotate(360deg); } }
+
+            .hero-title { font-size: 2.8rem; font-weight: 800; line-height: 1.2; letter-spacing: -1px; }
+            .hero-img { border-radius: 24px; object-fit: cover; height: 450px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.2); border: 3px solid rgba(255,255,255,0.1); }
+            
+            .swiper-button-next, .swiper-button-prev { background-color: rgba(255,255,255,0.9); color: #0d6efd; width: 45px; height: 45px; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.1); backdrop-filter: blur(4px); }
+            .swiper-button-next:after, .swiper-button-prev:after { font-size: 1.2rem; font-weight: bold; }
+
+            /* ==========================================
+               CLASSES DE ANIMAÇÃO DE SCROLL (REVEAL)
+               ========================================== */
+            .reveal-up { opacity: 0; transform: translateY(50px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            .reveal-left { opacity: 0; transform: translateX(-50px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            .reveal-right { opacity: 0; transform: translateX(50px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            .reveal-scale { opacity: 0; transform: scale(0.9); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
+            
+            .reveal-visible { opacity: 1; transform: translate(0) scale(1); }
+            
+            .delay-100 { transition-delay: 100ms; }
+            .delay-200 { transition-delay: 200ms; }
+            .delay-300 { transition-delay: 300ms; }
 
             /* ==========================================
                DESIGN DOS CONTAINERS (INPUTS MODERNOS)
                ========================================== */
             .input-group-custom {
-                background-color: #f4f6f9;
+                background-color: rgba(255, 255, 255, 0.7);
                 border-radius: 14px;
-                border: 2px solid #e9ecef;
+                border: 2px solid rgba(255, 255, 255, 0.8);
                 transition: all 0.3s ease;
                 overflow: hidden;
             }
@@ -130,7 +203,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             .bot-icon-bg { width: 85px; height: 85px; font-size: 2.5rem; background: linear-gradient(135deg, #0d6efd, #6610f2); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(13, 110, 253, 0.5); transition: transform 0.3s; border: 4px solid white; }
             .bot-flutuante:hover .bot-icon-bg { transform: scale(1.15) rotate(10deg); }
             
-            .bot-balao { position: absolute; bottom: 95px; right: 40px; background: white; padding: 15px 20px; border-radius: 20px 20px 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 280px; font-size: 1rem; font-weight: 700; color: #212529; opacity: 0; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; border: 2px solid #0d6efd; transform-origin: bottom right; transform: scale(0.8);}
+            .bot-balao { position: absolute; bottom: 95px; right: 40px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); padding: 15px 20px; border-radius: 20px 20px 0 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 280px; font-size: 1rem; font-weight: 700; color: #212529; opacity: 0; transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; border: 2px solid #0d6efd; transform-origin: bottom right; transform: scale(0.8);}
             .bot-balao.show { opacity: 1; transform: scale(1); }
             
             @keyframes botSpawn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
@@ -161,7 +234,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 .hero-title { font-size: 2.2rem; }
                 .hero-img { height: 250px; }
                 
-                #gerador-cv .card { border-radius: 0 !important; box-shadow: none !important; border-top: 1px solid #eaeaea !important; }
+                #gerador-cv .card { border-radius: 0 !important; box-shadow: none !important; border-top: 1px solid rgba(255,255,255,0.5) !important; }
                 #gerador-cv .card-body { padding: 1.5rem 1rem !important; }
                 
                 .form-control-custom, .form-select-custom { padding: 0.5rem 0.8rem 0.5rem 0.4rem; font-size: 0.9rem; }
@@ -172,10 +245,18 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 
                 .bot-icon-bg { width: 65px; height: 65px; font-size: 1.8rem; }
                 .bot-balao { width: 220px; font-size: 0.85rem; bottom: 75px; right: 20px; padding: 10px 15px; }
+                
+                .reveal-left, .reveal-right { transform: translateY(30px); }
             }
         </style>
     </head>
     <body>
+
+        <div class="mesh-bg">
+            <div class="mesh-blob-1"></div>
+            <div class="mesh-blob-2"></div>
+            <div class="mesh-blob-3"></div>
+        </div>
 
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
             <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;">
@@ -183,21 +264,23 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             </div>
         </div>
 
-        ${renderMainHeader(usuarioLogado)}
+        <div class="header-wrapper glass-nav sticky-top">
+            ${renderMainHeader(usuarioLogado)}
+        </div>
 
-        <section class="hero-section overflow-hidden border-bottom">
-            <div class="container">
+        <section class="hero-section overflow-hidden border-bottom text-white shadow-sm">
+            <div class="container position-relative" style="z-index: 1;">
                 <div class="row align-items-center">
-                    <div class="col-lg-6 mb-5 mb-lg-0 pe-lg-5 text-center text-lg-start">
-                        <span class="badge bg-primary bg-opacity-10 text-primary mb-3 px-3 py-2 rounded-pill fw-bold">🚀 Impulsione o seu Futuro</span>
-                        <h1 class="hero-title mb-4">Crie seu currículo ou escolha um dos <span class="text-primary">modelos</span> para editar.</h1>
-                        <p class="hero-subtitle mb-5">Tenha mais visibilidade nos processos seletivos. Utilize a nossa ferramenta gratuita para construir um currículo profissional em PDF em minutos.</p>
+                    <div class="col-lg-6 mb-5 mb-lg-0 pe-lg-5 text-center text-lg-start reveal-left">
+                        <span class="badge bg-primary bg-opacity-25 text-info border border-primary border-opacity-50 mb-3 px-3 py-2 rounded-pill fw-bold shadow-sm">🚀 Impulsione o seu Futuro</span>
+                        <h1 class="hero-title mb-4 text-white">Crie seu currículo ou escolha um dos <span class="text-info">modelos</span> para editar.</h1>
+                        <p class="hero-subtitle mb-5 text-light opacity-75">Tenha mais visibilidade nos processos seletivos. Utilize a nossa ferramenta gratuita para construir um currículo profissional em PDF em minutos.</p>
                         <div class="d-flex flex-column flex-sm-row justify-content-center justify-content-lg-start gap-3">
                             <a href="#gerador-cv" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow-sm">Criar Currículo PDF Agora</a>
-                            <a href="#modelos-cv" class="btn btn-outline-dark btn-lg fw-bold px-5 py-3 rounded-pill">Ver Modelos Word</a>
+                            <a href="#modelos-cv" class="btn btn-outline-light btn-lg fw-bold px-5 py-3 rounded-pill">Ver Modelos Word</a>
                         </div>
                     </div>
-                    <div class="col-lg-6 position-relative">
+                    <div class="col-lg-6 position-relative reveal-right delay-200">
                         <div id="heroCarousel" class="carousel slide carousel-fade shadow-lg rounded-4 overflow-hidden" data-bs-ride="carousel" data-bs-interval="3000">
                             <div class="carousel-inner">
                                 <div class="carousel-item active">
@@ -216,15 +299,15 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             </div>
         </section>
 
-        <section id="modelos-cv" class="py-5 bg-white">
+        <section id="modelos-cv" class="py-5 overflow-hidden">
             <div class="container py-4">
-                <div class="row mb-5 text-center">
+                <div class="row mb-5 text-center reveal-up">
                     <div class="col-12">
                         <h2 class="fw-bold text-dark mb-3">Modelos Prontos para Download</h2>
-                        <p class="text-muted fs-5 mb-0">Baixe no formato Word (.docx) e edite no seu computador.</p>
+                        <p class="text-secondary fs-5 mb-0">Baixe no formato Word (.docx) e edite no seu computador.</p>
                     </div>
                 </div>
-                <div class="p-4 rounded-4 border bg-light position-relative mx-2 mx-md-0">
+                <div class="p-4 rounded-4 glass-card position-relative mx-2 mx-md-0 reveal-up delay-200 shadow-sm">
                     <div class="swiper mySwiper">
                         <div class="swiper-wrapper py-3">
                             ${htmlModelosSlider}
@@ -236,20 +319,20 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             </div>
         </section>
 
-        <section id="gerador-cv" class="py-5 bg-light border-top">
+        <section id="gerador-cv" class="py-5 border-top border-secondary border-opacity-10 overflow-hidden">
             <div class="container px-0 px-md-3">
                 <div class="row justify-content-center mx-0">
                     <div class="col-lg-10 px-0 px-md-3">
-                        <div class="text-center mb-5 px-3 px-md-0">
+                        <div class="text-center mb-5 px-3 px-md-0 reveal-up">
                             <h2 class="fw-bold text-dark">Gerador Automático de Currículo</h2>
-                            <p class="text-muted">Preencha os dados abaixo. Nós usamos o nosso motor inteligente para desenhar e entregar o PDF instantaneamente.</p>
+                            <p class="text-secondary">Preencha os dados abaixo. Nós usamos o nosso motor inteligente para desenhar e entregar o PDF instantaneamente.</p>
                         </div>
 
-                        <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
-                            <div class="card-body p-4 p-lg-5 bg-white">
+                        <div class="card border-0 shadow-lg rounded-4 overflow-hidden reveal-up delay-100 glass-card">
+                            <div class="card-body p-4 p-lg-5 bg-transparent">
                                 <form id="formCurriculo">
                                     
-                                    <h5 class="fw-bold text-primary mb-4 border-bottom pb-2"><i class="bi bi-person-vcard me-2"></i>1. Cabeçalho e Dados Pessoais</h5>
+                                    <h5 class="fw-bold text-primary mb-4 border-bottom border-secondary border-opacity-25 pb-2"><i class="bi bi-person-vcard me-2"></i>1. Cabeçalho e Dados Pessoais</h5>
                                     <div class="row g-3 mb-5">
                                         <div class="col-md-8">
                                             <label class="form-label fw-bold text-dark ms-1 small">Nome Completo *</label>
@@ -302,7 +385,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                         </div>
                                     </div>
 
-                                    <h5 class="fw-bold text-primary mb-4 border-bottom pb-2"><i class="bi bi-chat-text me-2"></i>2. Apresentação e Objetivos</h5>
+                                    <h5 class="fw-bold text-primary mb-4 border-bottom border-secondary border-opacity-25 pb-2"><i class="bi bi-chat-text me-2"></i>2. Apresentação e Objetivos</h5>
                                     <div class="mb-5">
                                         <label class="form-label fw-bold text-dark ms-1 small">Fale um pouco sobre você, suas pretensões e objetivos profissionais *</label>
                                         <div class="input-group-custom">
@@ -310,9 +393,9 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                         </div>
                                     </div>
 
-                                    <h5 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="bi bi-mortarboard me-2"></i>3. Formação Acadêmica</h5>
+                                    <h5 class="fw-bold text-primary mb-3 border-bottom border-secondary border-opacity-25 pb-2"><i class="bi bi-mortarboard me-2"></i>3. Formação Acadêmica</h5>
                                     <div id="containerFormacao">
-                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-light bg-opacity-50 position-relative item-formacao">
+                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-white bg-opacity-50 position-relative item-formacao shadow-sm">
                                             <button type="button" class="btn-close position-absolute top-0 end-0 m-3 remover-item shadow-none" aria-label="Close" style="display:none;"></button>
                                             <div class="col-md-4">
                                                 <label class="form-label fw-bold text-dark ms-1 small">Nível</label>
@@ -356,11 +439,11 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mb-5 px-3" onclick="adicionarFormacao()">+ Adicionar outra Formação</button>
+                                    <button type="button" class="btn btn-outline-primary bg-white bg-opacity-50 btn-sm rounded-pill fw-bold mb-5 px-3 shadow-sm" onclick="adicionarFormacao()">+ Adicionar outra Formação</button>
 
-                                    <h5 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="bi bi-award me-2"></i>4. Cursos e Aprimorações</h5>
+                                    <h5 class="fw-bold text-primary mb-3 border-bottom border-secondary border-opacity-25 pb-2"><i class="bi bi-award me-2"></i>4. Cursos e Aprimorações</h5>
                                     <div id="containerCursos">
-                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-light bg-opacity-50 position-relative item-curso">
+                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-white bg-opacity-50 position-relative item-curso shadow-sm">
                                             <button type="button" class="btn-close position-absolute top-0 end-0 m-3 remover-item shadow-none" aria-label="Close" style="display:none;"></button>
                                             <div class="col-md-6">
                                                 <label class="form-label fw-bold text-dark ms-1 small">Nome do Curso</label>
@@ -391,11 +474,11 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mb-5 px-3" onclick="adicionarCurso()">+ Adicionar outro Curso</button>
+                                    <button type="button" class="btn btn-outline-primary bg-white bg-opacity-50 btn-sm rounded-pill fw-bold mb-5 px-3 shadow-sm" onclick="adicionarCurso()">+ Adicionar outro Curso</button>
 
-                                    <h5 class="fw-bold text-primary mb-3 border-bottom pb-2"><i class="bi bi-briefcase me-2"></i>5. Experiências Profissionais</h5>
+                                    <h5 class="fw-bold text-primary mb-3 border-bottom border-secondary border-opacity-25 pb-2"><i class="bi bi-briefcase me-2"></i>5. Experiências Profissionais</h5>
                                     <div id="containerExperiencias">
-                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-light bg-opacity-50 position-relative item-experiencia">
+                                        <div class="row g-3 mb-3 p-3 p-md-4 border border-light rounded-4 bg-white bg-opacity-50 position-relative item-experiencia shadow-sm">
                                             <button type="button" class="btn-close position-absolute top-0 end-0 m-3 remover-item shadow-none" aria-label="Close" style="display:none;"></button>
                                             <div class="col-md-6">
                                                 <label class="form-label fw-bold text-dark ms-1 small">Empresa / Local</label>
@@ -423,9 +506,9 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold mb-5 px-3" onclick="adicionarExperiencia()">+ Adicionar outra Experiência</button>
+                                    <button type="button" class="btn btn-outline-primary bg-white bg-opacity-50 btn-sm rounded-pill fw-bold mb-5 px-3 shadow-sm" onclick="adicionarExperiencia()">+ Adicionar outra Experiência</button>
 
-                                    <div class="text-center border-top pt-5 mt-4">
+                                    <div class="text-center border-top border-secondary border-opacity-25 pt-5 mt-4">
                                         <button type="submit" class="btn btn-success btn-custom w-100 w-md-auto fw-bold px-5 shadow rounded-pill" id="btnGerarPDF">
                                             <i class="bi bi-file-earmark-pdf-fill me-2 fs-5"></i> Gerar Currículo em PDF
                                         </button>
@@ -454,26 +537,26 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
 
         <div class="modal fade" id="modalQuizCV" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
             <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden glass-card" style="background: rgba(255,255,255,0.9) !important;">
                     <div class="modal-header bg-primary text-white border-0 py-3">
                         <h5 class="modal-title fw-bold"><i class="bi bi-robot me-2 fs-4"></i> Mentor de Currículo (IA)</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body p-4 p-md-5 bg-white" style="min-height: 450px; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="modal-body p-4 p-md-5 bg-transparent" style="min-height: 450px; display: flex; flex-direction: column; justify-content: center;">
                         
                         <div id="quizIntro" class="text-center py-2">
                             <div class="d-inline-block bg-primary bg-opacity-10 p-4 rounded-circle mb-4 text-primary">
                                 <i class="bi bi-lightning-charge-fill" style="font-size: 4rem;"></i>
                             </div>
                             <h3 class="fw-bold text-dark mb-3">Seu currículo sobrevive ao RH?</h3>
-                            <p class="text-muted fs-5 mb-5 px-md-4">Recrutadores demoram cerca de <strong>6 segundos</strong> para olhar um currículo. Jogue nosso mini-game rápido e descubra se o seu perfil vai para a pilha do "Contratado" ou do "Lixo"!</p>
+                            <p class="text-secondary fs-5 mb-5 px-md-4">Recrutadores demoram cerca de <strong>6 segundos</strong> para olhar um currículo. Jogue nosso mini-game rápido e descubra se o seu perfil vai para a pilha do "Contratado" ou do "Lixo"!</p>
                             <button class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow-sm" onclick="iniciarQuizCV()">Começar o Desafio <i class="bi bi-controller ms-2"></i></button>
                         </div>
 
                         <div id="quizContainer" style="display: none; width: 100%;">
                             <div class="d-flex justify-content-between align-items-center mb-4">
-                                <span class="badge bg-light text-primary border border-primary px-3 py-2 fw-bold" id="quizStatus">Desafio 1 de 5</span>
-                                <div class="progress flex-grow-1 ms-3 bg-light rounded-pill" style="height: 12px;">
+                                <span class="badge bg-white text-primary border border-primary px-3 py-2 fw-bold shadow-sm" id="quizStatus">Desafio 1 de 5</span>
+                                <div class="progress flex-grow-1 ms-3 bg-white rounded-pill shadow-sm" style="height: 12px;">
                                     <div class="progress-bar bg-primary rounded-pill transition" id="quizProgress" style="width: 20%;"></div>
                                 </div>
                             </div>
@@ -488,7 +571,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                     <div class="flex-grow-1">
                                         <h6 class="fw-bold mb-1" id="quizFeedbackTitulo">Feedback</h6>
                                         <p class="mb-3 text-dark" id="quizFeedbackTexto" style="font-size: 0.95rem;">Texto da dica aqui.</p>
-                                        <button class="btn btn-dark btn-sm rounded-pill px-4 fw-bold w-100 w-md-auto" onclick="proximaPerguntaQuiz()">Próximo Desafio <i class="bi bi-chevron-right ms-1"></i></button>
+                                        <button class="btn btn-dark btn-sm rounded-pill px-4 fw-bold w-100 w-md-auto shadow-sm" onclick="proximaPerguntaQuiz()">Próximo Desafio <i class="bi bi-chevron-right ms-1"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -499,7 +582,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                             <h2 class="fw-bold mb-2" id="resultadoTitulo">Sua Classificação</h2>
                             <p class="fs-5 mb-4 text-muted">Sua pontuação final: <strong id="resultadoPontos" class="text-dark fs-3">0</strong> de 5</p>
                             
-                            <div class="p-4 bg-light rounded-4 mb-4 text-start border shadow-sm">
+                            <div class="p-4 bg-white bg-opacity-75 rounded-4 mb-4 text-start border shadow-sm">
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="bi bi-robot text-primary fs-3 me-3"></i>
                                     <h5 class="fw-bold text-dark mb-0">Avaliação do Mentor:</h5>
@@ -514,8 +597,8 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
             </div>
         </div>
 
-        <footer class="bg-dark text-white pt-5 pb-3 mt-5">
-            <div class="container">
+        <footer class="bg-dark text-white pt-5 pb-3 mt-5" style="border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="container reveal-up">
                 <div class="row mb-4 text-center text-md-start">
                     <div class="col-lg-5 mb-4 mb-lg-0">
                         <h3 class="fw-bold text-primary mb-3">OnStude<span class="text-white">.</span></h3>
@@ -537,7 +620,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 <hr class="border-secondary mb-3 opacity-25">
                 <div class="row align-items-center">
                     <div class="col-md-6 text-center text-md-start mb-2 mb-md-0">
-                        <small class="text-white-50" style="font-size: 0.75rem;">&copy; 2026 OnStude. Todos os direitos reservados.</small>
+                        <small class="text-white-50" style="font-size: 0.75rem;">&copy; ${new Date().getFullYear()} OnStude. Todos os direitos reservados.</small>
                     </div>
                     <div class="col-md-6 text-center text-md-end d-flex align-items-center justify-content-center justify-content-md-end">
                         <small class="text-white-50 me-2" style="font-size: 0.75rem;">Desenvolvido por <strong class="text-light">71dev</strong></small>
@@ -550,8 +633,8 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
 
         <div class="modal fade" id="modalVisualizarCV" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="modal-header bg-light border-0">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden glass-card" style="background: rgba(255,255,255,0.9) !important;">
+                    <div class="modal-header bg-light bg-opacity-75 border-0" style="backdrop-filter: blur(4px);">
                         <h5 class="modal-title fw-bold text-dark" id="modalVisualizarCVTitle">Visualização do Modelo</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -566,14 +649,48 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
         <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
         <script>
+            const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
+
+            // ==========================================
+            // LÓGICA DE ANIMAÇÃO DE SCROLL (OTIMIZADA PARA MOBILE)
+            // ==========================================
+            document.addEventListener('DOMContentLoaded', function() {
+                const revealElements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right, .reveal-scale');
+                const isMobile = window.innerWidth < 768;
+                
+                const revealOptions = {
+                    threshold: 0, 
+                    rootMargin: isMobile ? "250px 0px 50px 0px" : "150px 0px -50px 0px"
+                };
+
+                const revealObserver = new IntersectionObserver(function(entries, observer) {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('reveal-visible');
+                        } else {
+                            if(entry.intersectionRatio === 0) {
+                                entry.target.classList.remove('reveal-visible');
+                            }
+                        }
+                    });
+                }, revealOptions);
+
+                revealElements.forEach(el => {
+                    revealObserver.observe(el);
+
+                    // Fallback para elementos já visíveis no topo da tela
+                    const rect = el.getBoundingClientRect();
+                    if (rect.top <= window.innerHeight && rect.bottom >= 0) {
+                        el.classList.add('reveal-visible');
+                    }
+                });
+            });
+
             // Lógica do Loader Visual
             window.addEventListener('pageshow', function() {
                 const loader = document.getElementById('globalLoader');
                 if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 400); }
             });
-
-            // Variavel de login do backend
-            const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
 
             // ==========================================
             // ANIMAÇÃO DE FALA DO MENTOR BOT E FOGUETE
@@ -759,7 +876,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     grid.className = 'd-grid gap-3';
                     p.opcoes.forEach((opcao, i) => {
                         const btn = document.createElement('button');
-                        btn.className = 'btn btn-outline-secondary text-start p-3 fw-semibold btn-quiz-opcao rounded-4';
+                        btn.className = 'btn btn-outline-secondary text-start p-3 fw-semibold btn-quiz-opcao rounded-4 bg-white';
                         btn.innerText = opcao;
                         btn.onclick = () => processarRespostaClassica(btn, grid, i, p.correta, p.dica);
                         grid.appendChild(btn);
@@ -772,14 +889,14 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     
                     const colV = document.createElement('div'); colV.className = 'col-6';
                     const btnV = document.createElement('div');
-                    btnV.className = 'card-mito-verdade card-verdade p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center';
+                    btnV.className = 'card-mito-verdade card-verdade p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center shadow-sm';
                     btnV.innerHTML = '<i class="bi bi-check-circle-fill fs-1 mb-2"></i> VERDADE';
                     btnV.onclick = () => processarRespostaBooleana(row, btnV, true, p.correta, p.dica);
                     colV.appendChild(btnV);
 
                     const colM = document.createElement('div'); colM.className = 'col-6';
                     const btnM = document.createElement('div');
-                    btnM.className = 'card-mito-verdade card-mito p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center';
+                    btnM.className = 'card-mito-verdade card-mito p-4 text-center fw-bold fs-5 h-100 d-flex flex-column justify-content-center shadow-sm';
                     btnM.innerHTML = '<i class="bi bi-x-circle-fill fs-1 mb-2"></i> MITO';
                     btnM.onclick = () => processarRespostaBooleana(row, btnM, false, p.correta, p.dica);
                     colM.appendChild(btnM);
@@ -792,7 +909,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                     wrap.className = 'balao-container mt-3';
                     p.opcoes.forEach((opcao, i) => {
                         const balao = document.createElement('div');
-                        balao.className = 'balao-item';
+                        balao.className = 'balao-item shadow';
                         balao.innerText = opcao;
                         balao.onclick = () => processarRespostaBalao(wrap, balao, i, p.correta, p.dica);
                         wrap.appendChild(balao);
@@ -860,7 +977,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                 const iconDiv = document.getElementById('quizFeedbackIcon');
                 const titulo = document.getElementById('quizFeedbackTitulo');
                 
-                feedbackDiv.className = 'alert rounded-4 mb-0 shadow-lg border mt-4 ' + (acertou ? 'alert-success border-success' : 'alert-danger border-danger');
+                feedbackDiv.className = 'alert rounded-4 mb-0 shadow border mt-4 ' + (acertou ? 'alert-success border-success' : 'alert-danger border-danger');
                 
                 if (acertou) {
                     iconDiv.innerHTML = '<i class="bi bi-star-fill text-success" style="font-size: 2rem;"></i>';
@@ -920,12 +1037,12 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                         .then(res => res.json())
                         .then(data => {
                             if (data.success && data.nova) {
-                                mensagem.innerHTML += '<br><br><span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill"><i class="bi bi-unlock-fill me-1"></i> Nova Conquista: Sobrevivente do RH!</span>';
+                                mensagem.innerHTML += '<br><br><span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-3 py-2 rounded-pill shadow-sm"><i class="bi bi-unlock-fill me-1"></i> Nova Conquista: Sobrevivente do RH!</span>';
                             }
                         })
                         .catch(console.error);
                     } else {
-                        mensagem.innerHTML += '<br><br><span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25 px-3 py-2 rounded-pill"><i class="bi bi-info-circle me-1"></i> Faça login para salvar esta conquista no seu mural!</span>';
+                        mensagem.innerHTML += '<br><br><span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25 px-3 py-2 rounded-pill shadow-sm"><i class="bi bi-info-circle me-1"></i> Faça login para salvar esta conquista no seu mural!</span>';
                     }
                 }
             }

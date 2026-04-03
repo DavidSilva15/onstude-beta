@@ -11,7 +11,7 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
 
     if (certificados.length === 0) {
         htmlCertificados = `
-            <div class="col-12 text-center py-5 mt-4 bg-white border-0 rounded-4 shadow-sm">
+            <div class="col-12 text-center py-5 mt-4 border-0 rounded-4 shadow-sm glass-card">
                 <i class="bi bi-award fs-1 opacity-25 mb-3 d-block text-secondary"></i>
                 <h4 class="text-dark fw-bold mb-2">Nenhum certificado encontrado</h4>
                 <p class="text-muted mb-0">Assim que for matriculado em um curso ou concluir suas aulas, eles aparecerão aqui.</p>
@@ -27,16 +27,16 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                 ? '<span class="badge bg-success position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i>Concluído</span>' 
                 : '<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-3 shadow-sm px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i>Pendente</span>';
 
-            const imgClass = estaConcluido ? "card-img-top border-bottom" : "card-img-top border-bottom opacity-50";
+            const imgClass = estaConcluido ? "card-img-top border-bottom border-light" : "card-img-top border-bottom border-light opacity-50";
             
             const areaAcao = estaConcluido
                 ? `
-                    <div class="mt-auto pt-3 border-top border-light">
+                    <div class="mt-auto pt-3 border-top border-secondary border-opacity-10">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <small class="text-muted" style="font-size: 0.7rem;">Emitido em</small>
                             <strong class="text-dark small"><i class="bi bi-calendar-check text-success me-1"></i>${dataEmissao}</strong>
                         </div>
-                        <div class="bg-light p-2 rounded-3 text-center mb-3 border border-light shadow-sm">
+                        <div class="bg-white bg-opacity-50 p-2 rounded-3 text-center mb-3 border border-light shadow-sm">
                             <small class="text-muted d-block" style="font-size: 0.7rem;">Cód. Validação</small>
                             <strong class="text-dark user-select-all" style="font-size: 0.85rem;">${cert.token}</strong>
                         </div>
@@ -46,8 +46,8 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                     </div>
                 `
                 : `
-                    <div class="mt-auto pt-3 border-top border-light">
-                        <div class="alert alert-light border border-light text-center p-3 mb-0 rounded-4 shadow-sm">
+                    <div class="mt-auto pt-3 border-top border-secondary border-opacity-10">
+                        <div class="alert alert-light bg-white bg-opacity-50 border border-light text-center p-3 mb-0 rounded-4 shadow-sm">
                             <small class="text-muted d-block"><i class="bi bi-info-circle me-1 d-block fs-4 mb-2"></i>Conclua todas as aulas para liberar o seu certificado.</small>
                         </div>
                     </div>
@@ -55,7 +55,7 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
 
             htmlCertificados += `
                 <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
-                    <div class="card shadow-sm border-0 rounded-4 h-100 hover-card transition-all overflow-hidden bg-white">
+                    <div class="card shadow-sm border-0 rounded-4 h-100 hover-card transition-all overflow-hidden glass-card">
                         
                         <div class="position-relative bg-dark">
                             <img src="${thumb}" class="${imgClass}" style="height: 180px; object-fit: cover; width: 100%;" alt="Certificado">
@@ -124,17 +124,62 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
-            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; overflow-x: hidden; background-color: transparent; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
                 .main-content { height: calc(100vh - 60px); } 
             }
             .transition-all { transition: all .3s ease; }
-            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
-            .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
+            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,.1)!important; }
+            .notif-item:hover { background-color: rgba(255,255,255,0.7); cursor: pointer; }
+
+            /* ==========================================
+               GRADIENT MESH BACKGROUND
+               ========================================== */
+            .mesh-bg {
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: -1;
+                background-color: #f4f7f6;
+                overflow: hidden;
+            }
+            .mesh-blob-1, .mesh-blob-2, .mesh-blob-3 {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(90px);
+                opacity: 0.25;
+                animation: floatAnim 20s infinite ease-in-out alternate;
+            }
+            .mesh-blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #0d6efd; animation-delay: 0s; }
+            .mesh-blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #0dcaf0; animation-delay: -5s; }
+            .mesh-blob-3 { top: 30%; left: 40%; width: 45vw; height: 45vw; background: #6610f2; animation-delay: -10s; }
+            
+            @keyframes floatAnim {
+                0% { transform: translate(0, 0) scale(1); }
+                33% { transform: translate(5%, 15%) scale(1.1); }
+                66% { transform: translate(-10%, 5%) scale(0.9); }
+                100% { transform: translate(0, 0) scale(1); }
+            }
+
+            /* ==========================================
+               GLASSMORPHISM CARDS
+               ========================================== */
+            .glass-card {
+                background: rgba(255, 255, 255, 0.65) !important;
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.8) !important;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+            }
         </style>
     </head>
     <body class="bg-light">
+        <div class="mesh-bg">
+            <div class="mesh-blob-1"></div>
+            <div class="mesh-blob-2"></div>
+            <div class="mesh-blob-3"></div>
+        </div>
+
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
             <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;"></div>
             <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
@@ -144,18 +189,18 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
             
             ${htmlSidebar}
 
-            <div class="flex-grow-1 main-content bg-light">
+            <div class="flex-grow-1 main-content bg-transparent">
                 <div class="container-fluid p-4 p-md-5">
 
                     <div class="row mb-5 align-items-center">
                         <div class="col-md-5 mb-3 mb-md-0">
                             <h2 class="fw-bold text-dark mb-1"><i class="bi bi-award-fill text-primary me-2"></i>Certificados</h2>
-                            <p class="text-muted small mt-1 mb-0">Página ${currentPage} de ${totalPages}.</p>
+                            <p class="text-muted small mt-1 mb-0 fw-medium">Página ${currentPage} de ${totalPages}.</p>
                         </div>
                         
                         <div class="col-md-7 mb-3 mb-md-0">
-                            <form action="/aluno/certificados" method="GET" class="d-flex shadow-sm rounded-pill overflow-hidden bg-white border">
-                                <input type="text" name="search" class="form-control border-0 shadow-none ps-4" placeholder="Buscar por nome do curso..." value="${searchQuery}">
+                            <form action="/aluno/certificados" method="GET" class="d-flex shadow-sm rounded-pill overflow-hidden bg-white bg-opacity-75 border border-secondary border-opacity-10" style="backdrop-filter: blur(4px);">
+                                <input type="text" name="search" class="form-control bg-transparent border-0 shadow-none ps-4" placeholder="Buscar por nome do curso..." value="${searchQuery}">
                                 <button type="submit" class="btn btn-primary fw-bold px-4 rounded-end-pill">Buscar</button>
                                 ${searchQuery ? `<a href="/aluno/certificados" class="btn btn-light border-start text-secondary px-3"><i class="bi bi-x-lg"></i></a>` : ''}
                             </form>
@@ -176,7 +221,7 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
 
         <div class="modal fade" id="modalNotificacao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden glass-card" style="background: rgba(255,255,255,0.9) !important;">
                     <div class="modal-header bg-primary text-white border-0 py-3">
                         <h5 class="modal-title fw-bold" id="notifTitulo">Aviso Importante</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -202,7 +247,7 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                             <input type="hidden" id="inputAvaliacaoEstrelas" value="0">
                         </div>
                     </div>
-                    <div class="modal-footer border-0 bg-light justify-content-center py-3">
+                    <div class="modal-footer border-0 bg-transparent justify-content-center py-3">
                         <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm rounded-pill" id="btnResponderNotificacao">
                             Entendido
                         </button>
@@ -218,13 +263,11 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
             let notificacaoAtualId = null;
 
             document.addEventListener('DOMContentLoaded', function() {
-                // APENAS CARREGA O SINO NO MENU LATERAL. 
-                // A função verificarNotificacoesPendentesModal() FOI OMITIDA AQUI PARA NÃO ABRIR POPUP SOZINHO NESTA TELA.
                 carregarListaNotificacoesSino();
             });
 
             // ==========================================
-            // LÓGICA DO MENU SUSPENSO DO SINO (RESTAURADA)
+            // LÓGICA DO MENU SUSPENSO DO SINO 
             // ==========================================
             function carregarListaNotificacoesSino() {
                 fetch('/aluno/api/notificacoes/lista')

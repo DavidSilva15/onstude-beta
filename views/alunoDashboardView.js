@@ -9,13 +9,44 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
     const kpis = kpiData || { notaMedia: '0.0', aulasConcluidas: '0', melhoresCursos: 'Ainda sem notas', totalXp: '0' };
 
     // ==========================================
+    // ORDENAÇÃO DOS CURSOS (MAIS RECENTES / EM ANDAMENTO NO TOPO)
+    // ==========================================
+    const cursosOrdenados = [...cursosMatriculados].sort((a, b) => {
+        // 1. Tenta ordenar por data de interação mais recente (se o banco/backend fornecer)
+        const dateA = new Date(a.ultima_interacao || a.ultimo_acesso_em || a.atualizado_em || 0).getTime();
+        const dateB = new Date(b.ultima_interacao || b.ultimo_acesso_em || b.atualizado_em || 0).getTime();
+        
+        if (dateA !== dateB && !isNaN(dateA) && !isNaN(dateB) && (dateA > 0 || dateB > 0)) {
+            return dateB - dateA;
+        }
+        
+        // 2. Fallback inteligente: prioriza os cursos "Em Andamento" (0 < % < 100)
+        const percA = parseFloat(a.percentual) || 0;
+        const percB = parseFloat(b.percentual) || 0;
+        
+        const getPeso = (p) => {
+            if (p > 0 && p < 100) return 3; // Em Andamento (Continuar Curso)
+            if (p === 0) return 2;          // Não Iniciado (Iniciar Curso)
+            return 1;                       // Concluído (Revisar Curso)
+        };
+        
+        const pesoA = getPeso(percA);
+        const pesoB = getPeso(percB);
+        
+        if (pesoA !== pesoB) return pesoB - pesoA;
+        
+        // Se empatar no peso (ex: dois em andamento), o de maior % fica na frente
+        return percB - percA; 
+    });
+
+    // ==========================================
     // LÓGICA DO SELETOR DE RANKING
     // ==========================================
     let opcoesRankingCursos = '';
-    if (cursosMatriculados.length === 0) {
+    if (cursosOrdenados.length === 0) {
         opcoesRankingCursos = '<option disabled selected>Nenhum curso matriculado</option>';
     } else {
-        cursosMatriculados.forEach((curso, index) => {
+        cursosOrdenados.forEach((curso, index) => {
             opcoesRankingCursos += `<option value="${curso.curso_id}" ${index === 0 ? 'selected' : ''}>${curso.titulo}</option>`;
         });
     }
@@ -24,16 +55,16 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
     // LÓGICA DE CURSOS (MENORES E GRID 4x)
     // ==========================================
     let htmlCursos = '';
-    if (cursosMatriculados.length === 0) {
+    if (cursosOrdenados.length === 0) {
         htmlCursos = `
-            <div class="col-12 text-center py-5 mt-4 bg-white border-0 rounded-4 shadow-sm">
+            <div class="col-12 text-center py-5 mt-4 glass-card rounded-4 shadow-sm">
                 <i class="bi bi-journal-x fs-1 opacity-25 mb-3 d-block text-secondary"></i>
                 <h4 class="text-dark fw-bold mb-2">Ainda não possui cursos</h4>
                 <p class="text-muted mb-0">Assim que for matriculado num curso, ele aparecerá aqui.</p>
             </div>
         `;
     } else {
-        cursosMatriculados.forEach(curso => {
+        cursosOrdenados.forEach(curso => {
             const percentual = parseFloat(curso.percentual) || 0;
             const concluidas = curso.aulas_concluidas || 0;
             const total = curso.total_aulas || 0;
@@ -44,26 +75,28 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
 
             htmlCursos += `
                 <div class="col-md-6 col-lg-4 col-xl-3 mb-4">
-                    <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden hover-card transition-all">
-                        <img src="${capa}" class="card-img-top border-bottom" alt="Capa de ${curso.titulo}" style="height: 140px; object-fit: cover;">
-                        <div class="card-body p-3 d-flex flex-column">
-                            <span class="badge bg-light text-dark border mb-2 align-self-start px-2 py-1" style="font-size: 0.65rem;"><i class="bi bi-upc-scan me-1"></i>${curso.codigo_unico}</span>
-                            <h6 class="card-title fw-bold text-dark mb-3 text-truncate" title="${curso.titulo}">${curso.titulo}</h6>
-                            
-                            <div class="mt-auto">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="text-muted fw-semibold" style="font-size: 0.7rem;">Progresso <span class="fw-normal">(${concluidas}/${total})</span></small>
-                                    <small class="text-primary fw-bold" style="font-size: 0.75rem;"><span class="counter-anim" data-target="${percentual.toFixed(0)}">0</span>%</small>
-                                </div>
-                                <div class="progress mb-3 rounded-pill bg-light border" style="height: 6px;">
-                                    <div class="progress-bar ${corBotao.replace('btn-', 'bg-')} progress-bar-anim" role="progressbar" style="width: 0%; transition: width 1.5s ease-out;" data-progress="${percentual}" aria-valuenow="${percentual}" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <div class="d-grid">
-                                    <a href="/aluno/cursos/${curso.curso_id}/aula" class="btn ${corBotao} btn-sm fw-bold rounded-pill shadow-sm">${textoBotao}</a>
+                    <a href="/aluno/cursos/${curso.curso_id}/aula" class="text-decoration-none d-block h-100">
+                        <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden hover-card transition-all glass-card">
+                            <img src="${capa}" class="card-img-top border-bottom border-light" alt="Capa de ${curso.titulo}" style="height: 140px; object-fit: cover;">
+                            <div class="card-body p-3 d-flex flex-column">
+                                <span class="badge bg-white bg-opacity-75 text-dark border border-secondary border-opacity-10 mb-2 align-self-start px-2 py-1 shadow-sm" style="font-size: 0.65rem;"><i class="bi bi-upc-scan me-1"></i>${curso.codigo_unico}</span>
+                                <h6 class="card-title fw-bold text-dark mb-3 text-truncate" title="${curso.titulo}">${curso.titulo}</h6>
+                                
+                                <div class="mt-auto">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="text-muted fw-semibold" style="font-size: 0.7rem;">Progresso <span class="fw-normal">(${concluidas}/${total})</span></small>
+                                        <small class="text-primary fw-bold" style="font-size: 0.75rem;"><span class="counter-anim" data-target="${percentual.toFixed(0)}">0</span>%</small>
+                                    </div>
+                                    <div class="progress mb-3 rounded-pill bg-white bg-opacity-50 border border-secondary border-opacity-10" style="height: 6px;">
+                                        <div class="progress-bar ${corBotao.replace('btn-', 'bg-')} progress-bar-anim" role="progressbar" style="width: 0%; transition: width 1.5s ease-out;" data-progress="${percentual}" aria-valuenow="${percentual}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <div class="d-grid">
+                                        <span class="btn ${corBotao} btn-sm fw-bold rounded-pill shadow-sm">${textoBotao}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             `;
         });
@@ -79,18 +112,56 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <style>
-            body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
+            body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; overflow-x: hidden; background-color: transparent; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
             @media (max-width: 991.98px) {
                 .main-content { height: calc(100vh - 60px); } 
             }
-            .hover-card:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; transform: translateY(-5px); }
+            .hover-card:hover { box-shadow: 0 10px 25px rgba(0,0,0,.1)!important; transform: translateY(-5px); }
             .transition-all { transition: all .3s ease; }
+
+            /* ==========================================
+               GRADIENT MESH BACKGROUND
+               ========================================== */
+            .mesh-bg {
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                z-index: -1;
+                background-color: #f4f7f6;
+                overflow: hidden;
+            }
+            .mesh-blob-1, .mesh-blob-2, .mesh-blob-3 {
+                position: absolute;
+                border-radius: 50%;
+                filter: blur(90px);
+                opacity: 0.25;
+                animation: floatAnim 20s infinite ease-in-out alternate;
+            }
+            .mesh-blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: #0d6efd; animation-delay: 0s; }
+            .mesh-blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: #0dcaf0; animation-delay: -5s; }
+            .mesh-blob-3 { top: 30%; left: 40%; width: 45vw; height: 45vw; background: #6610f2; animation-delay: -10s; }
+            
+            @keyframes floatAnim {
+                0% { transform: translate(0, 0) scale(1); }
+                33% { transform: translate(5%, 15%) scale(1.1); }
+                66% { transform: translate(-10%, 5%) scale(0.9); }
+                100% { transform: translate(0, 0) scale(1); }
+            }
+
+            /* ==========================================
+               GLASSMORPHISM CARDS
+               ========================================== */
+            .glass-card {
+                background: rgba(255, 255, 255, 0.65) !important;
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.8) !important;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+            }
             
             /* Gamificação & Ranking CSS */
-            .leaderboard-card { background: linear-gradient(180deg, #ffffff 0%, #fcfcfc 100%); }
             .rank-item { transition: all 0.3s ease; border-left: 4px solid transparent; }
-            .rank-item:hover { transform: translateX(5px); background-color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+            .rank-item:hover { transform: translateX(5px); background-color: rgba(255,255,255,0.5); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
             
             .rank-1 { border-left-color: #ffd700; background-color: rgba(255, 215, 0, 0.05); }
             .rank-2 { border-left-color: #c0c0c0; background-color: rgba(192, 192, 192, 0.05); }
@@ -110,7 +181,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             @keyframes blinkUp { 0% { transform: translateY(0); } 50% { transform: translateY(-3px); color: #198754 !important; } 100% { transform: translateY(0); } }
             .blink-up { animation: blinkUp 1s ease infinite; }
 
-            .notif-item:hover { background-color: #f1f3f5; cursor: pointer; }
+            .notif-item:hover { background-color: rgba(255,255,255,0.7); cursor: pointer; }
 
             /* Scroll customizado para o ranking */
             .custom-scroll::-webkit-scrollbar { width: 5px; }
@@ -119,7 +190,14 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             .custom-scroll:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.25); }
         </style>
     </head>
-    <body class="bg-light">
+    <body>
+
+        <div class="mesh-bg">
+            <div class="mesh-blob-1"></div>
+            <div class="mesh-blob-2"></div>
+            <div class="mesh-blob-3"></div>
+        </div>
+
         <div id="globalLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #f8f9fa; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease;">
             <div class="spinner-border text-primary" role="status" style="width: 3.5rem; height: 3.5rem; border-width: 0.3em;"></div>
             <h5 class="mt-3 text-secondary fw-bold">Carregando...</h5>
@@ -129,13 +207,13 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             
             ${htmlSidebar}
 
-            <div class="flex-grow-1 main-content bg-light">
+            <div class="flex-grow-1 main-content bg-transparent">
                 <div class="container-fluid p-4 p-md-5">
 
                     <div class="row mb-4 align-items-center">
                         <div class="col-12">
                             <h2 class="fw-bold text-dark mb-1">Olá, ${aluno.nome.split(' ')[0]} 👋</h2>
-                            <p class="text-muted">Bem-vindo de volta! Que tal continuarmos a sua jornada de aprendizagem?</p>
+                            <p class="text-muted fw-medium">Bem-vindo de volta! Que tal continuarmos a sua jornada de aprendizagem?</p>
                         </div>
                     </div>
 
@@ -144,28 +222,28 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                         <div class="col-lg-4 col-xl-3 d-flex flex-column gap-3">
                             <h6 class="fw-bold text-secondary text-uppercase mb-1" style="font-size: 0.8rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Minhas Conquistas</h6>
                             
-                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all glass-card">
                                 <div class="w-100 overflow-hidden">
                                     <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Total de XP (Experiência)</h6>
                                     <h5 class="fw-bold text-dark mb-0 text-truncate">🏆 <span class="counter-anim" data-target="${kpis.totalXp}">0</span> XP</h5>
                                 </div>
                             </div>
 
-                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all glass-card">
                                 <div class="w-100 overflow-hidden">
                                     <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Melhor Desempenho</h6>
                                     <h5 class="fw-bold text-dark mb-0 text-truncate" title="${kpis.melhoresCursos}">🏅 ${kpis.melhoresCursos}</h5>
                                 </div>
                             </div>
 
-                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all glass-card">
                                 <div class="w-100 overflow-hidden">
                                     <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Aulas Concluídas</h6>
                                     <h5 class="fw-bold text-dark mb-0 text-truncate">📚 ${kpis.aulasConcluidas}</h5>
                                 </div>
                             </div>
 
-                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all">
+                            <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all glass-card">
                                 <div class="w-100 overflow-hidden">
                                     <h6 class="text-muted fw-bold mb-1" style="font-size: 0.75rem;">Nota Média Geral</h6>
                                     <h5 class="fw-bold text-dark mb-0 text-truncate">⭐ <span class="counter-anim-float" data-target="${kpis.notaMedia}">0.0</span></h5>
@@ -177,15 +255,15 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 mt-4 mt-lg-0 gap-2">
                                 <h6 class="fw-bold text-secondary text-uppercase mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
                                     <i class="bi bi-trophy-fill text-primary me-2"></i> Top Alunos
-                                    <span class="badge bg-danger rounded-pill ms-2 px-2 py-1 anim-pulse" style="font-size: 0.65rem;">AO VIVO</span>
+                                    <span class="badge bg-danger rounded-pill ms-2 px-2 py-1 anim-pulse shadow-sm" style="font-size: 0.65rem;">AO VIVO</span>
                                 </h6>
-                                <select class="form-select form-select-sm shadow-sm border-0 fw-bold text-primary rounded-pill px-3" id="seletorRankingCurso" style="width: auto; min-width: 200px; max-width: 100%;">
+                                <select class="form-select form-select-sm shadow-sm border-0 fw-bold text-primary rounded-pill px-3 bg-white bg-opacity-75" id="seletorRankingCurso" style="width: auto; min-width: 200px; max-width: 100%; backdrop-filter: blur(4px);">
                                     ${opcoesRankingCursos}
                                 </select>
                             </div>
                             
-                            <div class="card border-0 shadow-sm rounded-4 overflow-hidden leaderboard-card flex-grow-1 d-flex flex-column">
-                                <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between small text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">
+                            <div class="card border-0 shadow-sm rounded-4 overflow-hidden flex-grow-1 d-flex flex-column glass-card">
+                                <div class="card-header bg-transparent border-bottom border-secondary border-opacity-10 py-3 d-flex justify-content-between small text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">
                                     <span>Posição</span>
                                     <span>Aluno / XP</span>
                                 </div>
@@ -194,7 +272,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                                         <div class="spinner-border text-primary" role="status"></div>
                                     </div>
                                 </div>
-                                <div class="card-footer bg-light border-0 text-center py-2 mt-auto">
+                                <div class="card-footer bg-transparent border-top border-secondary border-opacity-10 text-center py-2 mt-auto">
                                     <small class="text-muted fw-semibold" style="font-size: 0.75rem;"><i class="bi bi-info-circle me-1"></i> Ganhe XP ao concluir aulas e avaliações!</small>
                                 </div>
                             </div>
@@ -203,7 +281,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     </div>
 
                     <div class="row mb-4 mt-3">
-                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-3">
+                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom border-secondary border-opacity-10 pb-3">
                             <h4 class="fw-bold text-dark mb-0"><i class="bi bi-collection-play text-primary me-2"></i>Meus Cursos</h4>
                         </div>
                     </div>
@@ -218,7 +296,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
 
         <div class="modal fade" id="modalNotificacao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden glass-card" style="background: rgba(255,255,255,0.9) !important;">
                     <div class="modal-header bg-primary text-white border-0 py-3">
                         <h5 class="modal-title fw-bold" id="notifTitulo">Aviso Importante</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -244,7 +322,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             <input type="hidden" id="inputAvaliacaoEstrelas" value="0">
                         </div>
                     </div>
-                    <div class="modal-footer border-0 bg-light justify-content-center py-3">
+                    <div class="modal-footer border-0 bg-transparent justify-content-center py-3">
                         <button type="button" class="btn btn-primary btn-lg fw-bold px-5 shadow-sm rounded-pill" id="btnResponderNotificacao">
                             Entendido
                         </button>
@@ -255,19 +333,19 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
 
         <div class="modal fade" id="modalConquistaDesbloqueada" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="background: linear-gradient(135deg, #ffffff, #fcfcfc);">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden glass-card" style="background: rgba(255,255,255,0.9) !important;">
                     <div class="modal-body text-center p-5 position-relative" id="conquistaExplosionContainer">
                         <div id="conquistaIcon" class="mb-3 d-inline-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-10 mx-auto shadow-sm" style="width: 120px; height: 120px; font-size: 5rem; filter: drop-shadow(0 10px 15px rgba(255, 193, 7, 0.4)); transform: scale(0); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
                             🏆
                         </div>
                         <br>
-                        <span class="badge bg-success mb-3 px-3 py-2 rounded-pill text-uppercase" style="letter-spacing: 1px;"><i class="bi bi-unlock-fill me-1"></i> Nova Conquista!</span>
+                        <span class="badge bg-success mb-3 px-3 py-2 rounded-pill text-uppercase shadow-sm" style="letter-spacing: 1px;"><i class="bi bi-unlock-fill me-1"></i> Nova Conquista!</span>
                         <h2 class="fw-bold text-dark mb-2" id="conquistaTitulo">Título da Conquista</h2>
                         <p class="text-secondary fs-6 mb-4" id="conquistaDescricao">Descrição detalhada...</p>
                         
                         <div class="d-grid gap-2">
                             <button type="button" class="btn btn-warning text-dark rounded-pill py-2 fw-bold shadow-sm" data-bs-dismiss="modal">Incrível!</button>
-                            <a href="/aluno/conquistas" class="btn btn-light border rounded-pill py-2 fw-semibold text-secondary">Ver Mural Completo</a>
+                            <a href="/aluno/conquistas" class="btn btn-light border rounded-pill py-2 fw-semibold text-secondary shadow-sm">Ver Mural Completo</a>
                         </div>
                     </div>
                 </div>
@@ -523,7 +601,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                     if(r.isUser) classRank += ' rank-user anim-rank-up';
 
                     // Se a posição for > 5 e o cara não tiver no top 5 natural, adiciona margem visual
-                    let marginExtra = (r.pos > 5 && !usuarioEncontrado && r.isUser) ? 'border-top border-2 border-primary mt-2' : 'border-bottom';
+                    let marginExtra = (r.pos > 5 && !usuarioEncontrado && r.isUser) ? 'border-top border-2 border-primary mt-2' : 'border-bottom border-secondary border-opacity-10';
 
                     const itemHTML = \`
                         <div class="d-flex align-items-center py-2 px-3 \${marginExtra} rank-item \${classRank}">

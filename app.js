@@ -136,6 +136,19 @@ const uploadNotificacao = multer({ dest: path.join(__dirname, 'public/img/notifi
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
+// Memória global para acompanhar o progresso das conversões
+global.tarefasProcessamento = {};
+
+// NOVA ROTA: O Toast do Front-End vai consultar esta rota a cada segundo
+app.get('/api/processamento/status/:jobId', (req, res) => {
+    const job = global.tarefasProcessamento[req.params.jobId];
+    if (job) {
+        res.json({ success: true, job });
+    } else {
+        res.json({ success: false, message: 'Tarefa não encontrada' });
+    }
+});
+
 app.get('/', async (req, res) => {
     try {
         // Query para listar cursos na home page, com a duração total em segundos calculada
@@ -1313,105 +1326,212 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
     const adminId = req.session.usuario.id;
 
     try {
-        const arquivos = req.files || {};
-        const videoFile = arquivos['video'] ? arquivos['video'][0] : null;
-
-        let duracaoFinal = duracao_segundos ? parseInt(duracao_segundos) : 0;
-        let thumbPathPublic = null;
-
-        if (videoFile) {
-            const videoPathPhysical = videoFile.path;
-            const thumbFilename = `thumb-${Date.now()}.jpg`;
-            const thumbFolder = path.join(__dirname, 'public', 'uploads');
-
-            try {
-                // 1. Extração da duração real via ffprobe
-                const metadata = await new Promise((resolve, reject) => {
-                    ffmpeg.ffprobe(videoPathPhysical, (err, data) => {
-                        if (err) return reject(err);
-                        resolve(data);
-                    });
-                });
-
-                if (metadata && metadata.format && metadata.format.duration) {
-                    duracaoFinal = Math.round(metadata.format.duration);
-                    console.log(`Duração extraída: ${duracaoFinal}s`);
-                }
-
-                // ==========================================
-                // LÓGICA DA THUMB ALEATÓRIA INTELIGENTE
-                // ==========================================
-                let segundoAleatorio = 2; // Padrão seguro
-                if (duracaoFinal > 10) {
-                    // Ignora os primeiros 10% e os últimos 10% do vídeo (evita telas pretas)
-                    const min = Math.floor(duracaoFinal * 0.10);
-                    const max = Math.floor(duracaoFinal * 0.90);
-                    segundoAleatorio = Math.floor(Math.random() * (max - min + 1)) + min;
-                } else if (duracaoFinal > 0) {
-                    segundoAleatorio = Math.floor(Math.random() * duracaoFinal);
-                }
-
-                console.log(`Sorteado o segundo ${segundoAleatorio} para a Thumbnail.`);
-
-                // 2. Geração da Thumbnail no segundo sorteado
-                await new Promise((resolve, reject) => {
-                    ffmpeg(videoPathPhysical)
-                        .on('end', () => {
-                            thumbPathPublic = '/uploads/' + thumbFilename;
-                            console.log("Thumbnail gerada com sucesso!");
-                            resolve();
-                        })
-                        .on('error', (err) => {
-                            console.error("Erro ao gerar thumbnail:", err.message);
-                            reject(err);
-                        })
-                        .screenshots({
-                            timestamps: [segundoAleatorio], // <-- Usa o segundo aleatório aqui!
-                            filename: thumbFilename,
-                            folder: thumbFolder,
-                            size: '400x225'
-                        });
-                });
-            } catch (mediaError) {
-                console.error("Erro no processamento de mídia:", mediaError.message);
-            }
-        }
-
-        const arquivoAdicionalPath = arquivos['arquivo_adicional'] ? '/uploads/' + arquivos['arquivo_adicional'][0].filename : null;
-        const videoPath = videoFile ? '/uploads/' + videoFile.filename : null;
-        const avaliacaoPath = arquivos['avaliacao'] ? '/uploads/' + arquivos['avaliacao'][0].filename : null;
-
-        // Salva na tabela 'aulas' com os dados extraídos
-        const [resultadoAula] = await db.execute(
-            `INSERT INTO aulas (modulo_id, titulo, ordem, descricao, duracao_segundos, video_thumb_path, arquivo_adicional_url) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [moduloId, titulo, parseInt(ordem), descricao || null, duracaoFinal, thumbPathPublic, arquivoAdicionalPath]
-        );
-
-        const aulaId = resultadoAula.insertId;
-
-        // Salva na tabela 'aula_conteudos'
-        await db.execute(
-            `INSERT INTO aula_conteudos (aula_id, video_path, avaliacao_json_path) VALUES (?, ?, ?)`,
-            [aulaId, videoPath, avaliacaoPath]
-        );
-
-        // Processa apostila se houver imagens
-        if (arquivos['apostila']) {
-            for (let i = 0; i < arquivos['apostila'].length; i++) {
-                await db.execute(
-                    `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
-                    [aulaId, '/uploads/' + arquivos['apostila'][i].filename, i + 1]
-                );
-            }
-        }
-
+        // Busca qual o curso ID para avisarmos ao front-end para onde ele deve redirecionar
         const [moduloData] = await db.execute('SELECT curso_id FROM modulos WHERE id = ?', [moduloId]);
-        res.redirect(`/admin/cursos/${moduloData[0].curso_id}`);
+        const cursoIdParaRedirect = moduloData[0].curso_id;
+
+        // 1. Gera ID único e inicializa a memória do Job
+        const jobId = 'job_' + Date.now();
+        
+        // Proteção caso a variável global ainda não exista
+        if (!global.tarefasProcessamento) global.tarefasProcessamento = {};
+        
+        global.tarefasProcessamento[jobId] = { 
+            status: 'processing', 
+            steps: { '360p': 'pending', '480p': 'pending', '720p': 'pending' } 
+        };
+
+        // 2. Libera o Front-End IMEDIATAMENTE (Responde em JSON)
+        res.json({ 
+            success: true, 
+            jobId: jobId, 
+            redirectUrl: `/admin/cursos/${cursoIdParaRedirect}` 
+        });
+
+        // ==========================================
+        // 3. BACKGROUND JOB (Processamento Assíncrono)
+        // ==========================================
+        (async () => {
+            try {
+                const arquivos = req.files || {};
+                const videoFile = arquivos['video'] ? arquivos['video'][0] : null;
+
+                let duracaoFinal = duracao_segundos ? parseInt(duracao_segundos) : 0;
+                let thumbPathPublic = null;
+                
+                let video_360p_path = null;
+                let video_480p_path = null;
+                let video_720p_path = null;
+
+                if (videoFile) {
+                    const videoPathPhysical = videoFile.path;
+                    const thumbFilename = `thumb-${Date.now()}.jpg`;
+                    const uploadsFolder = path.join(__dirname, 'public', 'uploads');
+
+                    let alturaOriginal = 1080; // Fallback caso dê erro na leitura
+
+                    // A. Extração da duração real e Resolução via ffprobe
+                    const metadata = await new Promise((resolve, reject) => {
+                        ffmpeg.ffprobe(videoPathPhysical, (err, data) => {
+                            if (err) return reject(err);
+                            resolve(data);
+                        });
+                    });
+
+                    if (metadata && metadata.format && metadata.format.duration) {
+                        duracaoFinal = Math.round(metadata.format.duration);
+                        console.log(`[Job ${jobId}] Duração extraída: ${duracaoFinal}s`);
+                    }
+
+                    // Achar a altura nativa do vídeo (para pular conversões)
+                    if (metadata && metadata.streams) {
+                        const videoStream = metadata.streams.find(s => s.codec_type === 'video');
+                        if (videoStream && videoStream.height) {
+                            alturaOriginal = videoStream.height;
+                            console.log(`[Job ${jobId}] Resolução Original Detectada: ${videoStream.width}x${alturaOriginal}`);
+                        }
+                    }
+
+                    // B. LÓGICA DA THUMB ALEATÓRIA INTELIGENTE
+                    let segundoAleatorio = 2;
+                    if (duracaoFinal > 10) {
+                        const min = Math.floor(duracaoFinal * 0.10);
+                        const max = Math.floor(duracaoFinal * 0.90);
+                        segundoAleatorio = Math.floor(Math.random() * (max - min + 1)) + min;
+                    } else if (duracaoFinal > 0) {
+                        segundoAleatorio = Math.floor(Math.random() * duracaoFinal);
+                    }
+
+                    // Geração da Thumbnail
+                    await new Promise((resolve) => {
+                        ffmpeg(videoPathPhysical)
+                            .on('end', () => {
+                                thumbPathPublic = '/uploads/' + thumbFilename;
+                                resolve();
+                            })
+                            .on('error', (err) => {
+                                console.error(`[Job ${jobId}] Erro ao gerar thumbnail:`, err.message);
+                                resolve(); // Resolvemos mesmo com erro para não travar a conversão do vídeo
+                            })
+                            .screenshots({
+                                timestamps: [segundoAleatorio],
+                                filename: thumbFilename,
+                                folder: uploadsFolder,
+                                size: '400x225'
+                            });
+                    });
+
+                    // C. LÓGICA DE CONVERSÃO FFMPEG (INTELIGENTE)
+                    console.log(`[Job ${jobId}] Iniciando conversões baseadas na altura: ${alturaOriginal}`);
+                    const baseName = path.parse(videoFile.filename).name;
+
+                    const converterVideoComProgresso = (input, resolucao) => {
+                        return new Promise((resolve, reject) => {
+                            const output = path.join(uploadsFolder, `${baseName}_${resolucao}p.mp4`);
+                            
+                            global.tarefasProcessamento[jobId].steps[`${resolucao}p`] = 0;
+
+                            ffmpeg(input)
+                                .output(output)
+                                .videoCodec('libx264')
+                                .audioCodec('aac')
+                                .size(`?x${resolucao}`)
+                                .on('progress', (progress) => {
+                                    if (progress.percent) {
+                                        let p = Math.round(progress.percent);
+                                        if (p > 100) p = 100;
+                                        global.tarefasProcessamento[jobId].steps[`${resolucao}p`] = p;
+                                    }
+                                })
+                                .on('end', () => {
+                                    global.tarefasProcessamento[jobId].steps[`${resolucao}p`] = 'done';
+                                    resolve(`/uploads/${path.basename(output)}`);
+                                })
+                                .on('error', (err) => {
+                                    console.error(`[Job ${jobId}] Erro conversão ${resolucao}p:`, err.message);
+                                    reject(err);
+                                })
+                                .run();
+                        });
+                    };
+
+                    let promessasConversao = [];
+
+                    // Só converte para 360p se o vídeo for estritamente MAIOR que 360p.
+                    if (alturaOriginal > 360) {
+                        promessasConversao.push(converterVideoComProgresso(videoPathPhysical, 360).then(url => video_360p_path = url));
+                    } else {
+                        global.tarefasProcessamento[jobId].steps['360p'] = 'done'; 
+                        console.log(`[Job ${jobId}] Vídeo já é ${alturaOriginal}p. Ignorando conversão 360p.`);
+                    }
+
+                    // Só converte para 480p se o vídeo for estritamente MAIOR que 480p.
+                    if (alturaOriginal > 480) {
+                        promessasConversao.push(converterVideoComProgresso(videoPathPhysical, 480).then(url => video_480p_path = url));
+                    } else {
+                        global.tarefasProcessamento[jobId].steps['480p'] = 'done';
+                        console.log(`[Job ${jobId}] Vídeo já é ${alturaOriginal}p. Ignorando conversão 480p.`);
+                    }
+
+                    // Só converte para 720p se o vídeo for estritamente MAIOR que 720p.
+                    if (alturaOriginal > 720) {
+                        promessasConversao.push(converterVideoComProgresso(videoPathPhysical, 720).then(url => video_720p_path = url));
+                    } else {
+                        global.tarefasProcessamento[jobId].steps['720p'] = 'done';
+                        console.log(`[Job ${jobId}] Vídeo já é ${alturaOriginal}p. Ignorando conversão 720p.`);
+                    }
+
+                    await Promise.all(promessasConversao);
+                }
+
+                // ==========================================
+                // 4. SALVANDO TUDO NA BASE DE DADOS
+                // ==========================================
+                const arquivoAdicionalPath = arquivos['arquivo_adicional'] ? '/uploads/' + arquivos['arquivo_adicional'][0].filename : null;
+                const videoPath = videoFile ? '/uploads/' + videoFile.filename : null;
+                const avaliacaoPath = arquivos['avaliacao'] ? '/uploads/' + arquivos['avaliacao'][0].filename : null;
+
+                // Tabela 'aulas'
+                const [resultadoAula] = await db.execute(
+                    `INSERT INTO aulas (modulo_id, titulo, ordem, descricao, duracao_segundos, video_thumb_path, arquivo_adicional_url) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    [moduloId, titulo, parseInt(ordem), descricao || null, duracaoFinal, thumbPathPublic, arquivoAdicionalPath]
+                );
+
+                const aulaId = resultadoAula.insertId;
+
+                // Tabela 'aula_conteudos'
+                await db.execute(
+                    `INSERT INTO aula_conteudos (aula_id, video_path, video_360p_path, video_480p_path, video_720p_path, avaliacao_json_path) 
+                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    [aulaId, videoPath, video_360p_path, video_480p_path, video_720p_path, avaliacaoPath]
+                );
+
+                // Processa apostila
+                if (arquivos['apostila']) {
+                    for (let i = 0; i < arquivos['apostila'].length; i++) {
+                        await db.execute(
+                            `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
+                            [aulaId, '/uploads/' + arquivos['apostila'][i].filename, i + 1]
+                        );
+                    }
+                }
+
+                // ==========================================
+                // 5. MARCAR JOB COMO CONCLUÍDO (Avisa o front-end para exibir sucesso)
+                // ==========================================
+                global.tarefasProcessamento[jobId].status = 'completed';
+                console.log(`[Job ${jobId}] Aula salva e publicada com sucesso!`);
+
+            } catch (jobError) {
+                console.error(`[Job ${jobId}] FALHA CRÍTICA NO PROCESSAMENTO:`, jobError);
+                global.tarefasProcessamento[jobId].status = 'error';
+            }
+        })(); // Fim do Background Job
 
     } catch (error) {
-        console.error('Erro geral na criação da aula:', error);
-        res.status(500).send('Erro ao salvar aula.');
+        console.error('Erro geral ao inicializar o job da aula:', error);
+        res.status(500).json({ success: false, message: 'Erro interno ao iniciar o processamento da aula.' });
     }
 });
 
@@ -2279,7 +2399,6 @@ app.post('/aluno/aulas/:aulaId/notas', verificarAluno, async (req, res) => {
         res.status(500).json({ success: false });
     }
 });
-
 
 // POST: Excluir uma anotação específica
 app.post('/aluno/aulas/notas/:notaId/excluir', verificarAluno, async (req, res) => {
