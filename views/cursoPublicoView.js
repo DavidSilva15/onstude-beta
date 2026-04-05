@@ -12,6 +12,21 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
     const totalAulas = cronograma.reduce((acc, mod) => acc + mod.aulas.length, 0);
 
     // ==========================================
+    // GERAR ESTRELAS DA AVALIAÇÃO
+    // ==========================================
+    let estrelasHtml = '';
+    const notaMedia = parseFloat(curso.nota_media) || 0;
+    const notaArredondada = Math.round(notaMedia);
+    
+    for (let i = 1; i <= 5; i++) {
+        if (i <= notaArredondada) {
+            estrelasHtml += '<i class="bi bi-star-fill text-warning"></i>';
+        } else {
+            estrelasHtml += '<i class="bi bi-star text-warning opacity-50"></i>';
+        }
+    }
+
+    // ==========================================
     // LÓGICA DO BOTÃO PRINCIPAL DE AÇÃO
     // ==========================================
     let btnAcaoHTML = '';
@@ -148,10 +163,21 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
             <div class="container hero-content text-white">
                 <div class="row">
                     <div class="col-lg-8">
-                        <div class="d-flex align-items-center mb-3">
-                            <span class="badge bg-primary px-3 py-2 rounded-pill me-2">Em Alta</span>
-                            ${isGratuito ? '<span class="badge bg-success px-3 py-2 rounded-pill">100% Grátis</span>' : ''}
+                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <span class="badge bg-primary px-3 py-2 rounded-pill shadow-sm">Em Alta</span>
+                            ${isGratuito ? '<span class="badge bg-success px-3 py-2 rounded-pill shadow-sm">100% Grátis</span>' : ''}
+                            
+                            <div class="d-flex align-items-center bg-dark bg-opacity-50 px-3 py-1 rounded-pill border border-light border-opacity-25 shadow-sm" style="backdrop-filter: blur(4px);">
+                                <div class="text-warning me-2" style="font-size: 0.8rem; letter-spacing: 1px;">
+                                    ${estrelasHtml}
+                                </div>
+                                <span class="text-white fw-semibold small">
+                                    ${notaMedia.toFixed(1)} (${curso.total_avaliacoes || 0} avaliações)
+                                </span>
+                                <i class="bi bi-info-circle ms-2 text-white-50" style="font-size: 0.85rem; cursor: help;" data-bs-toggle="tooltip" data-bs-placement="top" title="100% das avaliações foram feitas de alunos que concluíram o curso."></i>
+                            </div>
                         </div>
+
                         <h1 class="fw-bold display-4 mb-3" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">${curso.titulo}</h1>
                         <p class="fs-5 opacity-75 mb-4 pe-lg-5" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 1px 1px 3px rgba(0,0,0,0.5);">
                             ${curso.descricao || 'Descrição detalhada não disponível no momento.'}
@@ -235,7 +261,7 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                 <hr class="border-secondary mb-4 opacity-25">
                 <div class="row align-items-center">
                     <div class="col-md-6 text-center text-md-start mb-3 mb-md-0">
-                        <small class="text-white-50">&copy; 2026 OnStude. Todos os direitos reservados.</small>
+                        <small class="text-white-50">&copy; ${new Date().getFullYear()} OnStude. Todos os direitos reservados.</small>
                     </div>
                     <div class="col-md-6 text-center text-md-end d-flex align-items-center justify-content-center justify-content-md-end">
                         <small class="text-white-50 me-3">Desenvolvido por <strong class="text-light">71dev</strong></small>
@@ -253,94 +279,103 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
             const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
             const cursoAtualId = ${curso.id};
 
-            // Lógica Botão Favoritos
-            document.getElementById('btnFavoritarSecundario').addEventListener('click', function(e) {
-                e.preventDefault();
+            document.addEventListener('DOMContentLoaded', function() {
+                // Ativar Tooltips do Bootstrap
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-                if (!isUsuarioLogado) {
-                    window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
-                    return;
-                }
+                // Lógica Botão Favoritos
+                const btnFavoritar = document.getElementById('btnFavoritarSecundario');
+                if (btnFavoritar) {
+                    btnFavoritar.addEventListener('click', function(e) {
+                        e.preventDefault();
 
-                const icon = document.getElementById('iconHeart');
-                const isFavorited = icon.classList.contains('bi-heart-fill');
+                        if (!isUsuarioLogado) {
+                            window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
+                            return;
+                        }
 
-                if (isFavorited) {
-                    icon.classList.replace('bi-heart-fill', 'bi-heart');
-                    icon.classList.remove('text-danger');
-                } else {
-                    icon.classList.replace('bi-heart', 'bi-heart-fill');
-                    icon.classList.add('text-danger');
-                }
+                        const icon = document.getElementById('iconHeart');
+                        const isFavorited = icon.classList.contains('bi-heart-fill');
 
-                fetch('/aluno/api/favoritos/toggle', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ curso_id: cursoAtualId })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.success) {
-                        alert('Ocorreu um erro ao atualizar os favoritos.');
                         if (isFavorited) {
-                            icon.classList.replace('bi-heart', 'bi-heart-fill');
-                            icon.classList.add('text-danger');
-                        } else {
                             icon.classList.replace('bi-heart-fill', 'bi-heart');
                             icon.classList.remove('text-danger');
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.error('Erro de conexão:', err);
-                });
-            });
-
-            // ==========================================
-            // LÓGICA DO NOVO BOTÃO: ADICIONAR AO CARRINHO
-            // ==========================================
-            const btnCarrinho = document.getElementById('btnAdicionarCarrinhoLateral');
-            if (btnCarrinho) {
-                btnCarrinho.addEventListener('click', function(e) {
-                    e.preventDefault();
-
-                    // 1. Verifica login
-                    if (!isUsuarioLogado) {
-                        window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
-                        return;
-                    }
-
-                    // 2. Feedback visual imediato (Loader no botão)
-                    const originalText = btnCarrinho.innerHTML;
-                    btnCarrinho.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Adicionando...';
-                    btnCarrinho.disabled = true;
-
-                    // 3. Chamada à API de Carrinho
-                    fetch('/aluno/carrinho/adicionar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ curso_id: cursoAtualId })
-                    })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.success) {
-                            // Apenas recarrega a página para atualizar o contador do carrinho no header
-                            window.location.reload();
                         } else {
-                            // Se houver erro (ex: já possui o curso)
-                            alert(data.message || 'Erro ao adicionar ao carrinho.');
+                            icon.classList.replace('bi-heart', 'bi-heart-fill');
+                            icon.classList.add('text-danger');
+                        }
+
+                        fetch('/aluno/api/favoritos/toggle', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ curso_id: cursoAtualId })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (!data.success) {
+                                alert('Ocorreu um erro ao atualizar os favoritos.');
+                                if (isFavorited) {
+                                    icon.classList.replace('bi-heart', 'bi-heart-fill');
+                                    icon.classList.add('text-danger');
+                                } else {
+                                    icon.classList.replace('bi-heart-fill', 'bi-heart');
+                                    icon.classList.remove('text-danger');
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Erro de conexão:', err);
+                        });
+                    });
+                }
+
+                // ==========================================
+                // LÓGICA DO NOVO BOTÃO: ADICIONAR AO CARRINHO
+                // ==========================================
+                const btnCarrinho = document.getElementById('btnAdicionarCarrinhoLateral');
+                if (btnCarrinho) {
+                    btnCarrinho.addEventListener('click', function(e) {
+                        e.preventDefault();
+
+                        // 1. Verifica login
+                        if (!isUsuarioLogado) {
+                            window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
+                            return;
+                        }
+
+                        // 2. Feedback visual imediato (Loader no botão)
+                        const originalText = btnCarrinho.innerHTML;
+                        btnCarrinho.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Adicionando...';
+                        btnCarrinho.disabled = true;
+
+                        // 3. Chamada à API de Carrinho
+                        fetch('/aluno/carrinho/adicionar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ curso_id: cursoAtualId })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Apenas recarrega a página para atualizar o contador do carrinho no header
+                                window.location.reload();
+                            } else {
+                                // Se houver erro (ex: já possui o curso)
+                                alert(data.message || 'Erro ao adicionar ao carrinho.');
+                                btnCarrinho.innerHTML = originalText;
+                                btnCarrinho.disabled = false;
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Erro:', err);
+                            alert('Erro de conexão ao adicionar ao carrinho.');
                             btnCarrinho.innerHTML = originalText;
                             btnCarrinho.disabled = false;
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Erro:', err);
-                        alert('Erro de conexão ao adicionar ao carrinho.');
-                        btnCarrinho.innerHTML = originalText;
-                        btnCarrinho.disabled = false;
+                        });
                     });
-                });
-            }
+                }
+            });
         </script>
     </body>
     </html>

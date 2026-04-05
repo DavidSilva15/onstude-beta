@@ -45,6 +45,17 @@ function renderHomeView(usuarioLogado, cursos) {
             // Converte as tags do mercado para minúsculas para facilitar o filtro depois
             const tagsDoCurso = (curso.mercado || '').toLowerCase();
             
+            // GERAR ESTRELAS DA AVALIAÇÃO
+            let estrelasHtml = '';
+            const nota = Math.round(parseFloat(curso.nota_media) || 0);
+            for (let i = 1; i <= 5; i++) {
+                if (i <= nota) {
+                    estrelasHtml += '<i class="bi bi-star-fill text-warning"></i>';
+                } else {
+                    estrelasHtml += '<i class="bi bi-star text-warning opacity-50"></i>';
+                }
+            }
+            
             htmlCursosSlider += `
                 <div class="swiper-slide h-auto curso-slide" data-tags="${tagsDoCurso}">
                     <div class="card h-100 border-0 rounded-4 overflow-hidden position-relative hover-shadow transition glass-card">
@@ -53,24 +64,36 @@ function renderHomeView(usuarioLogado, cursos) {
                             <i class="bi bi-heart"></i>
                         </button>
                         
-                        <img src="${capa}" class="card-img-top" alt="${curso.titulo}" style="height: 160px; object-fit: cover;">
-                        
-                        <div class="card-body d-flex flex-column p-3">
-                            <h6 class="fw-bold text-dark text-truncate mb-2" title="${curso.titulo}">${curso.titulo}</h6>
-                            <p class="text-muted small mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.85rem; line-height: 1.4;">
-                                ${curso.descricao || 'Aprenda as melhores práticas e destaque-se no mercado com este curso completo.'}
-                            </p>
+                        <a href="/cursos/${curso.id}" class="text-decoration-none d-block h-100">
+                            <img src="${capa}" class="card-img-top border-bottom border-light border-opacity-25" alt="${curso.titulo}" style="height: 160px; object-fit: cover;">
                             
-                            <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold" style="font-size: 0.8rem;">
-                                <span class="me-3" title="Soma do tempo de todas as aulas"><i class="bi bi-clock text-primary me-1"></i> ${duracao}</span>
-                                <span title="Estimativa baseada em 2h de estudo/dia"><i class="bi bi-calendar-check text-success me-1"></i> ${conclusao}</span>
+                            <div class="card-body d-flex flex-column p-3">
+                                <h6 class="fw-bold text-dark text-truncate mb-2" title="${curso.titulo}">${curso.titulo}</h6>
+                                <p class="text-muted small mb-2 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.85rem; line-height: 1.4;">
+                                    ${curso.descricao || 'Aprenda as melhores práticas e destaque-se no mercado com este curso completo.'}
+                                </p>
+                                
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="text-warning me-1" style="font-size: 0.7rem; letter-spacing: 1px;">
+                                        ${estrelasHtml}
+                                    </div>
+                                    <span class="text-muted fw-semibold" style="font-size: 0.65rem;">
+                                        (${curso.total_avaliacoes || 0})
+                                    </span>
+                                    <i class="bi bi-info-circle ms-2 text-secondary opacity-75" style="font-size: 0.7rem;" data-bs-toggle="tooltip" data-bs-placement="top" title="100% das avaliações foram feitas de alunos que concluíram o curso."></i>
+                                </div>
+                                
+                                <div class="d-flex align-items-center mb-3 small text-secondary fw-semibold" style="font-size: 0.8rem;">
+                                    <span class="me-3" title="Soma do tempo de todas as aulas"><i class="bi bi-clock text-primary me-1"></i> ${duracao}</span>
+                                    <span title="Estimativa baseada em 2h de estudo/dia"><i class="bi bi-calendar-check text-success me-1"></i> ${conclusao}</span>
+                                </div>
+                                
+                                <div class="mt-auto pt-3 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-primary">${preco}</span>
+                                    <span class="btn btn-primary btn-sm fw-bold px-3 rounded-pill shadow-sm">Ver Curso</span>
+                                </div>
                             </div>
-                            
-                            <div class="mt-auto pt-3 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
-                                <span class="fw-bold text-primary">${preco}</span>
-                                <a href="/cursos/${curso.id}" class="btn btn-primary btn-sm fw-bold px-3 rounded-pill shadow-sm">Comprar</a>
-                            </div>
-                        </div>
+                        </a>
                     </div>
                 </div>
             `;
@@ -240,7 +263,7 @@ function renderHomeView(usuarioLogado, cursos) {
                         <p class="hero-subtitle mb-4">Aprenda com especialistas, no seu ritmo, e conquiste novas oportunidades no mercado de trabalho com certificados reconhecidos.</p>
                         
                         <div class="d-flex flex-column flex-sm-row justify-content-center justify-content-lg-start gap-3">
-                            <a href="#secao-cursos" class="btn btn-primary btn-lg fw-bold px-4 py-2 rounded-pill shadow-sm">Explorar Cursos</a>
+                            <a href="#secao-cursos" class="btn btn-primary btn-lg fw-bold px-4 py-2 rounded-pill shadow-sm">Explorar</a>
                         </div>
                     </div>
 
@@ -374,6 +397,10 @@ function renderHomeView(usuarioLogado, cursos) {
 
             document.addEventListener('DOMContentLoaded', function () {
                 
+                // Ativar Tooltips do Bootstrap
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
                 // ==========================================
                 // LÓGICA DE ANIMAÇÃO DE SCROLL (INTERSECTION OBSERVER)
                 // ==========================================
@@ -464,6 +491,7 @@ function renderHomeView(usuarioLogado, cursos) {
                     if (!btn) return;
                     
                     e.preventDefault();
+                    e.stopPropagation(); // Evita que clique no coração abra o curso
                     
                     if (!isUsuarioLogado) {
                         window.location.href = '/login?returnTo=/';

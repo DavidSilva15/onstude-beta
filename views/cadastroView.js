@@ -356,7 +356,7 @@ function renderCadastroView(erro = null) {
 
                         <div class="text-center mt-3 pt-2 border-top">
                             <p class="text-muted small mb-0 d-inline me-1">Já tem uma conta?</p>
-                            <a href="/" class="text-primary fw-bold text-decoration-none hover-shadow transition small">Faça login aqui</a>
+                            <a href="/login" class="text-primary fw-bold text-decoration-none hover-shadow transition small">Faça login aqui</a>
                         </div>
 
                     </div>

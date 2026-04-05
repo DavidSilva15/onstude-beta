@@ -30,7 +30,7 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                                     <i class="bi bi-eye me-2"></i> Visualizar
                                 </button>
                                 <a href="${modelo.arquivo_url}" target="_blank" download class="btn btn-primary btn-sm fw-bold px-4 rounded-pill w-100 shadow-sm">
-                                    <i class="bi bi-download me-2"></i> Baixar Word
+                                    <i class="bi bi-download me-2"></i> Download
                                 </a>
                             </div>
                         </div>
@@ -276,8 +276,8 @@ function renderPlanoCarreiraView(usuarioLogado, modelosCV = []) {
                         <h1 class="hero-title mb-4 text-white">Crie seu currículo ou escolha um dos <span class="text-info">modelos</span> para editar.</h1>
                         <p class="hero-subtitle mb-5 text-light opacity-75">Tenha mais visibilidade nos processos seletivos. Utilize a nossa ferramenta gratuita para construir um currículo profissional em PDF em minutos.</p>
                         <div class="d-flex flex-column flex-sm-row justify-content-center justify-content-lg-start gap-3">
-                            <a href="#gerador-cv" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow-sm">Criar Currículo PDF Agora</a>
-                            <a href="#modelos-cv" class="btn btn-outline-light btn-lg fw-bold px-5 py-3 rounded-pill">Ver Modelos Word</a>
+                            <a href="#gerador-cv" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow-sm">Criar Currículo</a>
+                            <a href="#modelos-cv" class="btn btn-outline-light btn-lg fw-bold px-5 py-3 rounded-pill">Modelos Word</a>
                         </div>
                     </div>
                     <div class="col-lg-6 position-relative reveal-right delay-200">

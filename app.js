@@ -47,36 +47,59 @@ const renderAlunoCarrinhoView = require('./views/alunoCarrinhoView');
 const app = express();
 const port = 3000;
 
-// Configuração do Multer para salvar na pasta public/img/
+// ==========================================
+// FUNÇÃO UTILITÁRIA PARA PASTAS
+// ==========================================
+// Pega no título do curso e transforma em um nome seguro para pastas (Ex: "Curso de Ação!" vira "curso-de-acao")
+function sanitizeFolderName(name) {
+    return name.toString()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-') // Troca espaços e símbolos por hifens
+        .replace(/-+/g, '-') // Remove hifens duplicados
+        .replace(/^-|-$/g, ''); // Remove hifens das pontas
+}
+
+// Garante que a pasta temporária existe
+const tempDir = path.join(__dirname, 'public', 'uploads', 'temp');
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+}
+
+// ==========================================
+// CONFIGURAÇÕES DO MULTER
+// ==========================================
+
+// 1. Configuração para as Capas e Certificados dos Cursos (Salva em Temp primeiro)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/img/'); // Certifique-se de que a pasta public/img existe!
+        cb(null, tempDir);
     },
     filename: function (req, file, cb) {
-        // Gera um nome único para não sobrescrever imagens com o mesmo nome
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, 'capa-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 const upload = multer({ storage: storage });
 
-// Configuração do Multer para os Conteúdos da Aula (salva em public/uploads/)
+// 2. Configuração para os Conteúdos da Aula (Salva em Temp primeiro)
 const storageAula = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/uploads/'); // Crie esta pasta na raiz do projeto!
+        cb(null, tempDir);
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        // Ex: video-1612345678-123.mp4
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 const uploadAula = multer({ storage: storageAula });
 
-// Configuração do Multer para Fotos de Perfil
+
+// (MANTIDAS EXATAMENTE IGUAIS) Configurações do Perfil, Material, Fórum, CV, etc...
 const storagePerfil = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/img/perfil/'); // Crie esta pasta!
+        cb(null, 'public/img/perfil/');
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -85,13 +108,11 @@ const storagePerfil = multer.diskStorage({
 });
 const uploadPerfil = multer({ storage: storagePerfil });
 
-// Configuração para receber materiais complementares das aulas
 const uploadMaterialAula = multer({ dest: path.join(__dirname, 'public/uploads/materiais/') });
 
-// Configuração do Multer para os Prints do Fórum
 const storageForum = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/img/forum/'); // Lembre-se de criar esta pasta!
+        cb(null, 'public/img/forum/');
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -100,20 +121,18 @@ const storageForum = multer.diskStorage({
 });
 const uploadForum = multer({ storage: storageForum });
 
-// ==========================================
-// Configuração do Multer para Modelos de Currículo
-// ==========================================
 const storageCV = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'public/uploads/'); // Salva no diretório correto
+        cb(null, 'public/uploads/');
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        // O ficheiro ganha o nome exato do campo (Ex: 'capa-1234.png' ou 'arquivo_docx-1234.docx')
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
 const uploadCV = multer({ storage: storageCV });
+
+const uploadNotificacao = multer({ dest: path.join(__dirname, 'public/img/notificacoes/') });
 
 // Configurações do Express
 app.use(express.urlencoded({ extended: true }));
@@ -130,8 +149,6 @@ app.use(session({
 
 // Importando as Views
 const renderLoginView = require('./views/loginView');
-
-const uploadNotificacao = multer({ dest: path.join(__dirname, 'public/img/notificacoes/') });
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
@@ -151,7 +168,7 @@ app.get('/api/processamento/status/:jobId', (req, res) => {
 
 app.get('/', async (req, res) => {
     try {
-        // Query para listar cursos na home page, com a duração total em segundos calculada
+        // Query para listar cursos na home page, com a duração total e avaliações calculadas
         const [cursos] = await db.execute(`
             SELECT 
                 c.*,
@@ -159,9 +176,13 @@ app.get('/', async (req, res) => {
                  FROM aulas a 
                  JOIN modulos mo ON a.modulo_id = mo.id 
                  WHERE mo.curso_id = c.id
-                ) AS duracao_total_segundos
+                ) AS duracao_total_segundos,
+                COALESCE(AVG(av.nota), 0) AS nota_media,
+                COUNT(av.id) AS total_avaliacoes
             FROM cursos c 
+            LEFT JOIN avaliacoes_curso av ON c.id = av.curso_id
             WHERE c.status = 'PUBLICADO' 
+            GROUP BY c.id
             ORDER BY c.criado_em DESC 
             LIMIT 10
         `);
@@ -446,7 +467,16 @@ app.get('/cursos/:id', async (req, res) => {
     const usuarioLogado = req.session.usuario || null;
 
     try {
-        const [cursos] = await db.execute('SELECT * FROM cursos WHERE id = ? AND status = "PUBLICADO"', [cursoId]);
+        // AQUI ESTÁ A ATUALIZAÇÃO DA QUERY PARA AS ESTRELAS E AVALIAÇÕES
+        const [cursos] = await db.execute(`
+            SELECT c.*, 
+                   COALESCE(AVG(av.nota), 0) AS nota_media, 
+                   COUNT(av.id) AS total_avaliacoes 
+            FROM cursos c 
+            LEFT JOIN avaliacoes_curso av ON c.id = av.curso_id 
+            WHERE c.id = ? AND c.status = 'PUBLICADO'
+            GROUP BY c.id
+        `, [cursoId]);
 
         if (cursos.length === 0) {
             return res.status(404).send('Curso não encontrado ou indisponível.');
@@ -474,7 +504,6 @@ app.get('/cursos/:id', async (req, res) => {
             if (matriculas.length > 0) isMatriculado = true;
         }
 
-        // AQUI ESTÁ A CORREÇÃO (NOVO NOME DA VIEW)
         const renderCursoPublicoView = require('./views/cursoPublicoView');
         res.send(renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado));
 
@@ -790,51 +819,77 @@ app.get('/admin/cursos/novo', verificarAdmin, (req, res) => {
     res.send(renderNovoCursoView(req.session.usuario));
 });
 
-// POST: Processa a criação de um novo curso
+// ==========================================
+// CRIAÇÃO DO NOVO CURSO
+// ==========================================
 app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
     { name: 'capa', maxCount: 1 },
     { name: 'certificado_template', maxCount: 1 }
 ]), async (req, res) => {
-    // Agora extraímos preco e desconto_percentual
+
     const { titulo, descricao, status, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual } = req.body;
     const adminId = req.session.usuario.id;
-
     const arquivos = req.files || {};
-    const capa_url = arquivos['capa'] ? '/img/' + arquivos['capa'][0].filename : null;
-    const certificado_template_url = arquivos['certificado_template'] ? '/img/' + arquivos['certificado_template'][0].filename : null;
 
-    const codigoAleatorio = require('crypto').randomBytes(3).toString('hex').toUpperCase();
+    const codigoAleatorio = crypto.randomBytes(3).toString('hex').toUpperCase();
     const codigoUnico = `ONST-${codigoAleatorio}`;
 
-    // Tratamento dos campos
     const mercadoTratado = mercado && mercado.trim() !== '' ? mercado.trim() : null;
     const duracaoTratada = duracao_horas ? parseInt(duracao_horas) : null;
     const conclusaoTratada = conclusao_dias ? parseInt(conclusao_dias) : null;
-
-    // Tratamento Financeiro
     const precoTratado = preco ? parseFloat(preco.replace(',', '.')) : 0.00;
     const descontoTratado = desconto_percentual ? parseInt(desconto_percentual) : 0;
 
     try {
         const [resultadoCurso] = await db.execute(
             `INSERT INTO cursos (codigo_unico, titulo, descricao, capa_url, certificado_template_url, status, criado_por_admin_id, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                codigoUnico, titulo, descricao || null, capa_url, certificado_template_url, status, adminId,
+                codigoUnico, titulo, descricao || null, status, adminId,
                 mercadoTratado, duracaoTratada, conclusaoTratada, precoTratado, descontoTratado
             ]
         );
 
-        const detalhesLog = JSON.stringify({
-            titulo, codigo_unico: codigoUnico, status, mercado: mercadoTratado, preco: precoTratado
-        });
+        const novoCursoId = resultadoCurso.insertId;
+
+        const folderName = `${novoCursoId}_${sanitizeFolderName(titulo)}`;
+        const targetDir = path.join(__dirname, 'public', 'uploads', 'cursos', folderName);
+
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        let finalCapaUrl = null;
+        let finalCertificadoUrl = null;
+
+        if (arquivos['capa']) {
+            const oldPath = arquivos['capa'][0].path;
+            const newFilename = arquivos['capa'][0].filename;
+            const newPath = path.join(targetDir, newFilename);
+            fs.renameSync(oldPath, newPath);
+            finalCapaUrl = `/uploads/cursos/${folderName}/${newFilename}`;
+        }
+
+        if (arquivos['certificado_template']) {
+            const oldPath = arquivos['certificado_template'][0].path;
+            const newFilename = arquivos['certificado_template'][0].filename;
+            const newPath = path.join(targetDir, newFilename);
+            fs.renameSync(oldPath, newPath);
+            finalCertificadoUrl = `/uploads/cursos/${folderName}/${newFilename}`;
+        }
+
+        if (finalCapaUrl || finalCertificadoUrl) {
+            await db.execute(
+                `UPDATE cursos SET capa_url = COALESCE(?, capa_url), certificado_template_url = COALESCE(?, certificado_template_url) WHERE id = ?`,
+                [finalCapaUrl, finalCertificadoUrl, novoCursoId]
+            );
+        }
+
+        const detalhesLog = JSON.stringify({ titulo, codigo_unico: codigoUnico, status, mercado: mercadoTratado, preco: precoTratado });
 
         await db.execute(
             `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, detalhes_json, ip) 
              VALUES (?, 'CRIAR_CURSO', 'cursos', ?, ?, ?)`,
-            [adminId, resultadoCurso.insertId, detalhesLog, req.ip || req.socket.remoteAddress]
+            [adminId, novoCursoId, detalhesLog, req.ip || req.socket.remoteAddress]
         );
-
         res.redirect('/admin');
     } catch (error) {
         console.error(error);
@@ -842,12 +897,75 @@ app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
     }
 });
 
-app.use((req, res, next) => {
-    if (req.session && !req.session.carrinho) {
-        req.session.carrinho = [];
+
+// ==========================================
+// EDIÇÃO DO CURSO
+// ==========================================
+app.post('/admin/cursos/:id/editar', verificarAdmin, upload.fields([
+    { name: 'capa', maxCount: 1 },
+    { name: 'certificado_template', maxCount: 1 }
+]), async (req, res) => {
+    const cursoId = req.params.id;
+    const { titulo, descricao, status, capa_url_atual, certificado_atual, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual } = req.body;
+    const adminId = req.session.usuario.id;
+
+    const mercadoTratado = mercado && mercado.trim() !== '' ? mercado.trim() : null;
+    const duracaoTratada = duracao_horas ? parseInt(duracao_horas) : null;
+    const conclusaoTratada = conclusao_dias ? parseInt(conclusao_dias) : null;
+    const precoTratado = preco ? parseFloat(preco.replace(',', '.')) : 0.00;
+    const descontoTratado = desconto_percentual ? parseInt(desconto_percentual) : 0;
+
+    try {
+        const folderName = `${cursoId}_${sanitizeFolderName(titulo)}`;
+        const targetDir = path.join(__dirname, 'public', 'uploads', 'cursos', folderName);
+        
+        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+
+        const arquivos = req.files || {};
+        
+        let capa_url = capa_url_atual || null;
+        if (arquivos['capa']) {
+            const oldPath = arquivos['capa'][0].path;
+            const newFilename = arquivos['capa'][0].filename;
+            const newPath = path.join(targetDir, newFilename);
+            fs.renameSync(oldPath, newPath);
+            capa_url = `/uploads/cursos/${folderName}/${newFilename}`;
+        }
+
+        let certificado_template_url = certificado_atual || null;
+        if (arquivos['certificado_template']) {
+            const oldPath = arquivos['certificado_template'][0].path;
+            const newFilename = arquivos['certificado_template'][0].filename;
+            const newPath = path.join(targetDir, newFilename);
+            fs.renameSync(oldPath, newPath);
+            certificado_template_url = `/uploads/cursos/${folderName}/${newFilename}`;
+        }
+
+        await db.execute(
+            `UPDATE cursos 
+             SET titulo = ?, descricao = ?, capa_url = ?, certificado_template_url = ?, status = ?, mercado = ?, duracao_horas = ?, conclusao_dias = ?, preco = ?, desconto_percentual = ? 
+             WHERE id = ?`,
+            [
+                titulo, descricao || null, capa_url, certificado_template_url, status,
+                mercadoTratado, duracaoTratada, conclusaoTratada, precoTratado, descontoTratado, cursoId
+            ]
+        );
+
+        const detalhesLog = JSON.stringify({ campos_alterados: { titulo, status, preco: precoTratado, desconto: descontoTratado } });
+
+        await db.execute(
+            `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, detalhes_json, ip) 
+             VALUES (?, 'EDITAR_CURSO', 'cursos', ?, ?, ?)`,
+            [adminId, cursoId, detalhesLog, req.ip || req.socket.remoteAddress]
+        );
+
+        res.redirect(`/admin/cursos/${cursoId}`);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Erro interno ao atualizar o curso.');
     }
-    next();
 });
+
 
 // ==========================================
 // CARRINHO DE COMPRAS E CHECKOUT (ALUNO)
@@ -1024,12 +1142,16 @@ app.get('/api/carrinho/count', async (req, res) => {
 
 app.get('/categorias', async (req, res) => {
     try {
-        // Busca todos os cursos publicados
+        // Busca todos os cursos publicados com a média de notas e total de avaliações
         const [cursos] = await db.execute(`
-            SELECT id, titulo, descricao, capa_url, preco, duracao_horas, mercado 
-            FROM cursos 
-            WHERE status = 'PUBLICADO' 
-            ORDER BY criado_em DESC
+            SELECT c.id, c.titulo, c.descricao, c.capa_url, c.preco, c.duracao_horas, c.mercado,
+                   COALESCE(AVG(a.nota), 0) AS nota_media,
+                   COUNT(a.id) AS total_avaliacoes
+            FROM cursos c
+            LEFT JOIN avaliacoes_curso a ON c.id = a.curso_id
+            WHERE c.status = 'PUBLICADO'
+            GROUP BY c.id
+            ORDER BY c.criado_em DESC
         `);
 
         // Objeto para agrupar os cursos pelo campo "mercado"
@@ -1038,14 +1160,14 @@ app.get('/categorias', async (req, res) => {
         cursos.forEach(curso => {
             // Se o mercado for nulo ou vazio, agrupa em "Geral"
             let chaveMercado = (curso.mercado && curso.mercado.trim() !== '') ? curso.mercado.trim().toLowerCase() : 'default';
-            
+
             // Tratamento das strings do banco para encaixar nas chaves da view
             if (chaveMercado.includes('tech') || chaveMercado.includes('tecnologia') || chaveMercado.includes('programação')) chaveMercado = 'tecnologia';
             else if (chaveMercado.includes('negócio') || chaveMercado.includes('negocio') || chaveMercado.includes('admin')) chaveMercado = 'negocios';
             else if (chaveMercado.includes('design') || chaveMercado.includes('arte')) chaveMercado = 'design';
             else if (chaveMercado.includes('marketing') || chaveMercado.includes('venda')) chaveMercado = 'marketing';
             else if (chaveMercado.includes('escritorio') || chaveMercado.includes('escritório') || chaveMercado.includes('office')) chaveMercado = 'escritorio';
-            
+
             if (!categoriasMap[chaveMercado]) {
                 categoriasMap[chaveMercado] = {
                     chave: chaveMercado,
@@ -1073,14 +1195,14 @@ app.get('/categorias', async (req, res) => {
 // ==========================================
 app.get('/api/cursos/search', async (req, res) => {
     const query = req.query.q;
-    
+
     if (!query || query.trim() === '') {
         return res.json({ success: true, cursos: [] });
     }
 
     try {
         const searchTerm = `%${query}%`;
-        
+
         // Adicionado o 'OR mercado LIKE ?' para buscar também por palavras-chave/categorias
         const [cursos] = await db.execute(`
             SELECT id, titulo, descricao, capa_url, mercado
@@ -1152,58 +1274,6 @@ app.get('/admin/cursos/:id/editar', verificarAdmin, async (req, res) => {
     } catch (error) {
         console.error('Erro ao carregar edição do curso:', error);
         res.status(500).send('<h1>Erro interno do servidor.</h1>');
-    }
-});
-
-// POST: Processa a atualização do curso
-// POST: Processa a atualização do curso
-app.post('/admin/cursos/:id/editar', verificarAdmin, upload.fields([
-    { name: 'capa', maxCount: 1 },
-    { name: 'certificado_template', maxCount: 1 }
-]), async (req, res) => {
-    const cursoId = req.params.id;
-    // Extraímos preco e desconto_percentual
-    const { titulo, descricao, status, capa_url_atual, certificado_atual, mercado, duracao_horas, conclusao_dias, preco, desconto_percentual } = req.body;
-    const adminId = req.session.usuario.id;
-
-    const arquivos = req.files || {};
-    const capa_url = arquivos['capa'] ? '/img/' + arquivos['capa'][0].filename : (capa_url_atual || null);
-    const certificado_template_url = arquivos['certificado_template'] ? '/img/' + arquivos['certificado_template'][0].filename : (certificado_atual || null);
-
-    // Tratamento dos campos
-    const mercadoTratado = mercado && mercado.trim() !== '' ? mercado.trim() : null;
-    const duracaoTratada = duracao_horas ? parseInt(duracao_horas) : null;
-    const conclusaoTratada = conclusao_dias ? parseInt(conclusao_dias) : null;
-
-    // Tratamento Financeiro
-    const precoTratado = preco ? parseFloat(preco.replace(',', '.')) : 0.00;
-    const descontoTratado = desconto_percentual ? parseInt(desconto_percentual) : 0;
-
-    try {
-        await db.execute(
-            `UPDATE cursos 
-             SET titulo = ?, descricao = ?, capa_url = ?, certificado_template_url = ?, status = ?, mercado = ?, duracao_horas = ?, conclusao_dias = ?, preco = ?, desconto_percentual = ? 
-             WHERE id = ?`,
-            [
-                titulo, descricao || null, capa_url, certificado_template_url, status,
-                mercadoTratado, duracaoTratada, conclusaoTratada, precoTratado, descontoTratado, cursoId
-            ]
-        );
-
-        const detalhesLog = JSON.stringify({
-            campos_alterados: { titulo, status, preco: precoTratado, desconto: descontoTratado }
-        });
-
-        await db.execute(
-            `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, detalhes_json, ip) 
-             VALUES (?, 'EDITAR_CURSO', 'cursos', ?, ?, ?)`,
-            [adminId, cursoId, detalhesLog, req.ip || req.socket.remoteAddress]
-        );
-
-        res.redirect(`/admin/cursos/${cursoId}`);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send('Erro interno ao atualizar o curso.');
     }
 });
 
@@ -1314,6 +1384,9 @@ app.get('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, async (req, res) 
     }
 });
 
+// ==========================================
+// CRIAÇÃO DA NOVA AULA
+// ==========================================
 app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.fields([
     { name: 'video', maxCount: 1 },
     { name: 'avaliacao', maxCount: 1 },
@@ -1323,29 +1396,57 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
 
     const moduloId = req.params.moduloId;
     const { titulo, ordem, duracao_segundos, descricao } = req.body;
-    const adminId = req.session.usuario.id;
 
     try {
-        // Busca qual o curso ID para avisarmos ao front-end para onde ele deve redirecionar
-        const [moduloData] = await db.execute('SELECT curso_id FROM modulos WHERE id = ?', [moduloId]);
+        // Busca qual o curso ID e o Título para criar a pasta da aula
+        const [moduloData] = await db.execute(
+            'SELECT m.curso_id, c.titulo as curso_titulo FROM modulos m JOIN cursos c ON m.curso_id = c.id WHERE m.id = ?',
+            [moduloId]
+        );
         const cursoIdParaRedirect = moduloData[0].curso_id;
+        const cursoTitulo = moduloData[0].curso_titulo;
+
+        // Montagem dos nomes das pastas (Ex: 15_curso-de-excel / aula1(introducao) )
+        const folderCurso = `${cursoIdParaRedirect}_${sanitizeFolderName(cursoTitulo)}`;
+        const folderAula = `aula${ordem}(${sanitizeFolderName(titulo)})`;
+        
+        const baseTargetDir = path.join(__dirname, 'public', 'uploads', 'cursos', folderCurso, folderAula);
+        const basePathPublic = `/uploads/cursos/${folderCurso}/${folderAula}`;
+
+        const dirs = {
+            root: baseTargetDir,
+            atividade: path.join(baseTargetDir, 'atividade'),
+            avaliacao: path.join(baseTargetDir, 'avaliacao'),
+            material: path.join(baseTargetDir, 'material')
+        };
+
+        // Cria a estrutura de pastas automaticamente
+        Object.values(dirs).forEach(dir => {
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        });
 
         // 1. Gera ID único e inicializa a memória do Job
         const jobId = 'job_' + Date.now();
-        
-        // Proteção caso a variável global ainda não exista
+
         if (!global.tarefasProcessamento) global.tarefasProcessamento = {};
-        
-        global.tarefasProcessamento[jobId] = { 
-            status: 'processing', 
-            steps: { '360p': 'pending', '480p': 'pending', '720p': 'pending' } 
+
+        global.tarefasProcessamento[jobId] = {
+            status: 'processing',
+            steps: { '360p': 'pending', '480p': 'pending', '720p': 'pending' }
         };
 
-        // 2. Libera o Front-End IMEDIATAMENTE (Responde em JSON)
-        res.json({ 
-            success: true, 
-            jobId: jobId, 
-            redirectUrl: `/admin/cursos/${cursoIdParaRedirect}` 
+        // 2. Libera o Front-End IMEDIATAMENTE e Inserimos a aula ANTES para pegar ID
+        const [resultadoAula] = await db.execute(
+            `INSERT INTO aulas (modulo_id, titulo, ordem, descricao, duracao_segundos) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [moduloId, titulo, parseInt(ordem), descricao || null, duracao_segundos ? parseInt(duracao_segundos) : 0]
+        );
+        const aulaId = resultadoAula.insertId;
+
+        res.json({
+            success: true,
+            jobId: jobId,
+            redirectUrl: `/admin/cursos/${cursoIdParaRedirect}`
         });
 
         // ==========================================
@@ -1354,21 +1455,59 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
         (async () => {
             try {
                 const arquivos = req.files || {};
-                const videoFile = arquivos['video'] ? arquivos['video'][0] : null;
+
+                // --- MATERIAL ADICIONAL ---
+                let arquivoAdicionalPublicPath = null;
+                if (arquivos['arquivo_adicional']) {
+                    const file = arquivos['arquivo_adicional'][0];
+                    const newPath = path.join(dirs.material, file.filename);
+                    fs.renameSync(file.path, newPath);
+                    arquivoAdicionalPublicPath = `${basePathPublic}/material/${file.filename}`;
+                }
+
+                // --- AVALIAÇÃO JSON ---
+                let avaliacaoPublicPath = null;
+                if (arquivos['avaliacao']) {
+                    const file = arquivos['avaliacao'][0];
+                    const newPath = path.join(dirs.avaliacao, 'avaliacao.json');
+                    fs.renameSync(file.path, newPath);
+                    avaliacaoPublicPath = `${basePathPublic}/avaliacao/avaliacao.json`;
+                }
+
+                // --- APOSTILA (ATIVIDADE PRÁTICA 1.png, 2.png...) ---
+                let apostilaImagensMovidas = [];
+                if (arquivos['apostila']) {
+                    arquivos['apostila'].forEach((file, index) => {
+                        const ext = path.extname(file.originalname); // Mantém .png ou .jpg
+                        const nomeArquivo = `${index + 1}${ext}`;
+                        const newPath = path.join(dirs.atividade, nomeArquivo);
+                        fs.renameSync(file.path, newPath);
+                        apostilaImagensMovidas.push(`${basePathPublic}/atividade/${nomeArquivo}`);
+                    });
+                }
+
+                // ==========================================
+                // LÓGICA DO VÍDEO E FFMPEG
+                // ==========================================
+                const videoFileOriginal = arquivos['video'] ? arquivos['video'][0] : null;
 
                 let duracaoFinal = duracao_segundos ? parseInt(duracao_segundos) : 0;
                 let thumbPathPublic = null;
-                
+                let videoPathPublic = null;
                 let video_360p_path = null;
                 let video_480p_path = null;
                 let video_720p_path = null;
 
-                if (videoFile) {
-                    const videoPathPhysical = videoFile.path;
-                    const thumbFilename = `thumb-${Date.now()}.jpg`;
-                    const uploadsFolder = path.join(__dirname, 'public', 'uploads');
+                if (videoFileOriginal) {
+                    const videoExt = path.extname(videoFileOriginal.originalname);
+                    const nomeVideo = `video_aula${ordem}${videoExt}`;
+                    const videoPathPhysical = path.join(dirs.root, nomeVideo);
+                    
+                    fs.renameSync(videoFileOriginal.path, videoPathPhysical);
+                    videoPathPublic = `${basePathPublic}/${nomeVideo}`;
 
-                    let alturaOriginal = 1080; // Fallback caso dê erro na leitura
+                    const thumbFilename = `thumb_aula${ordem}.jpg`;
+                    let alturaOriginal = 1080;
 
                     // A. Extração da duração real e Resolução via ffprobe
                     const metadata = await new Promise((resolve, reject) => {
@@ -1380,15 +1519,12 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
 
                     if (metadata && metadata.format && metadata.format.duration) {
                         duracaoFinal = Math.round(metadata.format.duration);
-                        console.log(`[Job ${jobId}] Duração extraída: ${duracaoFinal}s`);
                     }
 
-                    // Achar a altura nativa do vídeo (para pular conversões)
                     if (metadata && metadata.streams) {
                         const videoStream = metadata.streams.find(s => s.codec_type === 'video');
                         if (videoStream && videoStream.height) {
                             alturaOriginal = videoStream.height;
-                            console.log(`[Job ${jobId}] Resolução Original Detectada: ${videoStream.width}x${alturaOriginal}`);
                         }
                     }
 
@@ -1402,37 +1538,34 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
                         segundoAleatorio = Math.floor(Math.random() * duracaoFinal);
                     }
 
-                    // Geração da Thumbnail
                     await new Promise((resolve) => {
                         ffmpeg(videoPathPhysical)
                             .on('end', () => {
-                                thumbPathPublic = '/uploads/' + thumbFilename;
+                                thumbPathPublic = `${basePathPublic}/${thumbFilename}`;
                                 resolve();
                             })
                             .on('error', (err) => {
                                 console.error(`[Job ${jobId}] Erro ao gerar thumbnail:`, err.message);
-                                resolve(); // Resolvemos mesmo com erro para não travar a conversão do vídeo
+                                resolve();
                             })
                             .screenshots({
                                 timestamps: [segundoAleatorio],
                                 filename: thumbFilename,
-                                folder: uploadsFolder,
+                                folder: dirs.root,
                                 size: '400x225'
                             });
                     });
 
-                    // C. LÓGICA DE CONVERSÃO FFMPEG (INTELIGENTE)
-                    console.log(`[Job ${jobId}] Iniciando conversões baseadas na altura: ${alturaOriginal}`);
-                    const baseName = path.parse(videoFile.filename).name;
-
+                    // C. LÓGICA DE CONVERSÃO FFMPEG
                     const converterVideoComProgresso = (input, resolucao) => {
                         return new Promise((resolve, reject) => {
-                            const output = path.join(uploadsFolder, `${baseName}_${resolucao}p.mp4`);
-                            
+                            const outputFilename = `video_aula${ordem}_${resolucao}p.mp4`;
+                            const outputPhysical = path.join(dirs.root, outputFilename);
+
                             global.tarefasProcessamento[jobId].steps[`${resolucao}p`] = 0;
 
                             ffmpeg(input)
-                                .output(output)
+                                .output(outputPhysical)
                                 .videoCodec('libx264')
                                 .audioCodec('aac')
                                 .size(`?x${resolucao}`)
@@ -1445,7 +1578,7 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
                                 })
                                 .on('end', () => {
                                     global.tarefasProcessamento[jobId].steps[`${resolucao}p`] = 'done';
-                                    resolve(`/uploads/${path.basename(output)}`);
+                                    resolve(`${basePathPublic}/${outputFilename}`); 
                                 })
                                 .on('error', (err) => {
                                     console.error(`[Job ${jobId}] Erro conversão ${resolucao}p:`, err.message);
@@ -1457,69 +1590,45 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
 
                     let promessasConversao = [];
 
-                    // Só converte para 360p se o vídeo for estritamente MAIOR que 360p.
                     if (alturaOriginal > 360) {
                         promessasConversao.push(converterVideoComProgresso(videoPathPhysical, 360).then(url => video_360p_path = url));
-                    } else {
-                        global.tarefasProcessamento[jobId].steps['360p'] = 'done'; 
-                        console.log(`[Job ${jobId}] Vídeo já é ${alturaOriginal}p. Ignorando conversão 360p.`);
-                    }
+                    } else { global.tarefasProcessamento[jobId].steps['360p'] = 'done'; }
 
-                    // Só converte para 480p se o vídeo for estritamente MAIOR que 480p.
                     if (alturaOriginal > 480) {
                         promessasConversao.push(converterVideoComProgresso(videoPathPhysical, 480).then(url => video_480p_path = url));
-                    } else {
-                        global.tarefasProcessamento[jobId].steps['480p'] = 'done';
-                        console.log(`[Job ${jobId}] Vídeo já é ${alturaOriginal}p. Ignorando conversão 480p.`);
-                    }
+                    } else { global.tarefasProcessamento[jobId].steps['480p'] = 'done'; }
 
-                    // Só converte para 720p se o vídeo for estritamente MAIOR que 720p.
                     if (alturaOriginal > 720) {
                         promessasConversao.push(converterVideoComProgresso(videoPathPhysical, 720).then(url => video_720p_path = url));
-                    } else {
-                        global.tarefasProcessamento[jobId].steps['720p'] = 'done';
-                        console.log(`[Job ${jobId}] Vídeo já é ${alturaOriginal}p. Ignorando conversão 720p.`);
-                    }
+                    } else { global.tarefasProcessamento[jobId].steps['720p'] = 'done'; }
 
                     await Promise.all(promessasConversao);
                 }
 
                 // ==========================================
-                // 4. SALVANDO TUDO NA BASE DE DADOS
+                // 4. ATUALIZANDO BASE DE DADOS
                 // ==========================================
-                const arquivoAdicionalPath = arquivos['arquivo_adicional'] ? '/uploads/' + arquivos['arquivo_adicional'][0].filename : null;
-                const videoPath = videoFile ? '/uploads/' + videoFile.filename : null;
-                const avaliacaoPath = arquivos['avaliacao'] ? '/uploads/' + arquivos['avaliacao'][0].filename : null;
-
-                // Tabela 'aulas'
-                const [resultadoAula] = await db.execute(
-                    `INSERT INTO aulas (modulo_id, titulo, ordem, descricao, duracao_segundos, video_thumb_path, arquivo_adicional_url) 
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-                    [moduloId, titulo, parseInt(ordem), descricao || null, duracaoFinal, thumbPathPublic, arquivoAdicionalPath]
+                await db.execute(
+                    `UPDATE aulas SET duracao_segundos = ?, video_thumb_path = ?, arquivo_adicional_url = ? WHERE id = ?`,
+                    [duracaoFinal, thumbPathPublic, arquivoAdicionalPublicPath, aulaId]
                 );
 
-                const aulaId = resultadoAula.insertId;
-
-                // Tabela 'aula_conteudos'
                 await db.execute(
                     `INSERT INTO aula_conteudos (aula_id, video_path, video_360p_path, video_480p_path, video_720p_path, avaliacao_json_path) 
                      VALUES (?, ?, ?, ?, ?, ?)`,
-                    [aulaId, videoPath, video_360p_path, video_480p_path, video_720p_path, avaliacaoPath]
+                    [aulaId, videoPathPublic, video_360p_path, video_480p_path, video_720p_path, avaliacaoPublicPath]
                 );
 
-                // Processa apostila
-                if (arquivos['apostila']) {
-                    for (let i = 0; i < arquivos['apostila'].length; i++) {
+                // Processa imagens da apostila/atividade
+                if (apostilaImagensMovidas.length > 0) {
+                    for (let i = 0; i < apostilaImagensMovidas.length; i++) {
                         await db.execute(
                             `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
-                            [aulaId, '/uploads/' + arquivos['apostila'][i].filename, i + 1]
+                            [aulaId, apostilaImagensMovidas[i], i + 1]
                         );
                     }
                 }
 
-                // ==========================================
-                // 5. MARCAR JOB COMO CONCLUÍDO (Avisa o front-end para exibir sucesso)
-                // ==========================================
                 global.tarefasProcessamento[jobId].status = 'completed';
                 console.log(`[Job ${jobId}] Aula salva e publicada com sucesso!`);
 
@@ -1527,11 +1636,131 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
                 console.error(`[Job ${jobId}] FALHA CRÍTICA NO PROCESSAMENTO:`, jobError);
                 global.tarefasProcessamento[jobId].status = 'error';
             }
-        })(); // Fim do Background Job
+        })();
 
     } catch (error) {
         console.error('Erro geral ao inicializar o job da aula:', error);
         res.status(500).json({ success: false, message: 'Erro interno ao iniciar o processamento da aula.' });
+    }
+});
+
+
+// ==========================================
+// EDIÇÃO DA AULA
+// ==========================================
+app.post('/admin/aulas/:id/editar', verificarAdmin, uploadAula.fields([
+    { name: 'video', maxCount: 1 },
+    { name: 'avaliacao', maxCount: 1 },
+    { name: 'apostila', maxCount: 20 },
+    { name: 'arquivo_adicional', maxCount: 1 }
+]), async (req, res) => {
+    const aulaId = req.params.id;
+    const { titulo, ordem, duracao_segundos, descricao, video_atual, avaliacao_atual, arquivo_adicional_atual } = req.body;
+    const adminId = req.session.usuario.id;
+
+    try {
+        const [aulaQuery] = await db.execute(`
+            SELECT m.curso_id, c.titulo as curso_titulo 
+            FROM aulas a 
+            JOIN modulos m ON a.modulo_id = m.id 
+            JOIN cursos c ON m.curso_id = c.id 
+            WHERE a.id = ?
+        `, [aulaId]);
+        
+        const cursoId = aulaQuery[0].curso_id;
+        const cursoTitulo = aulaQuery[0].curso_titulo;
+
+        // Montagem das Pastas Base
+        const folderCurso = `${cursoId}_${sanitizeFolderName(cursoTitulo)}`;
+        const folderAula = `aula${ordem}(${sanitizeFolderName(titulo)})`;
+        
+        const baseTargetDir = path.join(__dirname, 'public', 'uploads', 'cursos', folderCurso, folderAula);
+        const basePathPublic = `/uploads/cursos/${folderCurso}/${folderAula}`;
+
+        const dirs = {
+            root: baseTargetDir,
+            atividade: path.join(baseTargetDir, 'atividade'),
+            avaliacao: path.join(baseTargetDir, 'avaliacao'),
+            material: path.join(baseTargetDir, 'material')
+        };
+
+        Object.values(dirs).forEach(dir => {
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        });
+
+        const arquivos = req.files || {};
+
+        // --- ARQUIVO ADICIONAL ---
+        let arquivoAdicionalPath = arquivo_adicional_atual || null;
+        if (arquivos['arquivo_adicional']) {
+            const file = arquivos['arquivo_adicional'][0];
+            const newPath = path.join(dirs.material, file.filename);
+            fs.renameSync(file.path, newPath);
+            arquivoAdicionalPath = `${basePathPublic}/material/${file.filename}`;
+        }
+
+        // --- AVALIAÇÃO JSON ---
+        let avaliacaoPath = avaliacao_atual || null;
+        if (arquivos['avaliacao']) {
+            const file = arquivos['avaliacao'][0];
+            const newPath = path.join(dirs.avaliacao, 'avaliacao.json');
+            fs.renameSync(file.path, newPath);
+            avaliacaoPath = `${basePathPublic}/avaliacao/avaliacao.json`;
+        }
+
+        // --- VÍDEO PRINCIPAL ---
+        let videoPath = video_atual || null;
+        if (arquivos['video']) {
+            const file = arquivos['video'][0];
+            const ext = path.extname(file.originalname);
+            const nomeVideo = `video_aula${ordem}${ext}`;
+            const newPath = path.join(dirs.root, nomeVideo);
+            fs.renameSync(file.path, newPath);
+            videoPath = `${basePathPublic}/${nomeVideo}`;
+        }
+
+        await db.execute(
+            `UPDATE aulas SET titulo = ?, ordem = ?, descricao = ?, duracao_segundos = ?, arquivo_adicional_url = ? WHERE id = ?`,
+            [titulo, parseInt(ordem), descricao || null, duracao_segundos ? parseInt(duracao_segundos) : null, arquivoAdicionalPath, aulaId]
+        );
+
+        await db.execute(
+            `UPDATE aula_conteudos SET video_path = ?, avaliacao_json_path = ? WHERE aula_id = ?`,
+            [videoPath, avaliacaoPath, aulaId]
+        );
+
+        // --- APOSTILA (Atividade) ---
+        if (arquivos['apostila'] && arquivos['apostila'].length > 0) {
+            await db.execute('DELETE FROM apostila_imagens WHERE aula_id = ?', [aulaId]);
+
+            let ordemImagem = 1;
+            for (const img of arquivos['apostila']) {
+                const ext = path.extname(img.originalname);
+                const nomeArquivo = `${ordemImagem}${ext}`;
+                const newPath = path.join(dirs.atividade, nomeArquivo);
+                fs.renameSync(img.path, newPath);
+                
+                await db.execute(
+                    `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
+                    [aulaId, `${basePathPublic}/atividade/${nomeArquivo}`, ordemImagem]
+                );
+                ordemImagem++;
+            }
+        }
+
+        await db.execute(
+            `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, ip) VALUES (?, 'EDITAR_AULA', 'aulas', ?, ?)`,
+            [adminId, aulaId, req.ip || req.socket.remoteAddress]
+        );
+
+        res.redirect(`/admin/cursos/${cursoId}`);
+
+    } catch (error) {
+        console.error('Erro ao editar aula:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.send('<h2>Erro: Já existe uma aula com esta ordem neste módulo.</h2><a href="javascript:history.back()">Voltar</a>');
+        }
+        res.status(500).send('Erro ao atualizar a aula.');
     }
 });
 
@@ -1642,88 +1871,6 @@ app.get('/admin/aulas/:id/editar', verificarAdmin, async (req, res) => {
     }
 });
 
-// POST: Processa a edição da aula
-app.post('/admin/aulas/:id/editar', verificarAdmin, uploadAula.fields([
-    { name: 'video', maxCount: 1 },
-    { name: 'avaliacao', maxCount: 1 },
-    { name: 'apostila', maxCount: 20 },
-    { name: 'arquivo_adicional', maxCount: 1 } // Multer permitindo o arquivo
-]), async (req, res) => {
-    const aulaId = req.params.id;
-    // Adicionamos a extração do arquivo_adicional_atual
-    const { titulo, ordem, duracao_segundos, descricao, video_atual, avaliacao_atual, arquivo_adicional_atual } = req.body;
-    const adminId = req.session.usuario.id;
-
-    try {
-        // 1. Precisamos do curso_id para redirecionar depois
-        const [aulaQuery] = await db.execute(`
-            SELECT m.curso_id FROM aulas a JOIN modulos m ON a.modulo_id = m.id WHERE a.id = ?
-        `, [aulaId]);
-        const cursoId = aulaQuery[0].curso_id;
-
-        const arquivos = req.files || {};
-
-        // --- NOVIDADE AQUI: Lógica do arquivo adicional ---
-        // Se enviou um novo .zip, pega o caminho novo. Se não, mantém o caminho que já estava salvo.
-        const arquivoAdicionalPath = arquivos['arquivo_adicional']
-            ? '/uploads/' + arquivos['arquivo_adicional'][0].filename
-            : (arquivo_adicional_atual || null);
-
-        // 2. Atualizar dados básicos da tabela 'aulas' (AGORA INCLUINDO O ARQUIVO ADICIONAL)
-        await db.execute(
-            `UPDATE aulas SET titulo = ?, ordem = ?, descricao = ?, duracao_segundos = ?, arquivo_adicional_url = ? WHERE id = ?`,
-            [
-                titulo,
-                parseInt(ordem),
-                descricao || null,
-                duracao_segundos ? parseInt(duracao_segundos) : null,
-                arquivoAdicionalPath, // Passando a URL do arquivo
-                aulaId
-            ]
-        );
-
-        // 3. Processar vídeos e avaliações
-        const videoPath = arquivos['video'] ? '/uploads/' + arquivos['video'][0].filename : (video_atual || null);
-        const avaliacaoPath = arquivos['avaliacao'] ? '/uploads/' + arquivos['avaliacao'][0].filename : (avaliacao_atual || null);
-
-        // Atualiza a tabela 'aula_conteudos'
-        await db.execute(
-            `UPDATE aula_conteudos SET video_path = ?, avaliacao_json_path = ? WHERE aula_id = ?`,
-            [videoPath, avaliacaoPath, aulaId]
-        );
-
-        // 4. Se enviou novas imagens de apostila, deleta as antigas e insere as novas
-        if (arquivos['apostila'] && arquivos['apostila'].length > 0) {
-            await db.execute('DELETE FROM apostila_imagens WHERE aula_id = ?', [aulaId]);
-
-            let ordemImagem = 1;
-            for (const img of arquivos['apostila']) {
-                const imgPath = '/uploads/' + img.filename;
-                await db.execute(
-                    `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
-                    [aulaId, imgPath, ordemImagem]
-                );
-                ordemImagem++;
-            }
-        }
-
-        // 5. Registar log de auditoria
-        await db.execute(
-            `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, ip) VALUES (?, 'EDITAR_AULA', 'aulas', ?, ?)`,
-            [adminId, aulaId, req.ip || req.socket.remoteAddress]
-        );
-
-        res.redirect(`/admin/cursos/${cursoId}`);
-
-    } catch (error) {
-        console.error('Erro ao editar aula:', error);
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.send('<h2>Erro: Já existe uma aula com esta ordem neste módulo.</h2><a href="javascript:history.back()">Voltar</a>');
-        }
-        res.status(500).send('Erro ao atualizar a aula.');
-    }
-});
-
 // ==========================================
 // ROTAS DE EXCLUSÃO (CASCATA)
 // ==========================================
@@ -1774,7 +1921,7 @@ app.post('/admin/cursos/:id/excluir', verificarAdmin, async (req, res) => {
         // 5. O Comando Final: Exclui o curso (agora o MySQL vai permitir!)
         await db.execute('DELETE FROM cursos WHERE id = ?', [cursoId]);
 
-        res.redirect('/admin');
+        res.redirect('/admin/cursos');
     } catch (error) {
         console.error('Erro ao excluir curso:', error);
         res.status(500).send('Erro interno ao tentar excluir o curso.');
@@ -1892,9 +2039,9 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
                 GROUP BY u.id
             ) AS user_stats
         `;
-        
+
         const [statsResult] = await db.execute(statsQuery, queryParams);
-        
+
         const filterCounts = {
             todos: Number(statsResult[0].todos || 0),
             ativos: Number(statsResult[0].ativos || 0),
@@ -2011,14 +2158,14 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
         }));
 
         const renderAdminUsuariosView = require('./views/adminUsuariosView');
-        
+
         res.send(renderAdminUsuariosView(
-            req.session.usuario, 
-            usuariosComKPIs, 
-            currentPage, 
-            totalPages, 
-            search, 
-            currentFilter, 
+            req.session.usuario,
+            usuariosComKPIs,
+            currentPage,
+            totalPages,
+            search,
+            currentFilter,
             filterCounts
         ));
 
@@ -2272,7 +2419,6 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
         const [modulos] = await db.execute('SELECT * FROM modulos WHERE curso_id = ? ORDER BY ordem ASC', [cursoId]);
 
         // 2. Busca Aulas, Progresso, Nota Máxima, Thumb Real e Tempo Assistido
-        // Query atualizada para puxar todas as novas colunas que criámos.
         const [aulas] = await db.execute(`
             SELECT 
                 a.*, 
@@ -2288,7 +2434,7 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
             ORDER BY m.ordem ASC, a.ordem ASC
         `, [matriculaId, matriculaId, cursoId]);
 
-        // LÓGICA DE BLOQUEIO LINEAR (INTER-AULAS) - Mantida
+        // LÓGICA DE BLOQUEIO LINEAR (INTER-AULAS)
         let anteriorConcluida = true;
         aulas.forEach(aula => {
             aula.isLiberada = anteriorConcluida;
@@ -2299,7 +2445,7 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
 
         modulos.forEach(modulo => modulo.aulas = aulas.filter(aula => aula.modulo_id === modulo.id));
 
-        // Determinar a Aula Atual - Mantida
+        // Determinar a Aula Atual
         let aulaAtual = null;
         if (aulas.length > 0) {
             if (aulaParamId) {
@@ -2328,7 +2474,7 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
             const [tentativasQuery] = await db.execute('SELECT COUNT(*) as qtd FROM avaliacao_tentativas WHERE matricula_id = ? AND aula_id = ?', [matriculaId, aulaAtual.id]);
             tentativasUsadas = tentativasQuery[0].qtd || 0;
 
-            // LER O ARQUIVO JSON DA AVALIAÇÃO - Mantida
+            // LER O ARQUIVO JSON DA AVALIAÇÃO
             if (conteudosAtual && conteudosAtual.avaliacao_json_path) {
                 try {
                     const fs = require('fs');
@@ -2346,7 +2492,6 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
 
         let notasSalvas = [];
         if (aulaAtual) {
-            // Busca as notas que o aluno fez nesta aula específica
             const [notasQuery] = await db.execute(
                 'SELECT id, tempo_segundos, texto FROM aula_notas WHERE matricula_id = ? AND aula_id = ? ORDER BY tempo_segundos ASC',
                 [matriculaId, aulaAtual.id]
@@ -2354,12 +2499,73 @@ app.get(['/aluno/cursos/:cursoId/aula', '/aluno/cursos/:cursoId/aula/:aulaId'], 
             notasSalvas = notasQuery;
         }
 
-        // Atualizamos o render para enviar o notasSalvas no final
-        res.send(renderAlunoSalaAulaView(req.session.usuario, curso, modulos, aulaAtual, conteudosAtual, imagensApostila, matriculas[0], progressoPercentual, tentativasUsadas, avaliacaoData, notasSalvas));
+        // ==========================================
+        // NOVA LÓGICA: AVALIAÇÃO OBRIGATÓRIA NO FINAL DO CURSO
+        // ==========================================
+        let isUltimaAula = false;
+        let jaAvaliouCurso = false;
+
+        if (aulas.length > 0 && aulaAtual) {
+            const ultimaAulaDoCurso = aulas[aulas.length - 1];
+            isUltimaAula = (aulaAtual.id === ultimaAulaDoCurso.id);
+
+            // Se o aluno está na última aula, verifica se ele já avaliou o curso
+            if (isUltimaAula) {
+                const [avalExistente] = await db.execute(
+                    'SELECT id FROM avaliacoes_curso WHERE curso_id = ? AND aluno_id = ?',
+                    [cursoId, alunoId]
+                );
+                jaAvaliouCurso = avalExistente.length > 0;
+            }
+        }
+
+        // Passa as novas variáveis (isUltimaAula e jaAvaliouCurso) para a view
+        res.send(renderAlunoSalaAulaView(
+            req.session.usuario, curso, modulos, aulaAtual, conteudosAtual,
+            imagensApostila, matriculas[0], progressoPercentual, tentativasUsadas,
+            avaliacaoData, notasSalvas, isUltimaAula, jaAvaliouCurso
+        ));
 
     } catch (error) {
         console.error('Erro ao carregar sala de aula:', error);
         res.status(500).send('Erro interno ao carregar o curso.');
+    }
+});
+
+// POST: Receber Avaliação Final do Curso (Estrelas e Comentário)
+app.post('/aluno/cursos/:cursoId/avaliar', verificarAluno, async (req, res) => {
+    const cursoId = req.params.cursoId;
+    const alunoId = req.session.usuario.id;
+    const { nota, comentario } = req.body;
+
+    try {
+        if (!nota || isNaN(nota) || nota < 1 || nota > 5) {
+            return res.status(400).json({ success: false, message: 'Nota inválida. Selecione de 1 a 5 estrelas.' });
+        }
+
+        // Verifica se o aluno tem matrícula no curso (segurança)
+        const [matriculas] = await db.execute('SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ?', [alunoId, cursoId]);
+        if (matriculas.length === 0) {
+            return res.status(403).json({ success: false, message: 'Não matriculado.' });
+        }
+
+        // Verifica se já não avaliou antes (para evitar duplo clique)
+        const [avalExistente] = await db.execute('SELECT id FROM avaliacoes_curso WHERE curso_id = ? AND aluno_id = ?', [cursoId, alunoId]);
+        if (avalExistente.length > 0) {
+            return res.status(400).json({ success: false, message: 'Você já avaliou este curso.' });
+        }
+
+        // Salva na base de dados
+        await db.execute(
+            'INSERT INTO avaliacoes_curso (curso_id, aluno_id, nota, comentario) VALUES (?, ?, ?, ?)',
+            [cursoId, alunoId, nota, comentario || null]
+        );
+
+        res.json({ success: true, message: 'Avaliação salva com sucesso!' });
+
+    } catch (error) {
+        console.error('Erro ao salvar avaliação do curso:', error);
+        res.status(500).json({ success: false, message: 'Erro interno no servidor.' });
     }
 });
 
@@ -3103,7 +3309,7 @@ app.get('/aluno', verificarAluno, async (req, res) => {
             // Se o aluno atingiu a meta E o ID não estiver nos idsSalvos do banco de dados:
             if (regra.atingiu && !idsSalvos.includes(regra.id)) {
                 await db.execute('INSERT INTO aluno_conquistas (aluno_id, conquista_id, data_desbloqueio) VALUES (?, ?, NOW())', [alunoId, regra.id]);
-                
+
                 // Define apenas a primeira conquista detectada nesta requisição para não abrir vários modais ao mesmo tempo
                 if (!novaConquistaDetectada) {
                     novaConquistaDetectada = { icone: regra.icone, titulo: regra.titulo, descricao: regra.desc };
@@ -3244,25 +3450,25 @@ app.get('/aluno/conquistas', verificarAluno, async (req, res) => {
 
 app.post('/aluno/api/conquistas/mentor-bot', verificarAluno, async (req, res) => {
     const alunoId = req.session.usuario.id;
-    
+
     try {
         // Tenta registar ou verificar se o aluno já tem a conquista
         // O ideal é você ter uma tabela 'aluno_conquistas' (aluno_id, conquista_id, data_desbloqueio)
-        
+
         const [existente] = await db.execute(
-            'SELECT id FROM aluno_conquistas WHERE aluno_id = ? AND conquista_id = ?', 
+            'SELECT id FROM aluno_conquistas WHERE aluno_id = ? AND conquista_id = ?',
             [alunoId, 'desafio_mentor']
         );
-        
+
         if (existente.length === 0) {
             // Se não tinha a conquista ainda, salva no banco!
             await db.execute(
-                'INSERT INTO aluno_conquistas (aluno_id, conquista_id, data_desbloqueio) VALUES (?, ?, NOW())', 
+                'INSERT INTO aluno_conquistas (aluno_id, conquista_id, data_desbloqueio) VALUES (?, ?, NOW())',
                 [alunoId, 'desafio_mentor']
             );
             return res.json({ success: true, nova: true, message: "Conquista desbloqueada!" });
         }
-        
+
         // Se já tinha, não faz nada mas retorna sucesso
         res.json({ success: true, nova: false, message: "Conquista já estava desbloqueada." });
 

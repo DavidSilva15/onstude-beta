@@ -2,146 +2,223 @@
 
 function renderToastProcessamento() {
     return `
-    <div class="toast-container position-fixed bottom-0 end-0 p-4" style="z-index: 1080;">
-        <div id="universalProcessingToast" class="toast align-items-center text-bg-dark border-0 shadow-lg rounded-4" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-            <div class="toast-header bg-dark text-white border-secondary border-opacity-25 rounded-top-4">
-                <div class="spinner-border spinner-border-sm text-primary me-2" role="status" id="toastSpinner"></div>
-                <i class="bi bi-check-circle-fill text-success me-2 d-none" id="toastCheck"></i>
-                <i class="bi bi-x-circle-fill text-danger me-2 d-none" id="toastError"></i>
-                <strong class="me-auto" id="toastProcessTitle">Processamento em Segundo Plano</strong>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close" onclick="ocultarToastProcessamento()"></button>
-            </div>
-            <div class="toast-body p-3">
-                <p id="toastProcessMsg" class="mb-3 small text-light">Verificando tarefas ativas...</p>
-                <div class="progress mb-2 bg-secondary bg-opacity-25 rounded-pill" style="height: 6px;">
-                    <div id="toastProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
-                </div>
-                
-                <div id="toastStages" class="d-flex justify-content-between mt-3 px-1 d-none">
-                    <div id="t_stage_up" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-cloud-arrow-up mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">Upload</span></div>
-                    <div id="t_stage_360" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">360p</span></div>
-                    <div id="t_stage_480" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">480p</span></div>
-                    <div id="t_stage_720" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">720p</span></div>
-                </div>
-            </div>
-        </div>
+    <div id="dynamicToastContainer" class="toast-container position-fixed bottom-0 end-0 p-4" style="z-index: 1080;">
     </div>
 
     <style>
         .toast-stage-item { transition: all 0.3s ease; }
+        .toast { transition: opacity 0.3s ease; }
     </style>
 
     <script>
         window.GerenciadorProcessamento = {
-            toastEl: null,
-            toast: null,
             pollInterval: null,
+            tempUploadId: null,
+            reloadScheduled: false, // Evita múltiplos reloads se 2 vídeos terminarem ao mesmo tempo
             
             init: function() {
-                this.toastEl = document.getElementById('universalProcessingToast');
+                // Migração de segurança caso o administrador tenha um job antigo na memória
+                const oldJob = localStorage.getItem('onstude_active_job');
+                if (oldJob) {
+                    this.addActiveJob(oldJob);
+                    localStorage.removeItem('onstude_active_job');
+                }
+                
                 this.verificarTarefas();
             },
 
-            show: function() {
-                if(!this.toast) this.toast = new bootstrap.Toast(this.toastEl);
-                this.toast.show();
+            // --- Lógica de Memória Local (Suporta Múltiplos Jobs) ---
+            getActiveJobs: function() {
+                try { return JSON.parse(localStorage.getItem('onstude_active_jobs')) || []; }
+                catch(e) { return []; }
+            },
+            
+            addActiveJob: function(id) {
+                let jobs = this.getActiveJobs();
+                if (!jobs.includes(id)) jobs.push(id);
+                localStorage.setItem('onstude_active_jobs', JSON.stringify(jobs));
+            },
+            
+            removeActiveJob: function(id) {
+                let jobs = this.getActiveJobs();
+                jobs = jobs.filter(j => j !== id);
+                localStorage.setItem('onstude_active_jobs', JSON.stringify(jobs));
             },
 
-            hide: function() {
-                if(this.toast) this.toast.hide();
+            // --- Geração do HTML do Toast ---
+            getToastHTML: function(id) {
+                return \`
+                <div id="toast_\${id}" class="toast align-items-center text-bg-dark border-0 shadow-lg rounded-4 show mb-3" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+                    <div class="toast-header bg-dark text-white border-secondary border-opacity-25 rounded-top-4">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status" id="toastSpinner_\${id}"></div>
+                        <i class="bi bi-check-circle-fill text-success me-2 d-none" id="toastCheck_\${id}"></i>
+                        <i class="bi bi-x-circle-fill text-danger me-2 d-none" id="toastError_\${id}"></i>
+                        <strong class="me-auto" id="toastProcessTitle_\${id}">Processamento em Segundo Plano</strong>
+                        <button type="button" class="btn-close btn-close-white" aria-label="Close" onclick="window.GerenciadorProcessamento.fecharToast('\${id}')"></button>
+                    </div>
+                    <div class="toast-body p-3">
+                        <p id="toastProcessMsg_\${id}" class="mb-3 small text-light">Verificando tarefas ativas...</p>
+                        <div class="progress mb-2 bg-secondary bg-opacity-25 rounded-pill" style="height: 6px;">
+                            <div id="toastProgressBar_\${id}" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                        
+                        <div id="toastStages_\${id}" class="d-flex justify-content-between mt-3 px-1 d-none">
+                            <div id="t_stage_up_\${id}" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-cloud-arrow-up mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">Upload</span></div>
+                            <div id="t_stage_360_\${id}" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">360p</span></div>
+                            <div id="t_stage_480_\${id}" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">480p</span></div>
+                            <div id="t_stage_720_\${id}" class="text-center text-white-50 toast-stage-item" style="width: 25%;"><i class="bi bi-hourglass mb-1 fs-5 d-block"></i><span style="font-size: 0.65rem; font-weight: bold;">720p</span></div>
+                        </div>
+                    </div>
+                </div>\`;
             },
 
-            // Chamado pela página de Upload enquanto envia os dados pro Backend
+            fecharToast: function(id) {
+                const el = document.getElementById('toast_' + id);
+                if(el) {
+                    el.classList.remove('show');
+                    setTimeout(() => el.remove(), 300); // Aguarda animação de opacidade para remover do DOM
+                }
+            },
+
+            // --- Lógica de Upload e Sincronização ---
             iniciarUpload: function(hasVideo) {
-                this.show();
-                document.getElementById('toastProcessTitle').innerText = "Enviando Arquivos...";
-                document.getElementById('toastProcessTitle').classList.remove('text-success', 'text-danger');
-                document.getElementById('toastProcessMsg').innerHTML = '<strong class="text-white">Aguarde.</strong> Por favor, não feche a página até o upload terminar.';
-                if (hasVideo) document.getElementById('toastStages').classList.remove('d-none');
+                this.tempUploadId = 'TEMP_UPLOAD_' + Date.now(); // ID temporário enquanto o backend não responde
+                document.getElementById('dynamicToastContainer').insertAdjacentHTML('beforeend', this.getToastHTML(this.tempUploadId));
+                
+                document.getElementById('toastProcessTitle_' + this.tempUploadId).innerText = "Enviando Arquivos...";
+                document.getElementById('toastProcessTitle_' + this.tempUploadId).classList.remove('text-success', 'text-danger');
+                document.getElementById('toastProcessMsg_' + this.tempUploadId).innerHTML = '<strong class="text-white">Aguarde.</strong> Por favor, não feche a página até o upload terminar.';
+                
+                if (hasVideo) document.getElementById('toastStages_' + this.tempUploadId).classList.remove('d-none');
             },
 
             atualizarProgressoUpload: function(percent) {
-                document.getElementById('toastProgressBar').style.width = percent + '%';
-                if (percent >= 100) this.atualizarStatusEtapa('up', 'done', 'Upload');
+                if (!this.tempUploadId) return;
+                const progressBar = document.getElementById('toastProgressBar_' + this.tempUploadId);
+                if (progressBar) progressBar.style.width = percent + '%';
+                
+                if (percent >= 100) this.atualizarStatusEtapa(this.tempUploadId, 'up', 'done', 'Upload');
             },
 
-            // Salva o Job ID e começa a perguntar ao servidor pelo status da conversão (Polling)
             registrarTarefaBackend: function(jobId) {
-                localStorage.setItem('onstude_active_job', jobId);
+                // Se existe um toast temporário de upload, substitui o ID dele pelo JobID real que o Backend enviou
+                if (this.tempUploadId) {
+                    const oldToast = document.getElementById('toast_' + this.tempUploadId);
+                    if (oldToast) {
+                        oldToast.outerHTML = oldToast.outerHTML.replaceAll(this.tempUploadId, jobId);
+                    }
+                    this.tempUploadId = null;
+                } else {
+                    // Se não existia (caso seja acionado externamente), cria um novo
+                    if (!document.getElementById('toast_' + jobId)) {
+                        document.getElementById('dynamicToastContainer').insertAdjacentHTML('beforeend', this.getToastHTML(jobId));
+                    }
+                }
+
+                this.addActiveJob(jobId);
                 this.iniciarPolling();
             },
 
             verificarTarefas: function() {
-                const activeJob = localStorage.getItem('onstude_active_job');
-                if (activeJob) {
-                    this.show();
+                const jobs = this.getActiveJobs();
+                if (jobs.length > 0) {
+                    jobs.forEach(jobId => {
+                        if (!document.getElementById('toast_' + jobId)) {
+                            document.getElementById('dynamicToastContainer').insertAdjacentHTML('beforeend', this.getToastHTML(jobId));
+                        }
+                    });
                     this.iniciarPolling();
                 }
             },
 
             iniciarPolling: function() {
-                if(this.pollInterval) clearInterval(this.pollInterval);
+                if (this.pollInterval) clearInterval(this.pollInterval);
                 
                 this.pollInterval = setInterval(() => {
-                    const jobId = localStorage.getItem('onstude_active_job');
-                    if(!jobId) { clearInterval(this.pollInterval); return; }
+                    const jobs = this.getActiveJobs();
+                    if (jobs.length === 0) { 
+                        clearInterval(this.pollInterval); 
+                        return; 
+                    }
 
-                    fetch('/api/processamento/status/' + jobId)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                this.renderizarStatusReal(data.job);
-                                if (data.job.status === 'completed' || data.job.status === 'error') {
-                                    clearInterval(this.pollInterval);
-                                    localStorage.removeItem('onstude_active_job');
+                    jobs.forEach(jobId => {
+                        fetch('/api/processamento/status/' + jobId)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    this.renderizarStatusReal(jobId, data.job);
+                                    if (data.job.status === 'completed' || data.job.status === 'error') {
+                                        this.removeActiveJob(jobId);
+                                    }
+                                } else {
+                                    // Job não existe mais no servidor
+                                    this.removeActiveJob(jobId);
+                                    this.fecharToast(jobId);
                                 }
-                            } else {
-                                clearInterval(this.pollInterval);
-                                localStorage.removeItem('onstude_active_job');
-                                this.hide();
-                            }
-                        })
-                        .catch(err => console.error('Erro no polling:', err));
-                }, 1500); // Pergunta ao backend a cada 1.5s
+                            })
+                            .catch(err => console.error('Erro no polling do Job ' + jobId + ':', err));
+                    });
+                }, 1500); 
             },
 
-            renderizarStatusReal: function(job) {
-                document.getElementById('toastStages').classList.remove('d-none');
-                document.getElementById('toastProgressBar').style.width = '100%';
-                this.atualizarStatusEtapa('up', 'done', 'Upload');
+            renderizarStatusReal: function(jobId, job) {
+                const stagesEl = document.getElementById('toastStages_' + jobId);
+                if(!stagesEl) return; // Toast pode ter sido fechado pelo usuário
+
+                stagesEl.classList.remove('d-none');
+                document.getElementById('toastProgressBar_' + jobId).style.width = '100%';
+                this.atualizarStatusEtapa(jobId, 'up', 'done', 'Upload');
 
                 if (job.status === 'processing') {
-                    document.getElementById('toastProcessTitle').innerText = "Convertendo aula";
-                    document.getElementById('toastProcessMsg').innerHTML = '<strong class="text-info"></strong> Convertendo aula.';
+                    document.getElementById('toastProcessTitle_' + jobId).innerText = "Convertendo aula";
+                    document.getElementById('toastProcessMsg_' + jobId).innerHTML = '<strong class="text-info"></strong> Processando em segundo plano.';
                     
                     ['360', '480', '720'].forEach(res => {
                         const step = job.steps[res + 'p'];
-                        if (step === 'done') this.atualizarStatusEtapa(res, 'done', res + 'p');
-                        else if (step === 'pending') this.atualizarStatusEtapa(res, 'pending', res + 'p');
-                        else this.atualizarStatusEtapa(res, step, res + 'p'); // Envia a % em tempo real
+                        if (step === 'done') this.atualizarStatusEtapa(jobId, res, 'done', res + 'p');
+                        else if (step === 'pending') this.atualizarStatusEtapa(jobId, res, 'pending', res + 'p');
+                        else this.atualizarStatusEtapa(jobId, res, step, res + 'p'); // Envia a % em tempo real
                     });
-                } else if (job.status === 'completed') {
-                    document.getElementById('toastProcessTitle').innerText = "Aula Publicada!";
-                    document.getElementById('toastProcessTitle').classList.add('text-success');
-                    document.getElementById('toastSpinner').classList.add('d-none');
-                    document.getElementById('toastCheck').classList.remove('d-none');
-                    document.getElementById('toastProgressBar').classList.replace('bg-primary', 'bg-success');
-                    document.getElementById('toastProcessMsg').innerHTML = '<strong class="text-white">Upload concluído!</strong> Aula já está disponível para os alunos.';
                     
-                    ['360', '480', '720'].forEach(res => this.atualizarStatusEtapa(res, 'done', res + 'p'));
-                    setTimeout(() => this.hide(), 8000);
+                } else if (job.status === 'completed') {
+                    document.getElementById('toastProcessTitle_' + jobId).innerText = "Aula Publicada!";
+                    document.getElementById('toastProcessTitle_' + jobId).classList.add('text-success');
+                    document.getElementById('toastSpinner_' + jobId).classList.add('d-none');
+                    document.getElementById('toastCheck_' + jobId).classList.remove('d-none');
+                    document.getElementById('toastProgressBar_' + jobId).classList.replace('bg-primary', 'bg-success');
+                    document.getElementById('toastProcessMsg_' + jobId).innerHTML = '<strong class="text-white">Upload concluído!</strong> A aula já está disponível para os alunos.';
+                    
+                    ['360', '480', '720'].forEach(res => this.atualizarStatusEtapa(jobId, res, 'done', res + 'p'));
+                    
+                    setTimeout(() => this.fecharToast(jobId), 8000);
+
+                    // ========================================================
+                    // Redirecionamento ou Reload automático
+                    // ========================================================
+                    if (!this.reloadScheduled) {
+                        this.reloadScheduled = true;
+                        setTimeout(() => {
+                            const urlAtual = window.location.pathname;
+                            if (urlAtual.startsWith('/admin/cursos')) {
+                                window.location.reload();
+                            } else {
+                                window.location.href = '/admin/cursos';
+                            }
+                        }, 2000);
+                    }
+
                 } else if (job.status === 'error') {
-                    document.getElementById('toastProcessTitle').innerText = "Erro na Conversão";
-                    document.getElementById('toastProcessTitle').classList.add('text-danger');
-                    document.getElementById('toastSpinner').classList.add('d-none');
-                    document.getElementById('toastError').classList.remove('d-none');
-                    document.getElementById('toastProcessMsg').innerHTML = '<strong class="text-white">Ocorreu uma falha ao processar o vídeo.</strong> Consulte os logs do servidor.';
-                    document.getElementById('toastProgressBar').classList.replace('bg-primary', 'bg-danger');
+                    document.getElementById('toastProcessTitle_' + jobId).innerText = "Erro na Conversão";
+                    document.getElementById('toastProcessTitle_' + jobId).classList.add('text-danger');
+                    document.getElementById('toastSpinner_' + jobId).classList.add('d-none');
+                    document.getElementById('toastError_' + jobId).classList.remove('d-none');
+                    document.getElementById('toastProcessMsg_' + jobId).innerHTML = '<strong class="text-white">Ocorreu uma falha ao processar o vídeo.</strong> Consulte os logs do servidor.';
+                    document.getElementById('toastProgressBar_' + jobId).classList.replace('bg-primary', 'bg-danger');
                 }
             },
 
-            atualizarStatusEtapa: function(stageId, status, label) {
-                const elToast = document.getElementById('t_stage_' + stageId);
+            atualizarStatusEtapa: function(jobId, stageId, status, label) {
+                const elToast = document.getElementById('t_stage_' + stageId + '_' + jobId);
                 if (!elToast) return;
                 
                 let contentHTML = '';
@@ -166,7 +243,6 @@ function renderToastProcessamento() {
             }
         };
 
-        window.ocultarToastProcessamento = function() { window.GerenciadorProcessamento.hide(); };
         document.addEventListener('DOMContentLoaded', () => { window.GerenciadorProcessamento.init(); });
     </script>
     `;

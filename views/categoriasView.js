@@ -79,13 +79,24 @@ function renderCategoriasView(usuario, categoriasData = []) {
                     const fallbackCapa = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22200%22%20viewBox%3D%220%200%20400%20200%22%3E%3Crect%20fill%3D%22%23e9ecef%22%20width%3D%22100%25%22%20height%3D%22100%25%22%2F%3E%3Ctext%20fill%3D%22%236c757d%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ECurso%3C%2Ftext%3E%3C%2Fsvg%3E';
                     const capa = (curso.capa_url && curso.capa_url.trim() !== '') ? curso.capa_url : fallbackCapa;
                     
-                    let precoBadge = '<span class="badge bg-success shadow-sm rounded-pill px-3 py-2 position-absolute top-0 end-0 m-3 fs-6">Gratuito</span>';
+                    let precoBadge = '<span class="badge bg-success shadow-sm rounded-pill px-2 py-1 position-absolute top-0 end-0 m-2" style="font-size: 0.7rem;">Gratuito</span>';
                     if (parseFloat(curso.preco) > 0) {
-                        precoBadge = `<span class="badge bg-dark bg-opacity-75 text-white shadow-sm rounded-pill px-3 py-2 position-absolute top-0 end-0 m-3 fs-6 backdrop-blur">R$ ${parseFloat(curso.preco).toFixed(2).replace('.', ',')}</span>`;
+                        precoBadge = `<span class="badge bg-dark bg-opacity-75 text-white shadow-sm rounded-pill px-2 py-1 position-absolute top-0 end-0 m-2 backdrop-blur" style="font-size: 0.7rem;">R$ ${parseFloat(curso.preco).toFixed(2).replace('.', ',')}</span>`;
                     }
 
                     const duracao = curso.duracao_horas ? `${curso.duracao_horas}h de conteúdo` : 'Acesso Imediato';
                     const descricaoCurta = curso.descricao || 'Dê o próximo passo na sua carreira com este conteúdo exclusivo.';
+
+                    // GERAR ESTRELAS DA AVALIAÇÃO
+                    let estrelasHtml = '';
+                    const nota = Math.round(parseFloat(curso.nota_media) || 0);
+                    for (let i = 1; i <= 5; i++) {
+                        if (i <= nota) {
+                            estrelasHtml += '<i class="bi bi-star-fill text-warning"></i>';
+                        } else {
+                            estrelasHtml += '<i class="bi bi-star text-warning opacity-50"></i>';
+                        }
+                    }
 
                     let delayClass = '';
                     let delayTimer = (idxCurso % 4) * 100;
@@ -96,17 +107,28 @@ function renderCategoriasView(usuario, categoriasData = []) {
                             <a href="/cursos/${curso.id}" class="text-decoration-none d-block h-100">
                                 <div class="card h-100 border-0 rounded-4 hover-card transition-all overflow-hidden glass-card">
                                     <div class="position-relative bg-light">
-                                        <img src="${capa}" onerror="this.onerror=null;this.src='${fallbackCapa}';" class="card-img-top border-bottom" alt="${curso.titulo}" style="height: 180px; object-fit: cover;">
+                                        <img src="${capa}" onerror="this.onerror=null;this.src='${fallbackCapa}';" class="card-img-top border-bottom" alt="${curso.titulo}" style="height: 140px; object-fit: cover;">
                                         ${precoBadge}
                                     </div>
-                                    <div class="card-body p-4 d-flex flex-column">
-                                        <h5 class="fw-bold text-dark mb-2 lh-sm text-truncate" title="${curso.titulo}">${curso.titulo}</h5>
-                                        <p class="text-muted small mb-4 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                                    <div class="card-body p-3 d-flex flex-column">
+                                        <h6 class="fw-bold text-dark mb-2 lh-sm text-truncate" title="${curso.titulo}">${curso.titulo}</h6>
+                                        <p class="text-muted mb-2 flex-grow-1" style="font-size: 0.75rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                                             ${descricaoCurta}
                                         </p>
-                                        <div class="d-flex justify-content-between align-items-center mt-auto border-top border-secondary border-opacity-10 pt-3">
-                                            <span class="text-secondary small fw-semibold"><i class="bi bi-clock-history me-1"></i> ${duracao}</span>
-                                            <span class="text-${config.cor} fw-bold small">Detalhes <i class="bi bi-arrow-right ms-1 transition-icon"></i></span>
+                                        
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="text-warning me-1" style="font-size: 0.7rem; letter-spacing: 1px;">
+                                                ${estrelasHtml}
+                                            </div>
+                                            <span class="text-muted fw-semibold" style="font-size: 0.65rem;">
+                                                (${curso.total_avaliacoes || 0})
+                                            </span>
+                                            <i class="bi bi-info-circle ms-2 text-secondary opacity-75" style="font-size: 0.7rem;" data-bs-toggle="tooltip" data-bs-placement="top" title="100% das avaliações foram feitas de alunos que concluíram o curso."></i>
+                                        </div>
+
+                                        <div class="d-flex justify-content-between align-items-center mt-auto border-top border-secondary border-opacity-10 pt-2">
+                                            <span class="text-secondary fw-semibold" style="font-size: 0.7rem;"><i class="bi bi-clock-history me-1"></i> ${duracao}</span>
+                                            <span class="text-${config.cor} fw-bold" style="font-size: 0.7rem;">Detalhes <i class="bi bi-arrow-right ms-1 transition-icon"></i></span>
                                         </div>
                                     </div>
                                 </div>
@@ -359,9 +381,15 @@ function renderCategoriasView(usuario, categoriasData = []) {
 
         <script>
             // ==========================================
-            // LÓGICA DE ANIMAÇÃO DE SCROLL (OTIMIZADA PARA MOBILE E ELEMENTOS GRANDES)
+            // LÓGICA DE ANIMAÇÃO E TOOLTIPS
             // ==========================================
             document.addEventListener('DOMContentLoaded', function() {
+                
+                // Ativar Tooltips do Bootstrap
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+                // Animações de Scroll
                 const revealElements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right, .reveal-scale');
                 const isMobile = window.innerWidth < 768;
                 
@@ -384,8 +412,6 @@ function renderCategoriasView(usuario, categoriasData = []) {
 
                 revealElements.forEach(el => {
                     revealObserver.observe(el);
-
-                    // FALLBACK: Se o elemento já estiver visível logo no primeiro segundo que a página carrega
                     const rect = el.getBoundingClientRect();
                     if (rect.top <= window.innerHeight && rect.bottom >= 0) {
                         el.classList.add('reveal-visible');
