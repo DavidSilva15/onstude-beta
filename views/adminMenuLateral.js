@@ -1,11 +1,14 @@
 // views/adminSidebar.js
 
 function renderAdminMenuLateral(admin, activePage = 'dashboard') {
+    // Verifica se o usuário é Mentor
+    const isMentor = admin.tipo === 'MENTOR';
+
     // Funções auxiliares para destacar o menu ativo
     const isActive = (page) => activePage === page ? 'active bg-primary text-white shadow-sm' : 'text-dark hover-bg-light';
     const isIconActive = (page) => activePage === page ? 'text-white' : 'text-muted';
 
-    // Lista de Links Centralizada
+    // Lista de Links Centralizada (com restrições para Mentores)
     const menuItems = `
         <ul class="nav nav-pills flex-column mb-auto gap-1 px-2">
             <li class="nav-item">
@@ -23,11 +26,13 @@ function renderAdminMenuLateral(admin, activePage = 'dashboard') {
                     <i class="bi bi-people me-3 fs-5 ${isIconActive('usuarios')}"></i> Usuários
                 </a>
             </li>
+            ${!isMentor ? `
             <li>
                 <a href="/admin/curriculos" class="nav-link ${isActive('curriculos')} fw-semibold py-2">
                     <i class="bi bi-file-earmark-word me-3 fs-5 ${isIconActive('curriculos')}"></i> Currículos
                 </a>
             </li>
+            ` : ''}
             <li>
                 <a href="/admin/notificacoes" class="nav-link ${isActive('notificacoes')} fw-semibold py-2">
                     <i class="bi bi-bell me-3 fs-5 ${isIconActive('notificacoes')}"></i> Notificações
@@ -38,15 +43,19 @@ function renderAdminMenuLateral(admin, activePage = 'dashboard') {
                     <i class="bi bi-chat-square-text me-3 fs-5 ${isIconActive('forum')}"></i> Fórum
                 </a>
             </li>
+            ${!isMentor ? `
             <li>
                 <a href="/admin/integracoes" class="nav-link ${isActive('integracoes')} fw-semibold py-2">
                     <i class="bi bi-box-arrow-up-right me-3 fs-5 ${isIconActive('integracoes')}"></i> Integrações / API
                 </a>
             </li>
+            ` : ''}
         </ul>
     `;
 
-    // Dropdown de Perfil Centralizado
+    // Dropdown de Perfil Centralizado (Com o cargo dinâmico)
+    const cargoUsuario = isMentor ? 'Mentor' : 'Administrador';
+
     const userDropdown = `
         <div class="dropdown mt-3 border-top pt-3 px-3 pb-3">
             <a href="#" class="d-flex align-items-center link-dark text-decoration-none dropdown-toggle w-100" data-bs-toggle="dropdown" aria-expanded="false">
@@ -56,7 +65,7 @@ function renderAdminMenuLateral(admin, activePage = 'dashboard') {
                 }
                 <div class="d-flex flex-column text-truncate">
                     <strong class="text-truncate" style="max-width: 140px;">${admin.nome.split(' ')[0]}</strong>
-                    <span class="text-muted small">Administrador</span>
+                    <span class="text-muted small">${cargoUsuario}</span>
                 </div>
             </a>
             <ul class="dropdown-menu text-small shadow w-100 rounded-3 border-0">

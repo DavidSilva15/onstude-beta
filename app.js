@@ -519,7 +519,9 @@ app.get('/login', (req, res) => {
 
     if (req.session.usuario) {
         if (returnTo && returnTo.startsWith('/')) return res.redirect(returnTo);
-        return res.redirect(req.session.usuario.tipo === 'ADMIN' ? '/admin' : '/aluno');
+        
+        // Atualizado: ADMIN e MENTOR vão para o painel /admin
+        return res.redirect((req.session.usuario.tipo === 'ADMIN' || req.session.usuario.tipo === 'MENTOR') ? '/admin' : '/aluno');
     }
 
     // O seu renderLoginView já está preparado para receber isto
@@ -531,6 +533,9 @@ app.get('/login', (req, res) => {
 app.post('/login', async (req, res) => {
     // 3. AQUI ESTÁ O SEGREDO: Extrair o returnTo do body (que veio do input hidden)
     const { email, senha, returnTo } = req.body;
+    
+    // Precisamos do renderLoginView caso haja erro de login
+    const renderLoginView = require('./views/loginView');
 
     try {
         const [usuarios] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
@@ -561,7 +566,8 @@ app.post('/login', async (req, res) => {
         // Se a variável returnTo existir e for um link interno (começa com /)
         if (returnTo && returnTo.startsWith('/')) {
             res.redirect(returnTo);
-        } else if (usuario.tipo === 'ADMIN') {
+        } else if (usuario.tipo === 'ADMIN' || usuario.tipo === 'MENTOR') {
+            // Atualizado: MENTOR também vai para o painel de gestão
             res.redirect('/admin');
         } else {
             res.redirect('/aluno');
@@ -576,27 +582,35 @@ app.post('/login', async (req, res) => {
 // GET: Tela dedicada de Gerenciamento de Cursos (Com Paginação e Busca)
 app.get('/admin/cursos', verificarAdmin, async (req, res) => {
     try {
-        const limit = 12; // 12 cards por página fecha um grid perfeito (3 ou 4 colunas)
+        const isMentor = req.session.usuario.tipo === 'MENTOR';
+        const adminId = req.session.usuario.id;
+
+        const limit = 12; 
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
         const search = req.query.search || '';
 
         let queryParams = [];
-        let whereClause = '';
+        let conditions = [];
 
         if (search.trim() !== '') {
-            const searchTerm = `%${search}%`;
-            whereClause = ' WHERE c.titulo LIKE ? OR c.codigo_unico LIKE ? ';
-            queryParams.push(searchTerm, searchTerm);
+            conditions.push('(c.titulo LIKE ? OR c.codigo_unico LIKE ?)');
+            queryParams.push(`%${search}%`, `%${search}%`);
         }
 
-        // Conta o total de cursos para a paginação
+        // Restrição para o Mentor ver apenas os seus cursos
+        if (isMentor) {
+            conditions.push('c.criado_por_admin_id = ?');
+            queryParams.push(adminId);
+        }
+
+        const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
         const countQuery = `SELECT COUNT(id) AS total FROM cursos c ${whereClause}`;
         const [totalQuery] = await db.execute(countQuery, queryParams);
         const totalCursos = totalQuery[0].total;
         const totalPages = Math.ceil(totalCursos / limit) || 1;
 
-        // Query principal com limites, subconsultas, busca e a DURAÇÃO TOTAL corrigida
         const mainQuery = `
             SELECT 
                 c.*,
@@ -611,7 +625,6 @@ app.get('/admin/cursos', verificarAdmin, async (req, res) => {
                  WHERE m.curso_id = c.id
                 ) AS nota_media,
                 
-                -- CORREÇÃO: Mudamos o alias 'mod' para 'mo' para evitar conflito com a função matemática MOD() do MySQL
                 (SELECT SUM(a.duracao_segundos) 
                  FROM aulas a 
                  JOIN modulos mo ON a.modulo_id = mo.id 
@@ -681,32 +694,70 @@ app.post('/cadastro', async (req, res) => {
 // ROTAS DO ADMIN
 // ==========================================
 
-// Middleware de proteção de rota (pode ser extraído para uma função separada depois)
+// Middleware de proteção de rota (Atualizado para aceitar MENTORES também)
 function verificarAdmin(req, res, next) {
-    if (!req.session.usuario || req.session.usuario.tipo !== 'ADMIN') {
+    if (!req.session.usuario || (req.session.usuario.tipo !== 'ADMIN' && req.session.usuario.tipo !== 'MENTOR')) {
         return res.redirect('/');
     }
     next();
 }
 
-// GET: Dashboard do Administrador (Com KPIs Avançados)
+// GET: Dashboard do Administrador e do Mentor (Com KPIs Avançados e Escopo Isolado)
 app.get('/admin', verificarAdmin, async (req, res) => {
     try {
+        const usuario = req.session.usuario;
+        const isMentor = usuario.tipo === 'MENTOR';
+        const adminId = usuario.id;
+
+        // Condicionais de escopo para as Queries
+        const mentorCond = isMentor ? ` AND c.criado_por_admin_id = ${adminId} ` : '';
+        const mentorCondWhere = isMentor ? ` WHERE c.criado_por_admin_id = ${adminId} ` : '';
+        const mentorCondNotif = isMentor ? ` WHERE n.criada_por_admin_id = ${adminId} ` : '';
+
+        // NOVO: Se for Admin, busca os mentores para o select do Gráfico e captura o filtro
+        let mentores = [];
+        const filtroMentorId = req.query.mentor_id || '';
+        
+        if (!isMentor) {
+            const [mentoresRaw] = await db.execute("SELECT id, nome FROM usuarios WHERE tipo = 'MENTOR' ORDER BY nome ASC");
+            mentores = mentoresRaw;
+        }
+
         // 1. KPIs Gerais de Retenção, Evasão e Conclusão
-        const [[kpiGeral]] = await db.execute(`
-            SELECT 
-                (SELECT COUNT(*) FROM usuarios WHERE tipo = 'ALUNO' AND status = 'ATIVO') AS ativos,
-                (SELECT COUNT(*) FROM (
-                    SELECT u.id 
-                    FROM usuarios u
-                    JOIN matriculas m ON u.id = m.aluno_id AND m.status IN ('ATIVA', 'CONCLUIDA')
-                    WHERE u.tipo = 'ALUNO' AND u.status = 'ATIVO'
-                    GROUP BY u.id
-                    HAVING COUNT(m.id) > 0 AND COUNT(m.id) = SUM(CASE WHEN m.status = 'CONCLUIDA' THEN 1 ELSE 0 END)
-                ) AS concluintes_sub) AS concluintes,
-                (SELECT COUNT(*) FROM usuarios WHERE tipo = 'ALUNO' AND status IN ('INATIVO', 'BLOQUEADO')) AS inativos,
-                (SELECT COUNT(*) FROM matriculas WHERE status = 'CANCELADA') AS cancelados
-        `);
+        let queryKpiGeral = '';
+        if (isMentor) {
+            queryKpiGeral = `
+                SELECT 
+                    (SELECT COUNT(DISTINCT u.id) FROM usuarios u JOIN matriculas m ON u.id = m.aluno_id JOIN cursos c ON m.curso_id = c.id WHERE u.tipo = 'ALUNO' AND u.status = 'ATIVO' ${mentorCond}) AS ativos,
+                    (SELECT COUNT(*) FROM (
+                        SELECT u.id 
+                        FROM usuarios u
+                        JOIN matriculas m ON u.id = m.aluno_id AND m.status IN ('ATIVA', 'CONCLUIDA')
+                        JOIN cursos c ON m.curso_id = c.id
+                        WHERE u.tipo = 'ALUNO' AND u.status = 'ATIVO' ${mentorCond}
+                        GROUP BY u.id
+                        HAVING COUNT(m.id) > 0 AND COUNT(m.id) = SUM(CASE WHEN m.status = 'CONCLUIDA' THEN 1 ELSE 0 END)
+                    ) AS concluintes_sub) AS concluintes,
+                    (SELECT COUNT(DISTINCT u.id) FROM usuarios u JOIN matriculas m ON u.id = m.aluno_id JOIN cursos c ON m.curso_id = c.id WHERE u.tipo = 'ALUNO' AND u.status IN ('INATIVO', 'BLOQUEADO') ${mentorCond}) AS inativos,
+                    (SELECT COUNT(DISTINCT m.id) FROM matriculas m JOIN cursos c ON m.curso_id = c.id WHERE m.status = 'CANCELADA' ${mentorCond}) AS cancelados
+            `;
+        } else {
+            queryKpiGeral = `
+                SELECT 
+                    (SELECT COUNT(*) FROM usuarios WHERE tipo = 'ALUNO' AND status = 'ATIVO') AS ativos,
+                    (SELECT COUNT(*) FROM (
+                        SELECT u.id 
+                        FROM usuarios u
+                        JOIN matriculas m ON u.id = m.aluno_id AND m.status IN ('ATIVA', 'CONCLUIDA')
+                        WHERE u.tipo = 'ALUNO' AND u.status = 'ATIVO'
+                        GROUP BY u.id
+                        HAVING COUNT(m.id) > 0 AND COUNT(m.id) = SUM(CASE WHEN m.status = 'CONCLUIDA' THEN 1 ELSE 0 END)
+                    ) AS concluintes_sub) AS concluintes,
+                    (SELECT COUNT(*) FROM usuarios WHERE tipo = 'ALUNO' AND status IN ('INATIVO', 'BLOQUEADO')) AS inativos,
+                    (SELECT COUNT(*) FROM matriculas WHERE status = 'CANCELADA') AS cancelados
+            `;
+        }
+        const [[kpiGeral]] = await db.execute(queryKpiGeral);
 
         // 2. Desempenho e Conclusão por Curso
         const [cursosKpi] = await db.execute(`
@@ -716,6 +767,7 @@ app.get('/admin', verificarAdmin, async (req, res) => {
                 SUM(CASE WHEN m.status = 'CONCLUIDA' THEN 1 ELSE 0 END) AS concluidos
             FROM cursos c
             LEFT JOIN matriculas m ON c.id = m.curso_id
+            ${mentorCondWhere}
             GROUP BY c.id
             ORDER BY matriculados DESC
         `);
@@ -726,7 +778,8 @@ app.get('/admin', verificarAdmin, async (req, res) => {
                 SUM(CASE WHEN tipo_interacao = 'PESQUISA_TEXTO' THEN 1 ELSE 0 END) AS pesquisa,
                 SUM(CASE WHEN tipo_interacao = 'AVALIACAO_ESTRELAS' THEN 1 ELSE 0 END) AS avaliacao,
                 SUM(CASE WHEN tipo_interacao = 'NENHUM' THEN 1 ELSE 0 END) AS informativos
-            FROM notificacoes
+            FROM notificacoes n
+            ${mentorCondNotif}
         `);
 
         // 4. Volume de Notificações Separadas por Curso
@@ -734,13 +787,101 @@ app.get('/admin', verificarAdmin, async (req, res) => {
             SELECT c.titulo, COUNT(nc.notificacao_id) AS qtd
             FROM cursos c
             JOIN notificacao_cursos nc ON c.id = nc.curso_id
+            ${mentorCondWhere}
             GROUP BY c.id
             ORDER BY qtd DESC
         `);
 
-        // Renderiza a view passando APENAS as variáveis pertinentes ao Dashboard
+        // ==========================================
+        // 5. Gráfico de Acessos (Com Filtro de Mentor para Admin)
+        // ==========================================
+        let queryGrafico = '';
+        let paramsGrafico = [];
+
+        if (isMentor) {
+            // Mentor logado: vê apenas os alunos dele
+            queryGrafico = `
+                SELECT 
+                    DATE_FORMAT(u.ultimo_acesso, '%Y-%m') as mes_ano, 
+                    DAY(u.ultimo_acesso) as dia, 
+                    COUNT(u.id) as total_acessos
+                FROM usuarios u
+                WHERE u.tipo = 'ALUNO' AND u.ultimo_acesso IS NOT NULL
+                AND (u.criado_por_admin_id = ? OR u.id IN (
+                    SELECT m.aluno_id FROM matriculas m JOIN cursos c ON m.curso_id = c.id WHERE c.criado_por_admin_id = ?
+                ))
+                GROUP BY mes_ano, dia
+                ORDER BY mes_ano DESC, dia ASC
+            `;
+            paramsGrafico.push(adminId, adminId);
+        } else {
+            // Admin logado
+            if (filtroMentorId) {
+                // Admin selecionou um Mentor específico no filtro
+                queryGrafico = `
+                    SELECT 
+                        DATE_FORMAT(u.ultimo_acesso, '%Y-%m') as mes_ano, 
+                        DAY(u.ultimo_acesso) as dia, 
+                        COUNT(u.id) as total_acessos
+                    FROM usuarios u
+                    WHERE u.tipo = 'ALUNO' AND u.ultimo_acesso IS NOT NULL
+                    AND (u.criado_por_admin_id = ? OR u.id IN (
+                        SELECT m.aluno_id FROM matriculas m JOIN cursos c ON m.curso_id = c.id WHERE c.criado_por_admin_id = ?
+                    ))
+                    GROUP BY mes_ano, dia
+                    ORDER BY mes_ano DESC, dia ASC
+                `;
+                paramsGrafico.push(filtroMentorId, filtroMentorId);
+            } else {
+                // Admin vê o cenário Global
+                queryGrafico = `
+                    SELECT 
+                        DATE_FORMAT(ultimo_acesso, '%Y-%m') as mes_ano, 
+                        DAY(ultimo_acesso) as dia, 
+                        COUNT(id) as total_acessos
+                    FROM usuarios
+                    WHERE tipo = 'ALUNO' AND ultimo_acesso IS NOT NULL
+                    GROUP BY mes_ano, dia
+                    ORDER BY mes_ano DESC, dia ASC
+                `;
+            }
+        }
+
+        const [acessosRaw] = await db.execute(queryGrafico, paramsGrafico);
+
+        // Conversão dos dados SQL para a estrutura do Chart.js
+        const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const dadosGrafico = {};
+
+        acessosRaw.forEach(row => {
+            const [ano, mesStr] = row.mes_ano.split('-');
+            const mesIdx = parseInt(mesStr) - 1;
+            const nomeMes = `${mesesNomes[mesIdx]} ${ano}`;
+            
+            if (!dadosGrafico[nomeMes]) {
+                const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
+                dadosGrafico[nomeMes] = {
+                    labels: Array.from({length: diasNoMes}, (_, i) => `Dia ${i+1}`),
+                    data: Array(diasNoMes).fill(0)
+                };
+            }
+            dadosGrafico[nomeMes].data[row.dia - 1] = row.total_acessos;
+        });
+
+        // Fallback: Se não houver dados, envia o mês atual zerado
+        if (Object.keys(dadosGrafico).length === 0) {
+            const hoje = new Date();
+            const nm = `${mesesNomes[hoje.getMonth()]} ${hoje.getFullYear()}`;
+            const dInM = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
+            dadosGrafico[nm] = {
+                labels: Array.from({length: dInM}, (_, i) => `Dia ${i+1}`),
+                data: Array(dInM).fill(0)
+            };
+        }
+
         const renderAdminDashboardView = require('./views/adminDashboardView');
-        res.send(renderAdminDashboardView(req.session.usuario, kpiGeral, cursosKpi, notifKpi, notifCursos));
+        // Repassando mentores e o ID do filtro para a view
+        res.send(renderAdminDashboardView(req.session.usuario, kpiGeral, cursosKpi, notifKpi, notifCursos, dadosGrafico, mentores, filtroMentorId));
 
     } catch (error) {
         console.error('Erro ao carregar Dashboard:', error);
@@ -890,7 +1031,7 @@ app.post('/admin/cursos/novo', verificarAdmin, upload.fields([
              VALUES (?, 'CRIAR_CURSO', 'cursos', ?, ?, ?)`,
             [adminId, novoCursoId, detalhesLog, req.ip || req.socket.remoteAddress]
         );
-        res.redirect('/admin');
+        res.redirect('/admin/cursos');
     } catch (error) {
         console.error(error);
         res.status(500).send('Erro interno ao salvar o curso.');
@@ -1986,9 +2127,14 @@ app.post('/admin/aulas/:id/excluir', verificarAdmin, async (req, res) => {
 // ROTAS DE GESTÃO DE USUÁRIOS (ADMIN)
 // ==========================================
 
-// GET: Renderiza a lista de todos os Usuários (Admin) com Paginação, Busca, Filtros e Cards Interativos
+// ==========================================
+// ROTA: LISTAR USUÁRIOS (Atualizada para ler alunos criados pelo Mentor)
+// ==========================================
 app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
     try {
+        const isMentor = req.session.usuario.tipo === 'MENTOR';
+        const adminId = req.session.usuario.id;
+
         const limit = 12;
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
@@ -1996,30 +2142,37 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
         const currentFilter = req.query.filter || 'todos';
 
         let queryParams = [];
-        let whereClauseMain = '';
+        let conditions = [];
 
-        // Se o admin digitou algo na busca
         if (search.trim() !== '') {
-            const searchTerm = `%${search}%`;
-            whereClauseMain = ` WHERE u.id IN (
+            conditions.push(`u.id IN (
                 SELECT DISTINCT u2.id FROM usuarios u2 
                 LEFT JOIN matriculas m2 ON u2.id = m2.aluno_id 
                 LEFT JOIN cursos c2 ON m2.curso_id = c2.id 
                 WHERE u2.nome LIKE ? OR c2.titulo LIKE ?
-            )`;
-            queryParams.push(searchTerm, searchTerm);
+            )`);
+            queryParams.push(`%${search}%`, `%${search}%`);
         }
 
-        // ==========================================
+        // Restrição rigorosa: Mentor enxerga os alunos que ELE CRIOU ou que estão matriculados nos cursos dele
+        if (isMentor) {
+            conditions.push(`(u.criado_por_admin_id = ? OR u.id IN (
+                SELECT DISTINCT m_mentor.aluno_id FROM matriculas m_mentor
+                JOIN cursos c_mentor ON m_mentor.curso_id = c_mentor.id
+                WHERE c_mentor.criado_por_admin_id = ?
+            ))`);
+            queryParams.push(adminId, adminId);
+        }
+
+        const whereClauseMain = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
         // 1. CONTAGEM INTELIGENTE PARA OS FILTROS
-        // ==========================================
         const statsQuery = `
             SELECT
                 COUNT(*) as todos,
                 SUM(CASE WHEN status_calc = 'ATIVO' THEN 1 ELSE 0 END) as ativos,
                 SUM(CASE WHEN status_calc = 'CONCLUINTE' THEN 1 ELSE 0 END) as concluintes,
                 SUM(CASE WHEN status_calc = 'INATIVO' THEN 1 ELSE 0 END) as inativos,
-                -- Faltoso agora exige que o status calculado seja puramente 'ATIVO' (Exclui concluintes e inativos)
                 SUM(CASE WHEN is_faltoso = 1 AND status_calc = 'ATIVO' THEN 1 ELSE 0 END) as faltosos
             FROM (
                 SELECT 
@@ -2053,24 +2206,19 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
         const totalUsuarios = filterCounts[currentFilter] || filterCounts.todos;
         const totalPages = Math.ceil(totalUsuarios / limit) || 1;
 
-        // ==========================================
         // 2. APLICAÇÃO DO FILTRO ESCOLHIDO (HAVING)
-        // ==========================================
         let havingClause = '';
         if (currentFilter === 'ativos') {
             havingClause = ` HAVING u.status = 'ATIVO' AND (total_cursos = 0 OR total_cursos != concluidos_count)`;
         } else if (currentFilter === 'concluintes') {
             havingClause = ` HAVING u.status = 'ATIVO' AND total_cursos > 0 AND total_cursos = concluidos_count`;
         } else if (currentFilter === 'faltosos') {
-            // Garante que é ATIVO e NÃO é CONCLUINTE (total_cursos != concluidos_count)
             havingClause = ` HAVING u.status = 'ATIVO' AND (total_cursos = 0 OR total_cursos != concluidos_count) AND u.tipo = 'ALUNO' AND (u.ultimo_acesso IS NULL OR DATEDIFF(NOW(), u.ultimo_acesso) >= 2)`;
         } else if (currentFilter === 'inativos') {
             havingClause = ` HAVING u.status = 'INATIVO'`;
         }
 
-        // ==========================================
         // 3. QUERY PRINCIPAL DE USUÁRIOS
-        // ==========================================
         const mainQuery = `
             SELECT 
                 u.id, u.nome, u.email, u.telefone, u.tipo, u.status, u.criado_em, u.data_nascimento, u.ultimo_acesso,
@@ -2093,21 +2241,20 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
             ${whereClauseMain}
             GROUP BY u.id
             ${havingClause}
-            ORDER BY u.ultimo_acesso DESC, u.id DESC
+            ORDER BY u.id DESC 
             LIMIT ${limit} OFFSET ${offset}
         `;
         const [usuariosRaw] = await db.execute(mainQuery, queryParams);
 
-        // ==========================================
-        // LÓGICA DE KPIs
-        // ==========================================
+        // LÓGICA DE KPIs DE ALUNOS
         const usuariosComKPIs = await Promise.all(usuariosRaw.map(async (u) => {
 
-            if (u.tipo === 'ADMIN') {
+            if (u.tipo === 'ADMIN' || u.tipo === 'MENTOR') {
                 return { ...u, aulas_concluidas: '0 / 0', nota_media_geral: '-', melhor_curso: '-' };
             }
 
             const alunoId = u.id;
+            const mentorCondJoin = isMentor ? `AND c.criado_por_admin_id = ${adminId}` : '';
 
             const [aulasQuery] = await db.execute(`
                 SELECT 
@@ -2117,6 +2264,7 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
                 JOIN cursos c ON m.curso_id = c.id
                 LEFT JOIN progresso_curso p ON p.matricula_id = m.id
                 WHERE m.aluno_id = ? AND m.status IN ('ATIVA', 'CONCLUIDA') AND c.status = 'PUBLICADO'
+                ${mentorCondJoin}
             `, [alunoId]);
 
             const concluidasGeral = aulasQuery[0]?.concluidas_geral || 0;
@@ -2128,7 +2276,9 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
                     SELECT MAX(at.nota) AS max_nota 
                     FROM avaliacao_tentativas at 
                     JOIN matriculas m ON at.matricula_id = m.id 
+                    ${isMentor ? 'JOIN cursos c ON m.curso_id = c.id' : ''}
                     WHERE m.aluno_id = ? 
+                    ${isMentor ? `AND c.criado_por_admin_id = ${adminId}` : ''}
                     GROUP BY at.aula_id
                 ) AS subquery
             `, [alunoId]);
@@ -2142,6 +2292,7 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
                 JOIN matriculas m ON at.matricula_id = m.id 
                 JOIN cursos c ON m.curso_id = c.id 
                 WHERE m.aluno_id = ? 
+                ${mentorCondJoin}
                 GROUP BY c.id 
                 ORDER BY media_curso DESC 
                 LIMIT 1
@@ -2175,76 +2326,101 @@ app.get('/admin/usuarios', verificarAdmin, async (req, res) => {
     }
 });
 
-// GET: Novo Usuário (Busca os cursos para exibir as opções de matrícula)
+// ==========================================
+// ROTA: NOVO USUÁRIO (GET e POST)
+// ==========================================
 app.get('/admin/usuarios/novo', verificarAdmin, async (req, res) => {
     try {
-        // Busca apenas os cursos publicados para que o admin possa associar ao aluno
-        const [cursosDisponiveis] = await db.execute("SELECT id, codigo_unico, titulo FROM cursos WHERE status = 'PUBLICADO' ORDER BY titulo ASC");
+        const usuarioLogado = req.session.usuario;
+        const isMentor = usuarioLogado.tipo === 'MENTOR';
+        const adminId = usuarioLogado.id;
 
-        res.send(renderNovoUsuarioView(req.session.usuario, cursosDisponiveis));
+        let query = "SELECT id, codigo_unico, titulo FROM cursos WHERE status = 'PUBLICADO'";
+        let params = [];
+
+        if (isMentor) {
+            query += " AND criado_por_admin_id = ?";
+            params.push(adminId);
+        }
+
+        query += " ORDER BY titulo ASC";
+
+        const [cursosDisponiveis] = await db.execute(query, params);
+
+        const renderNovoUsuarioView = require('./views/novoUsuarioView');
+        res.send(renderNovoUsuarioView(usuarioLogado, cursosDisponiveis));
     } catch (error) {
         console.error(error);
         res.status(500).send('Erro interno.');
     }
 });
 
-// POST: Processar Novo Usuário (Admin)
 app.post('/admin/usuarios/novo', verificarAdmin, uploadPerfil.single('foto_perfil'), async (req, res) => {
-    // Adicionamos a data_nascimento aqui:
     const { nome, email, senha, tipo, data_nascimento, telefone, cidade, estado, cursos } = req.body;
-    const adminId = req.session.usuario.id;
+    
+    const usuarioLogado = req.session.usuario;
+    const adminId = usuarioLogado.id;
+    const isMentor = usuarioLogado.tipo === 'MENTOR';
+    
     const foto_perfil_url = req.file ? '/img/perfil/' + req.file.filename : null;
 
     try {
+        let tipoFinal = tipo;
+        if (isMentor) {
+            tipoFinal = 'ALUNO'; 
+        } else if (!['ADMIN', 'MENTOR', 'ALUNO'].includes(tipo)) {
+            tipoFinal = 'ALUNO'; 
+        }
+
         const [existente] = await db.execute('SELECT id FROM usuarios WHERE email = ?', [email]);
         if (existente.length > 0) return res.send('<h2>E-mail já cadastrado.</h2><a href="javascript:history.back()">Voltar</a>');
 
         const senhaHash = await bcrypt.hash(senha, 10);
 
-        // Atualizamos o INSERT para incluir a data_nascimento
+        // INCLUSÃO DO MENTOR AQUI: Associando o criado_por_admin_id
         const [resultadoUsuario] = await db.execute(
-            `INSERT INTO usuarios (tipo, nome, email, senha_hash, data_nascimento, telefone, cidade, estado, foto_perfil_url, status) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ATIVO')`,
-            [tipo, nome, email, senhaHash, data_nascimento || null, telefone || null, cidade || null, estado || null, foto_perfil_url]
+            `INSERT INTO usuarios (tipo, nome, email, senha_hash, data_nascimento, telefone, cidade, estado, foto_perfil_url, status, criado_por_admin_id) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ATIVO', ?)`,
+            [tipoFinal, nome, email, senhaHash, data_nascimento || null, telefone || null, cidade || null, estado || null, foto_perfil_url, adminId]
         );
 
         const novoUsuarioId = resultadoUsuario.insertId;
 
-        // 3. Regista a ação de criação de utilizador nos logs
         await db.execute(
             `INSERT INTO admin_logs (admin_id, acao, entidade, entidade_id, ip) VALUES (?, 'CRIAR_USUARIO', 'usuarios', ?, ?)`,
             [adminId, novoUsuarioId, req.ip || req.socket.remoteAddress]
         );
 
-        // 4. Lógica de Matrícula Automática (Apenas se for ALUNO e se algum curso foi selecionado)
-        if (tipo === 'ALUNO' && cursos) {
-            // Garante que 'cursos' seja sempre um array (mesmo se o admin selecionar apenas 1 curso)
+        if (tipoFinal === 'ALUNO' && cursos) {
             const cursosSelecionados = Array.isArray(cursos) ? cursos : [cursos];
 
             for (const cursoId of cursosSelecionados) {
-                // Insere a matrícula com origem LIBERACAO_ADMIN
-                const [resultadoMatricula] = await db.execute(
-                    `INSERT INTO matriculas (aluno_id, curso_id, status, origem) 
-                     VALUES (?, ?, 'ATIVA', 'LIBERACAO_ADMIN')`,
-                    [novoUsuarioId, cursoId]
-                );
+                let temPermissaoParaMatricular = true;
+                if (isMentor) {
+                    const [checkCurso] = await db.execute('SELECT id FROM cursos WHERE id = ? AND criado_por_admin_id = ?', [cursoId, adminId]);
+                    if (checkCurso.length === 0) temPermissaoParaMatricular = false;
+                }
 
-                const matriculaId = resultadoMatricula.insertId;
+                if (temPermissaoParaMatricular) {
+                    const [resultadoMatricula] = await db.execute(
+                        `INSERT INTO matriculas (aluno_id, curso_id, status, origem) 
+                         VALUES (?, ?, 'ATIVA', 'LIBERACAO_ADMIN')`,
+                        [novoUsuarioId, cursoId]
+                    );
 
-                // Gera o token de 8 caracteres alfanuméricos para o certificado futuro (Requisito da arquitetura)
-                const tokenCertificado = crypto.randomBytes(4).toString('hex').toUpperCase();
+                    const matriculaId = resultadoMatricula.insertId;
+                    const tokenCertificado = crypto.randomBytes(4).toString('hex').toUpperCase();
 
-                // Insere o registo base do certificado amarrado a esta matrícula
-                await db.execute(
-                    `INSERT INTO certificados (matricula_id, token) VALUES (?, ?)`,
-                    [matriculaId, tokenCertificado]
-                );
+                    await db.execute(
+                        `INSERT INTO certificados (matricula_id, token) VALUES (?, ?)`,
+                        [matriculaId, tokenCertificado]
+                    );
 
-                // Inicia o progresso geral do curso com 0% para esse aluno
-                await db.execute(
-                    `INSERT INTO progresso_curso (matricula_id) VALUES (?)`,
-                    [matriculaId]
-                );
+                    await db.execute(
+                        `INSERT INTO progresso_curso (matricula_id) VALUES (?)`,
+                        [matriculaId]
+                    );
+                }
             }
         }
 
@@ -2255,9 +2431,12 @@ app.post('/admin/usuarios/novo', verificarAdmin, uploadPerfil.single('foto_perfi
     }
 });
 
-// GET: Renderiza a edição do Usuário com as Matrículas
+// GET: Renderiza a edição do Usuário com as Matrículas (Com escopo de Mentor)
 app.get('/admin/usuarios/:id/editar', verificarAdmin, async (req, res) => {
     const usuarioId = req.params.id;
+    const usuarioLogado = req.session.usuario;
+    const isMentor = usuarioLogado.tipo === 'MENTOR';
+    const adminId = usuarioLogado.id;
 
     try {
         // 1. Busca os dados do usuário
@@ -2265,19 +2444,40 @@ app.get('/admin/usuarios/:id/editar', verificarAdmin, async (req, res) => {
         if (usuarios.length === 0) return res.status(404).send('Usuário não encontrado.');
         const usuario = usuarios[0];
 
-        // 2. Busca todos os cursos publicados disponíveis
-        const [cursosDisponiveis] = await db.execute("SELECT id, codigo_unico, titulo, capa_url FROM cursos WHERE status = 'PUBLICADO' ORDER BY titulo ASC");
+        // Regra de Proteção: Um Mentor não pode editar outro Administrador ou Mentor (a menos que seja ele mesmo)
+        if (isMentor && usuario.tipo !== 'ALUNO' && usuario.id !== adminId) {
+            return res.status(403).send('<h2>Acesso Negado. Mentores só podem editar alunos.</h2><a href="/admin/usuarios">Voltar</a>');
+        }
+
+        // 2. Busca todos os cursos publicados disponíveis (Filtrado se for Mentor)
+        let queryCursos = "SELECT id, codigo_unico, titulo, capa_url FROM cursos WHERE status = 'PUBLICADO'";
+        let paramsCursos = [];
+        if (isMentor) {
+            queryCursos += " AND criado_por_admin_id = ?";
+            paramsCursos.push(adminId);
+        }
+        queryCursos += " ORDER BY titulo ASC";
+
+        const [cursosDisponiveis] = await db.execute(queryCursos, paramsCursos);
 
         // 3. Busca os cursos em que o usuário já possui matrícula ATIVA
-        const [matriculasAtivas] = await db.execute("SELECT curso_id FROM matriculas WHERE aluno_id = ? AND status = 'ATIVA'", [usuarioId]);
+        let queryMatriculas = "SELECT m.curso_id FROM matriculas m JOIN cursos c ON m.curso_id = c.id WHERE m.aluno_id = ? AND m.status = 'ATIVA'";
+        let paramsMat = [usuarioId];
+        if (isMentor) {
+            queryMatriculas += " AND c.criado_por_admin_id = ?";
+            paramsMat.push(adminId);
+        }
+
+        const [matriculasAtivas] = await db.execute(queryMatriculas, paramsMat);
         const idsMatriculados = matriculasAtivas.map(m => m.curso_id);
 
-        // 4. Mapeia para avisar a view quais checkboxes devem vir "marcados"
+        // 4. Mapeia para avisar a view quais cards devem ir para a coluna de "Ativos"
         cursosDisponiveis.forEach(curso => {
             curso.matriculado = idsMatriculados.includes(curso.id);
         });
 
-        res.send(renderEditarUsuarioView(req.session.usuario, usuario, cursosDisponiveis));
+        const renderEditarUsuarioView = require('./views/editarUsuarioView');
+        res.send(renderEditarUsuarioView(usuarioLogado, usuario, cursosDisponiveis));
     } catch (error) {
         console.error(error);
         res.status(500).send('Erro interno.');
@@ -2287,27 +2487,36 @@ app.get('/admin/usuarios/:id/editar', verificarAdmin, async (req, res) => {
 // POST: Processar Edição de Usuário e Gerenciar Matrículas
 app.post('/admin/usuarios/:id/editar', verificarAdmin, uploadPerfil.single('foto_perfil'), async (req, res) => {
     const usuarioId = req.params.id;
-    // Adicionado data_nascimento na extração
     const { nome, email, tipo, status, nova_senha, data_nascimento, telefone, cidade, estado, foto_atual, cursos } = req.body;
+    
+    const usuarioLogado = req.session.usuario;
+    const isMentor = usuarioLogado.tipo === 'MENTOR';
+    const adminId = usuarioLogado.id;
 
     const foto_perfil_url = req.file ? '/img/perfil/' + req.file.filename : (foto_atual || null);
 
     try {
+        // Regra de Hierarquia: Mentor só define "ALUNO"
+        let tipoFinal = tipo;
+        if (isMentor) {
+            tipoFinal = 'ALUNO'; 
+        } else if (!['ADMIN', 'MENTOR', 'ALUNO'].includes(tipo)) {
+            tipoFinal = 'ALUNO'; 
+        }
+
         // ==========================================
         // 1. ATUALIZAÇÃO DOS DADOS DO USUÁRIO
         // ==========================================
         if (nova_senha && nova_senha.trim() !== '') {
             const senhaHash = await bcrypt.hash(nova_senha, 10);
             await db.execute(
-                // Incluída a data_nascimento no UPDATE
                 `UPDATE usuarios SET nome = ?, email = ?, tipo = ?, status = ?, senha_hash = ?, data_nascimento = ?, telefone = ?, cidade = ?, estado = ?, foto_perfil_url = ? WHERE id = ?`,
-                [nome, email, tipo, status, senhaHash, data_nascimento || null, telefone || null, cidade || null, estado || null, foto_perfil_url, usuarioId]
+                [nome, email, tipoFinal, status, senhaHash, data_nascimento || null, telefone || null, cidade || null, estado || null, foto_perfil_url, usuarioId]
             );
         } else {
             await db.execute(
-                // Incluída a data_nascimento no UPDATE
                 `UPDATE usuarios SET nome = ?, email = ?, tipo = ?, status = ?, data_nascimento = ?, telefone = ?, cidade = ?, estado = ?, foto_perfil_url = ? WHERE id = ?`,
-                [nome, email, tipo, status, data_nascimento || null, telefone || null, cidade || null, estado || null, foto_perfil_url, usuarioId]
+                [nome, email, tipoFinal, status, data_nascimento || null, telefone || null, cidade || null, estado || null, foto_perfil_url, usuarioId]
             );
         }
 
@@ -2318,42 +2527,61 @@ app.post('/admin/usuarios/:id/editar', verificarAdmin, uploadPerfil.single('foto
         }
 
         // ==========================================
-        // 2. GESTÃO INTELIGENTE DE MATRÍCULAS
+        // 2. GESTÃO INTELIGENTE DE MATRÍCULAS (Com proteção de escopo)
         // ==========================================
-        // Transforma o recebido do formulário num array de inteiros (IDs dos cursos)
         const cursosSelecionados = cursos ? (Array.isArray(cursos) ? cursos : [cursos]).map(Number) : [];
 
-        // Busca todas as matrículas existentes (Ativas, Canceladas ou Concluídas)
-        const [matriculasAtuais] = await db.execute('SELECT id, curso_id, status FROM matriculas WHERE aluno_id = ?', [usuarioId]);
+        // Busca matrículas, mas se for Mentor, só busca as matrículas nos cursos dele
+        let queryCursosAlvo = 'SELECT id, curso_id, status FROM matriculas WHERE aluno_id = ?';
+        let paramsMatriculas = [usuarioId];
+
+        if (isMentor) {
+            queryCursosAlvo = `
+                SELECT m.id, m.curso_id, m.status 
+                FROM matriculas m 
+                JOIN cursos c ON m.curso_id = c.id 
+                WHERE m.aluno_id = ? AND c.criado_por_admin_id = ?
+            `;
+            paramsMatriculas.push(adminId);
+        }
+
+        const [matriculasAtuais] = await db.execute(queryCursosAlvo, paramsMatriculas);
         const mapaMatriculas = new Map(matriculasAtuais.map(m => [m.curso_id, m]));
 
-        // 2.1. DESASSOCIAR: Cursos que o usuário tinha, mas o admin desmarcou
+        // 2.1. DESASSOCIAR: Cursos que o usuário tinha (no escopo do Admin/Mentor), mas foi desmarcado
         for (const mat of matriculasAtuais) {
             if (!cursosSelecionados.includes(mat.curso_id) && mat.status === 'ATIVA') {
                 await db.execute("UPDATE matriculas SET status = 'CANCELADA', atualizado_em = NOW() WHERE id = ?", [mat.id]);
             }
         }
 
-        // 2.2. ASSOCIAR: Cursos que o admin marcou
+        // 2.2. ASSOCIAR: Cursos que foram arrastados para a coluna de ativos
         for (const cursoId of cursosSelecionados) {
-            if (mapaMatriculas.has(cursoId)) {
-                // Se já tinha matrícula (mesmo cancelada), apenas reativamos para não perder o progresso
-                const mat = mapaMatriculas.get(cursoId);
-                if (mat.status !== 'ATIVA') {
-                    await db.execute("UPDATE matriculas SET status = 'ATIVA', atualizado_em = NOW() WHERE id = ?", [mat.id]);
-                }
-            } else {
-                // Se não existia, criamos toda a estrutura nova
-                const [resultadoMatricula] = await db.execute(
-                    `INSERT INTO matriculas (aluno_id, curso_id, status, origem) VALUES (?, ?, 'ATIVA', 'LIBERACAO_ADMIN')`,
-                    [usuarioId, cursoId]
-                );
-                const matriculaId = resultadoMatricula.insertId;
+            
+            // Proteção final: Garantir que o curso pertence ao mentor
+            let temPermissao = true;
+            if (isMentor) {
+                const [checkCurso] = await db.execute('SELECT id FROM cursos WHERE id = ? AND criado_por_admin_id = ?', [cursoId, adminId]);
+                if (checkCurso.length === 0) temPermissao = false;
+            }
 
-                // Geramos as dependências obrigatórias
-                const tokenCertificado = require('crypto').randomBytes(4).toString('hex').toUpperCase();
-                await db.execute(`INSERT INTO certificados (matricula_id, token) VALUES (?, ?)`, [matriculaId, tokenCertificado]);
-                await db.execute(`INSERT INTO progresso_curso (matricula_id) VALUES (?)`, [matriculaId]);
+            if (temPermissao) {
+                if (mapaMatriculas.has(cursoId)) {
+                    const mat = mapaMatriculas.get(cursoId);
+                    if (mat.status !== 'ATIVA') {
+                        await db.execute("UPDATE matriculas SET status = 'ATIVA', atualizado_em = NOW() WHERE id = ?", [mat.id]);
+                    }
+                } else {
+                    const [resultadoMatricula] = await db.execute(
+                        `INSERT INTO matriculas (aluno_id, curso_id, status, origem) VALUES (?, ?, 'ATIVA', 'LIBERACAO_ADMIN')`,
+                        [usuarioId, cursoId]
+                    );
+                    const matriculaId = resultadoMatricula.insertId;
+
+                    const tokenCertificado = require('crypto').randomBytes(4).toString('hex').toUpperCase();
+                    await db.execute(`INSERT INTO certificados (matricula_id, token) VALUES (?, ?)`, [matriculaId, tokenCertificado]);
+                    await db.execute(`INSERT INTO progresso_curso (matricula_id) VALUES (?)`, [matriculaId]);
+                }
             }
         }
 
@@ -3667,29 +3895,35 @@ app.post('/aluno/api/notificacoes/:id/responder', verificarAluno, async (req, re
 // GET: Listar Notificações, Estatísticas e Respostas (Com Paginação e Busca)
 app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
     try {
-        const limit = 12; // Exibe até 12 notificações por página (encaixa perfeito no grid)
+        const isMentor = req.session.usuario.tipo === 'MENTOR';
+        const adminId = req.session.usuario.id;
+
+        const limit = 12; 
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
         const search = req.query.search || '';
 
         let queryParams = [];
-        let whereClause = '';
+        let conditions = [];
 
-        // Se o admin usou a barra de busca
         if (search.trim() !== '') {
-            const searchTerm = `%${search}%`;
-            // Busca tanto pelo título da notificação quanto por alguma palavra dentro da mensagem
-            whereClause = ' WHERE n.titulo LIKE ? OR n.mensagem LIKE ? ';
-            queryParams.push(searchTerm, searchTerm);
+            conditions.push('(n.titulo LIKE ? OR n.mensagem LIKE ?)');
+            queryParams.push(`%${search}%`, `%${search}%`);
         }
 
-        // Conta o total de notificações para a Paginação
+        // Mentor só vê notificações disparadas por ele
+        if (isMentor) {
+            conditions.push('n.criada_por_admin_id = ?');
+            queryParams.push(adminId);
+        }
+
+        const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
         const countQuery = `SELECT COUNT(id) AS total FROM notificacoes n ${whereClause}`;
         const [totalQuery] = await db.execute(countQuery, queryParams);
         const totalNotificacoes = totalQuery[0].total;
         const totalPages = Math.ceil(totalNotificacoes / limit) || 1;
 
-        // 1. Busca as notificações paginadas + contagens + nomes dos cursos
         const mainQuery = `
             SELECT n.*, 
                    (SELECT COUNT(*) FROM notificacao_entregas WHERE notificacao_id = n.id) AS total_enviados,
@@ -3706,7 +3940,6 @@ app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
 
         const [notificacoesRaw] = await db.execute(mainQuery, queryParams);
 
-        // 2. Busca as respostas (Usando Promise.all para carregar todas simultaneamente de forma rápida)
         const notificacoes = await Promise.all(notificacoesRaw.map(async (notif) => {
             if (notif.tipo_interacao !== 'NENHUM') {
                 const [respostas] = await db.execute(`
@@ -3718,7 +3951,6 @@ app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
                 `, [notif.id]);
                 return { ...notif, respostas };
             }
-            // Se for do tipo NENHUM, devolve com array vazio para a view não quebrar
             return { ...notif, respostas: [] };
         }));
 
@@ -3908,12 +4140,11 @@ app.get('/admin/notificacoes/nova', verificarAdmin, async (req, res) => {
 
 // POST: Processar e Disparar Notificação
 app.post('/admin/notificacoes/nova', verificarAdmin, uploadNotificacao.single('imagem'), async (req, res) => {
-    // Agora extraímos também as datas
     const { titulo, mensagem, tipo_interacao, tipo_alvo, cursos_alvo, data_inicio, data_fim } = req.body;
     const adminId = req.session.usuario.id;
+    const isMentor = req.session.usuario.tipo === 'MENTOR';
     const imagem_url = req.file ? '/img/notificacoes/' + req.file.filename : null;
 
-    // Tratamento para enviar nulo caso o admin tenha deixado em branco
     const dInicio = data_inicio && data_inicio.trim() !== '' ? data_inicio : null;
     const dFim = data_fim && data_fim.trim() !== '' ? data_fim : null;
 
@@ -3925,14 +4156,26 @@ app.post('/admin/notificacoes/nova', verificarAdmin, uploadNotificacao.single('i
         );
         const notificacaoId = resultNotificacao.insertId;
 
-        // ... O resto do código (a distribuição inteligente) CONTINUA IGUAL ...
-
+        // Distribuição Inteligente das Notificações
         if (tipo_alvo === 'TODOS') {
-            await db.execute(
-                `INSERT IGNORE INTO notificacao_entregas (notificacao_id, aluno_id, status)
-                 SELECT ?, id, 'PENDENTE' FROM usuarios WHERE tipo = 'ALUNO' AND status = 'ATIVO'`,
-                [notificacaoId]
-            );
+            if (isMentor) {
+                // MENTOR envia "Para Todos", mas restrito à base de alunos dele
+                await db.execute(
+                    `INSERT IGNORE INTO notificacao_entregas (notificacao_id, aluno_id, status)
+                     SELECT DISTINCT ?, m.aluno_id, 'PENDENTE' 
+                     FROM matriculas m
+                     JOIN cursos c ON m.curso_id = c.id
+                     WHERE c.criado_por_admin_id = ? AND m.status = 'ATIVA'`,
+                    [notificacaoId, adminId]
+                );
+            } else {
+                // ADMIN envia para toda a base
+                await db.execute(
+                    `INSERT IGNORE INTO notificacao_entregas (notificacao_id, aluno_id, status)
+                     SELECT ?, id, 'PENDENTE' FROM usuarios WHERE tipo = 'ALUNO' AND status = 'ATIVO'`,
+                    [notificacaoId]
+                );
+            }
         } else if (tipo_alvo === 'CURSO_ESPECIFICO' && cursos_alvo) {
             const cursosArray = Array.isArray(cursos_alvo) ? cursos_alvo : [cursos_alvo];
             for (const cId of cursosArray) {

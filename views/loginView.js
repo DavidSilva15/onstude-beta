@@ -311,6 +311,15 @@ function renderLoginView(erro = null, returnTo = '') {
                             </div>
                         </form>
 
+                        <div class="mt-4 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-50 rounded-4">
+                            <p class="text-warning-emphasis small fw-bold mb-2 text-center"><i class="bi bi-tools me-1"></i>Acesso Rápido de Teste (Dev)</p>
+                            <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-semibold" onclick="preencherLogin('admin@onstude.com', '230497')">Admin</button>
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-semibold" onclick="preencherLogin('teste@onstude.com', '2304')">Aluno (Teste)</button>
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-semibold" onclick="preencherLogin('mentor@onstude.com', '2304')">Mentor</button>
+                                <button type="button" class="btn btn-sm btn-outline-dark rounded-pill fw-semibold" onclick="preencherLogin('alunomentor@onstude.com', '2304')">Aluno do Mentor</button>
+                            </div>
+                        </div>
                         <div class="text-center mt-4 pt-4 border-top">
                             <p class="text-muted small mb-0">Ainda não tem uma conta?</p>
                             <a href="/cadastro" class="text-primary fw-bold text-decoration-none hover-shadow transition" style="font-size: 0.95rem;">Crie sua conta gratuitamente</a>
@@ -325,6 +334,15 @@ function renderLoginView(erro = null, returnTo = '') {
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
         <script>
+            // ==========================================
+            // FUNÇÃO DEV: PREENCHER LOGIN RAPIDAMENTE
+            // (REMOVER EM PRODUÇÃO)
+            // ==========================================
+            function preencherLogin(email, senha) {
+                document.getElementById('email').value = email;
+                document.getElementById('senha').value = senha;
+            }
+
             // ==========================================
             // LÓGICA DE BOAS-VINDAS INTELIGENTE
             // ==========================================

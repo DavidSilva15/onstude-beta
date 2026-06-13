@@ -43,6 +43,19 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
         htmlMatriculados = '<div class="placeholder-empty text-muted small p-3 text-center w-100 border border-dashed rounded-3">Arraste cursos para cá</div>';
     }
 
+    // Lógica para as opções do Tipo de Usuário baseado em quem está logado
+    let htmlTipoOpcoes = '';
+    if (admin.tipo === 'ADMIN') {
+        htmlTipoOpcoes = `
+            <option value="ALUNO" ${usuario.tipo === 'ALUNO' ? 'selected' : ''}>Aluno</option>
+            <option value="MENTOR" ${usuario.tipo === 'MENTOR' ? 'selected' : ''}>Mentor</option>
+            <option value="ADMIN" ${usuario.tipo === 'ADMIN' ? 'selected' : ''}>Administrador</option>
+        `;
+    } else {
+        // Se for Mentor, esconde as outras opções de cargos e bloqueia visualmente
+        htmlTipoOpcoes = `<option value="ALUNO" selected>Aluno</option>`;
+    }
+
     return `
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -107,8 +120,7 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
                                             <div class="col-md-4">
                                                 <label class="form-label fw-semibold small">Tipo de Acesso</label>
                                                 <select class="form-select bg-light" name="tipo">
-                                                    <option value="ALUNO" ${usuario.tipo === 'ALUNO' ? 'selected' : ''}>Aluno</option>
-                                                    <option value="ADMIN" ${usuario.tipo === 'ADMIN' ? 'selected' : ''}>Administrador</option>
+                                                    ${htmlTipoOpcoes}
                                                 </select>
                                             </div>
                                             <div class="col-md-5">

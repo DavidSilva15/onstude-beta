@@ -111,6 +111,8 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
         <title>Área do aluno - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+        
         <style>
             body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; overflow-x: hidden; background-color: transparent; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
@@ -168,7 +170,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
             .rank-3 { border-left-color: #cd7f32; background-color: rgba(205, 127, 50, 0.05); }
             .rank-user { border-left-color: #0d6efd; background-color: rgba(13, 110, 253, 0.05); }
             
-            /* Animações de Ranking */
+            /* Animações */
             @keyframes rankUpEffect {
                 0% { background-color: rgba(25, 135, 84, 0.3); transform: translateY(15px); opacity: 0; box-shadow: 0 0 20px rgba(25, 135, 84, 0.5); }
                 100% { background-color: rgba(13, 110, 253, 0.05); transform: translateY(0); opacity: 1; box-shadow: none; }
@@ -183,11 +185,44 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
 
             .notif-item:hover { background-color: rgba(255,255,255,0.7); cursor: pointer; }
 
-            /* Scroll customizado para o ranking */
             .custom-scroll::-webkit-scrollbar { width: 5px; }
             .custom-scroll::-webkit-scrollbar-track { background: transparent; }
             .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
             .custom-scroll:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.25); }
+
+            /* ==========================================
+               TEMA E CORES DO TOUR (DRIVER.JS CUSTOM)
+               ========================================== */
+            .driverjs-theme {
+                position: fixed !important; 
+                bottom: 25px !important; 
+                top: auto !important; 
+                left: 50% !important; 
+                right: auto !important;
+                transform: translateX(-50%) !important; 
+                border-radius: 1.2rem !important; 
+                box-shadow: 0 20px 50px rgba(0,0,0,0.4) !important; 
+                font-family: 'Segoe UI', sans-serif !important; 
+                border: none !important; 
+                width: 92% !important; 
+                max-width: 480px !important; 
+                text-align: center;
+                background: white !important;
+            }
+            .driver-popover-arrow { display: none !important; } /* Esconde a setinha */
+            .driver-popover-title { color: #0d6efd !important; font-weight: 800 !important; font-size: 1.2rem !important; margin-top: 5px; padding: 0 10px;}
+            .driver-popover-description { font-size: 1rem !important; color: #6c757d !important; margin-bottom: 20px; padding: 0 10px; }
+            .driver-popover-footer { display: flex; justify-content: center; gap: 12px; border-top: 1px solid #f1f3f5; padding-top: 15px; align-items: center;}
+            .driver-popover-progress-text { font-size: 0.75rem !important; color: #adb5bd !important; position: absolute; top: 15px; right: 20px; }
+            .driver-popover-btn-next { background: #0d6efd !important; color: white !important; border: none !important; border-radius: 50rem !important; font-weight: bold !important; padding: 10px 24px !important; text-shadow: none !important; transition: 0.2s;}
+            .driver-popover-btn-next:hover { background: #0b5ed7 !important; }
+            .driver-popover-btn-prev { background: #f8f9fa !important; color: #495057 !important; border: 1px solid #dee2e6 !important; border-radius: 50rem !important; font-weight: bold !important; padding: 10px 24px !important; text-shadow: none !important; transition: 0.2s;}
+            .driver-popover-btn-prev:hover { background: #e9ecef !important; }
+            .driver-popover-btn-close { color: #dc3545 !important; background: transparent !important; top: 10px !important; right: 5px !important;}
+            .driver-popover-btn-close:hover { text-decoration: underline !important; }
+            
+            /* Remove a caixa de brilho forçado que o Driver coloca por padrão */
+            div.driver-active-element { outline: none !important; box-shadow: none !important; }
         </style>
     </head>
     <body>
@@ -219,7 +254,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
 
                     <div class="row mb-5 g-4 align-items-stretch">
                         
-                        <div class="col-lg-4 col-xl-3 d-flex flex-column gap-3">
+                        <div class="col-lg-4 col-xl-3 d-flex flex-column gap-3" id="tour-conquistas">
                             <h6 class="fw-bold text-secondary text-uppercase mb-1" style="font-size: 0.8rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Minhas Conquistas</h6>
                             
                             <div class="card border-0 shadow-sm rounded-4 hover-card px-4 py-3 d-flex flex-row align-items-center justify-content-between transition-all glass-card">
@@ -251,7 +286,7 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                             </div>
                         </div>
 
-                        <div class="col-lg-8 col-xl-9 d-flex flex-column">
+                        <div class="col-lg-8 col-xl-9 d-flex flex-column" id="tour-ranking">
                             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 mt-4 mt-lg-0 gap-2">
                                 <h6 class="fw-bold text-secondary text-uppercase mb-0 d-flex align-items-center" style="font-size: 0.8rem;">
                                     <i class="bi bi-trophy-fill text-primary me-2"></i> Top Alunos
@@ -286,12 +321,28 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
                         </div>
                     </div>
 
-                    <div class="row">
+                    <div class="row" id="tour-cursos">
                         ${htmlCursos}
                     </div>
 
                 </div>
             </div>
+        </div>
+
+        <div id="tutorialWidgetContainer" class="position-fixed bottom-0 end-0 p-4 d-flex flex-column align-items-end" style="z-index: 1050; transition: all 0.4s ease;">
+            <button type="button" class="btn-close bg-white rounded-circle p-2 shadow position-absolute" style="top: 5px; right: 5px; z-index: 1051; font-size: 0.6rem;" onclick="fecharTutorialCompleto()" title="Não mostrar novamente"></button>
+            
+            <div class="bg-white p-3 rounded-4 shadow-lg mb-3 position-relative text-center border" id="tutorialMessage" style="width: 220px; transform-origin: bottom right;">
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-2" style="font-size: 0.6rem;" onclick="esconderBalaoTutorial()"></button>
+                <div class="mb-2"><i class="bi bi-stars text-warning fs-2"></i></div>
+                <h6 class="fw-bold text-dark mb-1">Precisa de ajuda?</h6>
+                <p class="text-muted small mb-3 lh-sm">Faça um tour rápido para conhecer todas as ferramentas do seu novo painel de estudos.</p>
+                <button onclick="iniciarTutorial()" class="btn btn-primary btn-sm rounded-pill fw-bold w-100 shadow-sm">Iniciar Tour</button>
+            </div>
+            
+            <button id="btnTourIcon" onclick="alternarBalaoTutorial()" class="btn btn-primary rounded-circle shadow-lg d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; border: 3px solid white;" title="Ajuda">
+                <i class="bi bi-question-lg fs-3"></i>
+            </button>
         </div>
 
         <div class="modal fade" id="modalNotificacao" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
@@ -353,8 +404,166 @@ function renderAlunoDashboardView(aluno, cursosMatriculados, kpiData) {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 
         <script>
+            // ==========================================
+            // LÓGICA DO TOUR INTERATIVO (DRIVER.JS)
+            // ==========================================
+            
+            if (localStorage.getItem('onstude_tutorial_fechado') === 'true') {
+                document.getElementById('tutorialWidgetContainer').style.display = 'none';
+            }
+
+            function esconderBalaoTutorial() {
+                document.getElementById('tutorialMessage').style.display = 'none';
+            }
+
+            function alternarBalaoTutorial() {
+                const msg = document.getElementById('tutorialMessage');
+                msg.style.display = msg.style.display === 'none' ? 'block' : 'none';
+            }
+
+            function fecharTutorialCompleto() {
+                document.getElementById('tutorialWidgetContainer').style.display = 'none';
+                localStorage.setItem('onstude_tutorial_fechado', 'true');
+            }
+
+            window.iniciarTutorial = function() {
+                esconderBalaoTutorial();
+                
+                const isMobile = window.innerWidth < 992;
+                
+                // Encontra a barra de navegação/sidebar padrão do bootstrap que você usa nos Menus
+                const navPills = document.querySelector('.nav.nav-pills');
+                const offcanvasEl = document.getElementById('offcanvasSidebar') || (navPills ? navPills.closest('.offcanvas') : null);
+                const desktopSidebar = navPills ? navPills.closest('.d-lg-flex') : null;
+
+                let passosDinamicos = [
+                    {
+                        popover: {
+                            title: '🎉 Bem-vindo ao Painel!',
+                            description: 'Este é o seu centro de estudos online. Vamos fazer um tour rápido para descobrir tudo!'
+                        }
+                    }
+                ];
+
+                // 1. Lógica do Menu (Diferente para Mobile e Desktop)
+                if (isMobile) {
+                    passosDinamicos.push({
+                        element: 'nav.navbar', 
+                        popover: {
+                            title: '🧭 Menu Superior',
+                            description: 'Toque no ícone de navegação no canto para abrir o seu menu.'
+                        },
+                        onNextClick: (el, step, opts) => {
+                            if (offcanvasEl) bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+                            opts.state.moveNext();
+                        }
+                    });
+
+                    passosDinamicos.push({
+                        element: offcanvasEl ? offcanvasEl.querySelector('.offcanvas-body') : 'body',
+                        popover: {
+                            title: '🧭 O seu Menu',
+                            description: 'Aqui ficam todos os atalhos importantes da sua conta.'
+                        },
+                        onPreviousClick: (el, step, opts) => {
+                            if (offcanvasEl) bootstrap.Offcanvas.getInstance(offcanvasEl)?.hide();
+                            opts.state.movePrevious();
+                        }
+                    });
+                } else {
+                    if (desktopSidebar) {
+                        passosDinamicos.push({
+                            element: desktopSidebar,
+                            popover: {
+                                title: '🧭 Menu Lateral',
+                                description: 'Este é o seu painel de navegação principal.'
+                            }
+                        });
+                    }
+                }
+
+                // 2. Extrai de forma inteligente os botões do Menu para destacar um por um
+                const containerMenu = isMobile ? (offcanvasEl || document) : (desktopSidebar || document);
+                const linksMenu = containerMenu.querySelectorAll('.nav-link');
+                
+                linksMenu.forEach(link => {
+                    const nomeDoBotao = link.innerText.trim() || 'Opção';
+                    passosDinamicos.push({
+                        element: link,
+                        popover: {
+                            title: \`Atalho: \${nomeDoBotao}\`,
+                            description: \`Clique neste botão sempre que quiser acessar a área de \${nomeDoBotao}.\`
+                        }
+                    });
+                });
+
+                // 3. Destaca os blocos fixos do painel (Conquistas, Ranking, Cursos)
+                passosDinamicos.push({
+                    element: '#tour-conquistas',
+                    popover: {
+                        title: '🏆 Minhas Conquistas',
+                        description: 'Acompanhe seu progresso, os pontos de experiência (XP) que ganhou e sua nota média nas avaliações.'
+                    },
+                    onHighlightStarted: () => {
+                        // Se for mobile, fecha o menu automaticamente para mostrar o painel limpo
+                        if (isMobile && offcanvasEl) {
+                            const bs = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                            if (bs) bs.hide();
+                        }
+                    },
+                    onPreviousClick: (el, step, opts) => {
+                        // Se ele clicar em "Voltar", abre o menu novamente para mostrar os botões
+                        if (isMobile && offcanvasEl) bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+                        opts.state.movePrevious();
+                    }
+                });
+
+                passosDinamicos.push({
+                    element: '#tour-ranking',
+                    popover: {
+                        title: '🏅 Top Alunos',
+                        description: 'Compare o seu desempenho com os colegas! Conclua aulas para ganhar XP e subir ao pódio.'
+                    }
+                });
+
+                passosDinamicos.push({
+                    element: '#tour-cursos',
+                    popover: {
+                        title: '📚 Seus Cursos',
+                        description: 'Nesta área ficam os cursos liberados para você. Acompanhe o seu progresso no botão.'
+                    }
+                });
+
+                // Inicializa a Lib
+                const driver = window.driver.js.driver;
+                const driverObj = driver({
+                    showProgress: true,
+                    showButtons: ['next', 'previous', 'close'],
+                    nextBtnText: 'Próximo',
+                    prevBtnText: 'Voltar',
+                    doneBtnText: 'Entendi!',
+                    progressText: 'Passo {{current}} de {{total}}',
+                    stagePadding: 4, 
+                    popoverClass: 'driverjs-theme', // Adiciona o tema personalizado
+                    steps: passosDinamicos,
+                    onDestroyStarted: () => {
+                        // Limpeza de segurança caso o usuário feche o tour no meio
+                        if (isMobile && offcanvasEl) {
+                            const bs = bootstrap.Offcanvas.getInstance(offcanvasEl);
+                            if (bs) bs.hide();
+                        }
+                        driverObj.destroy();
+                    }
+                });
+                
+                driverObj.drive();
+            };
+
+
             const NOME_ALUNO = "${aluno.nome.split(' ')[0]}";
             let listaNotificacoesGlobal = [];
             let notificacaoAtualId = null;
