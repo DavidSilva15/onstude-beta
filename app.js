@@ -1238,7 +1238,7 @@ app.post('/aluno/checkout', verificarAluno, async (req, res) => {
 
         // 4. Cria a Preferência (Intenção de Compra) no Mercado Pago
         const preference = new Preference(client);
-        const urlRetornoBase = 'http://localhost:3000'; // ALERTA: Mude em produção!
+        const urlRetornoBase = 'https://onstude.com.br';
 
         const respostaMP = await preference.create({
             body: {
