@@ -12,8 +12,8 @@ const client = new MercadoPagoConfig({ accessToken: 'APP_USR-2055640069599483-06
 // Lembre-se que você já tem o 'fs' e 'path' importados das etapas anteriores.
 
 // Configuração forçada dos caminhos para o ambiente Windows
-ffmpeg.setFfmpegPath('C:/ffmpeg/bin/ffmpeg.exe');
-ffmpeg.setFfprobePath('C:/ffmpeg/bin/ffprobe.exe');
+//ffmpeg.setFfmpegPath('C:/ffmpeg/bin/ffmpeg.exe');
+//ffmpeg.setFfprobePath('C:/ffmpeg/bin/ffprobe.exe');
 
 const renderCadastroView = require('./views/cadastroView');
 const renderAdminDashboardView = require('./views/adminDashboardView');
