@@ -1266,6 +1266,27 @@ app.post('/aluno/checkout', verificarAluno, async (req, res) => {
     }
 });
 
+// ==========================================
+// RETORNOS DO CHECKOUT (MERCADO PAGO)
+// ==========================================
+
+// Quando o cartão aprova na hora
+app.get('/aluno/checkout/sucesso', verificarAluno, (req, res) => {
+    res.redirect('/aluno');
+});
+
+// Quando é PIX ou Boleto (Processando)
+app.get('/aluno/checkout/pendente', verificarAluno, (req, res) => {
+    // Como o webhook trabalha muito rápido no fundo, ao redirecionar para o painel, 
+    // o curso provavelmente já estará lá.
+    res.redirect('/aluno'); 
+});
+
+// Quando o pagamento é recusado ou o aluno cancela
+app.get('/aluno/checkout/falha', verificarAluno, (req, res) => {
+    res.redirect('/aluno/carrinho');
+});
+
 // GET: Retorna a quantidade de itens no carrinho (Usado pelo Header Principal)
 app.get('/api/carrinho/count', async (req, res) => {
     if (!req.session.usuario || req.session.usuario.tipo !== 'ALUNO') {
