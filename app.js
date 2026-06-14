@@ -519,7 +519,7 @@ app.get('/login', (req, res) => {
 
     if (req.session.usuario) {
         if (returnTo && returnTo.startsWith('/')) return res.redirect(returnTo);
-        
+
         // Atualizado: ADMIN e MENTOR vão para o painel /admin
         return res.redirect((req.session.usuario.tipo === 'ADMIN' || req.session.usuario.tipo === 'MENTOR') ? '/admin' : '/aluno');
     }
@@ -533,7 +533,7 @@ app.get('/login', (req, res) => {
 app.post('/login', async (req, res) => {
     // 3. AQUI ESTÁ O SEGREDO: Extrair o returnTo do body (que veio do input hidden)
     const { email, senha, returnTo } = req.body;
-    
+
     // Precisamos do renderLoginView caso haja erro de login
     const renderLoginView = require('./views/loginView');
 
@@ -585,7 +585,7 @@ app.get('/admin/cursos', verificarAdmin, async (req, res) => {
         const isMentor = req.session.usuario.tipo === 'MENTOR';
         const adminId = req.session.usuario.id;
 
-        const limit = 12; 
+        const limit = 12;
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
         const search = req.query.search || '';
@@ -717,7 +717,7 @@ app.get('/admin', verificarAdmin, async (req, res) => {
         // NOVO: Se for Admin, busca os mentores para o select do Gráfico e captura o filtro
         let mentores = [];
         const filtroMentorId = req.query.mentor_id || '';
-        
+
         if (!isMentor) {
             const [mentoresRaw] = await db.execute("SELECT id, nome FROM usuarios WHERE tipo = 'MENTOR' ORDER BY nome ASC");
             mentores = mentoresRaw;
@@ -857,11 +857,11 @@ app.get('/admin', verificarAdmin, async (req, res) => {
             const [ano, mesStr] = row.mes_ano.split('-');
             const mesIdx = parseInt(mesStr) - 1;
             const nomeMes = `${mesesNomes[mesIdx]} ${ano}`;
-            
+
             if (!dadosGrafico[nomeMes]) {
                 const diasNoMes = new Date(ano, mesIdx + 1, 0).getDate();
                 dadosGrafico[nomeMes] = {
-                    labels: Array.from({length: diasNoMes}, (_, i) => `Dia ${i+1}`),
+                    labels: Array.from({ length: diasNoMes }, (_, i) => `Dia ${i + 1}`),
                     data: Array(diasNoMes).fill(0)
                 };
             }
@@ -874,7 +874,7 @@ app.get('/admin', verificarAdmin, async (req, res) => {
             const nm = `${mesesNomes[hoje.getMonth()]} ${hoje.getFullYear()}`;
             const dInM = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
             dadosGrafico[nm] = {
-                labels: Array.from({length: dInM}, (_, i) => `Dia ${i+1}`),
+                labels: Array.from({ length: dInM }, (_, i) => `Dia ${i + 1}`),
                 data: Array(dInM).fill(0)
             };
         }
@@ -1059,11 +1059,11 @@ app.post('/admin/cursos/:id/editar', verificarAdmin, upload.fields([
     try {
         const folderName = `${cursoId}_${sanitizeFolderName(titulo)}`;
         const targetDir = path.join(__dirname, 'public', 'uploads', 'cursos', folderName);
-        
+
         if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
         const arquivos = req.files || {};
-        
+
         let capa_url = capa_url_atual || null;
         if (arquivos['capa']) {
             const oldPath = arquivos['capa'][0].path;
@@ -1270,21 +1270,85 @@ app.post('/aluno/checkout', verificarAluno, async (req, res) => {
 // RETORNOS DO CHECKOUT (MERCADO PAGO)
 // ==========================================
 
-// Quando o cartão aprova na hora
+// Rota para quando o pagamento é aprovado na hora (ex: Cartão)
 app.get('/aluno/checkout/sucesso', verificarAluno, (req, res) => {
     res.redirect('/aluno');
 });
 
-// Quando é PIX ou Boleto (Processando)
+// Rota de espera para PIX ou Boleto
 app.get('/aluno/checkout/pendente', verificarAluno, (req, res) => {
-    // Como o webhook trabalha muito rápido no fundo, ao redirecionar para o painel, 
-    // o curso provavelmente já estará lá.
-    res.redirect('/aluno'); 
+    res.redirect('/aluno');
 });
 
-// Quando o pagamento é recusado ou o aluno cancela
+// Rota para caso o aluno cancele ou dê erro no cartão
 app.get('/aluno/checkout/falha', verificarAluno, (req, res) => {
     res.redirect('/aluno/carrinho');
+});
+
+
+// ==========================================
+// WEBHOOK: RECEBER AVISOS DO MERCADO PAGO
+// ==========================================
+app.post('/api/webhooks/mercadopago', async (req, res) => {
+    // Respondemos com 200 OK imediatamente para o Mercado Pago não achar que o servidor caiu
+    res.status(200).send('OK');
+
+    // Captura o tipo e o ID do pagamento tratando as variações da API deles (IPN vs Webhook)
+    const type = req.query.topic || req.query.type || req.body.type || req.body.action;
+    const dataId = req.query.id || (req.body.data && req.body.data.id);
+
+    console.log(`🔔 [Webhook MP] Notificação recebida! Tipo: ${type} | ID: ${dataId}`);
+
+    // Se for uma notificação de pagamento válida, vamos processar
+    if ((type === 'payment' || type === 'payment.created' || type === 'payment.updated') && dataId) {
+        try {
+            const { Payment } = require('mercadopago');
+            const payment = new Payment(client);
+            const infoPagamento = await payment.get({ id: dataId });
+
+            // Se o status no Mercado Pago for aprovado de verdade
+            if (infoPagamento.status === 'approved') {
+                const pedidoId = infoPagamento.external_reference; // É o ID do pedido que guardamos
+
+                // 1. Atualiza o status do pedido no seu banco
+                await db.execute(
+                    'UPDATE pedidos SET status = "APROVADO", mp_payment_id = ?, atualizado_em = NOW() WHERE id = ? AND status = "PENDENTE"',
+                    [infoPagamento.id, pedidoId]
+                );
+
+                // 2. Busca quem é o aluno e quais cursos estão nesse pedido
+                const [pedidoItens] = await db.execute(`
+                    SELECT pi.curso_id, p.aluno_id 
+                    FROM pedido_itens pi 
+                    JOIN pedidos p ON pi.pedido_id = p.id 
+                    WHERE pi.pedido_id = ?
+                `, [pedidoId]);
+
+                // 3. Varre os itens e faz a matrícula automática do aluno
+                for (let item of pedidoItens) {
+                    const [matriculaExistente] = await db.execute(
+                        'SELECT id FROM matriculas WHERE aluno_id = ? AND curso_id = ?',
+                        [item.aluno_id, item.curso_id]
+                    );
+
+                    if (matriculaExistente.length === 0) {
+                        const [novaMatricula] = await db.execute(
+                            'INSERT INTO matriculas (aluno_id, curso_id, status, origem) VALUES (?, ?, "ATIVA", "COMPRA_SITE")',
+                            [item.aluno_id, item.curso_id]
+                        );
+
+                        // Cria os registros de certificado e progresso para essa nova matrícula
+                        const tokenCertificado = crypto.randomBytes(4).toString('hex').toUpperCase();
+                        await db.execute('INSERT INTO certificados (matricula_id, token) VALUES (?, ?)', [novaMatricula.insertId, tokenCertificado]);
+                        await db.execute('INSERT INTO progresso_curso (matricula_id) VALUES (?)', [novaMatricula.insertId]);
+                    }
+                }
+                console.log(`✅ [Mercado Pago] Sucesso absoluto! Pedido ${pedidoId} processado e cursos liberados.`);
+            }
+        } catch (error) {
+            console.error('❌ [Mercado Pago] Erro ao processar dados do Webhook:', error.message);
+        }
+    }
 });
 
 // GET: Retorna a quantidade de itens no carrinho (Usado pelo Header Principal)
@@ -1571,7 +1635,7 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
         // Montagem dos nomes das pastas (Ex: 15_curso-de-excel / aula1(introducao) )
         const folderCurso = `${cursoIdParaRedirect}_${sanitizeFolderName(cursoTitulo)}`;
         const folderAula = `aula${ordem}(${sanitizeFolderName(titulo)})`;
-        
+
         const baseTargetDir = path.join(__dirname, 'public', 'uploads', 'cursos', folderCurso, folderAula);
         const basePathPublic = `/uploads/cursos/${folderCurso}/${folderAula}`;
 
@@ -1664,7 +1728,7 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
                     const videoExt = path.extname(videoFileOriginal.originalname);
                     const nomeVideo = `video_aula${ordem}${videoExt}`;
                     const videoPathPhysical = path.join(dirs.root, nomeVideo);
-                    
+
                     fs.renameSync(videoFileOriginal.path, videoPathPhysical);
                     videoPathPublic = `${basePathPublic}/${nomeVideo}`;
 
@@ -1740,7 +1804,7 @@ app.post('/admin/modulos/:moduloId/aulas/nova', verificarAdmin, uploadAula.field
                                 })
                                 .on('end', () => {
                                     global.tarefasProcessamento[jobId].steps[`${resolucao}p`] = 'done';
-                                    resolve(`${basePathPublic}/${outputFilename}`); 
+                                    resolve(`${basePathPublic}/${outputFilename}`);
                                 })
                                 .on('error', (err) => {
                                     console.error(`[Job ${jobId}] Erro conversão ${resolucao}p:`, err.message);
@@ -1828,14 +1892,14 @@ app.post('/admin/aulas/:id/editar', verificarAdmin, uploadAula.fields([
             JOIN cursos c ON m.curso_id = c.id 
             WHERE a.id = ?
         `, [aulaId]);
-        
+
         const cursoId = aulaQuery[0].curso_id;
         const cursoTitulo = aulaQuery[0].curso_titulo;
 
         // Montagem das Pastas Base
         const folderCurso = `${cursoId}_${sanitizeFolderName(cursoTitulo)}`;
         const folderAula = `aula${ordem}(${sanitizeFolderName(titulo)})`;
-        
+
         const baseTargetDir = path.join(__dirname, 'public', 'uploads', 'cursos', folderCurso, folderAula);
         const basePathPublic = `/uploads/cursos/${folderCurso}/${folderAula}`;
 
@@ -1901,7 +1965,7 @@ app.post('/admin/aulas/:id/editar', verificarAdmin, uploadAula.fields([
                 const nomeArquivo = `${ordemImagem}${ext}`;
                 const newPath = path.join(dirs.atividade, nomeArquivo);
                 fs.renameSync(img.path, newPath);
-                
+
                 await db.execute(
                     `INSERT INTO apostila_imagens (aula_id, imagem_path, ordem) VALUES (?, ?, ?)`,
                     [aulaId, `${basePathPublic}/atividade/${nomeArquivo}`, ordemImagem]
@@ -2378,19 +2442,19 @@ app.get('/admin/usuarios/novo', verificarAdmin, async (req, res) => {
 
 app.post('/admin/usuarios/novo', verificarAdmin, uploadPerfil.single('foto_perfil'), async (req, res) => {
     const { nome, email, senha, tipo, data_nascimento, telefone, cidade, estado, cursos } = req.body;
-    
+
     const usuarioLogado = req.session.usuario;
     const adminId = usuarioLogado.id;
     const isMentor = usuarioLogado.tipo === 'MENTOR';
-    
+
     const foto_perfil_url = req.file ? '/img/perfil/' + req.file.filename : null;
 
     try {
         let tipoFinal = tipo;
         if (isMentor) {
-            tipoFinal = 'ALUNO'; 
+            tipoFinal = 'ALUNO';
         } else if (!['ADMIN', 'MENTOR', 'ALUNO'].includes(tipo)) {
-            tipoFinal = 'ALUNO'; 
+            tipoFinal = 'ALUNO';
         }
 
         const [existente] = await db.execute('SELECT id FROM usuarios WHERE email = ?', [email]);
@@ -2509,7 +2573,7 @@ app.get('/admin/usuarios/:id/editar', verificarAdmin, async (req, res) => {
 app.post('/admin/usuarios/:id/editar', verificarAdmin, uploadPerfil.single('foto_perfil'), async (req, res) => {
     const usuarioId = req.params.id;
     const { nome, email, tipo, status, nova_senha, data_nascimento, telefone, cidade, estado, foto_atual, cursos } = req.body;
-    
+
     const usuarioLogado = req.session.usuario;
     const isMentor = usuarioLogado.tipo === 'MENTOR';
     const adminId = usuarioLogado.id;
@@ -2520,9 +2584,9 @@ app.post('/admin/usuarios/:id/editar', verificarAdmin, uploadPerfil.single('foto
         // Regra de Hierarquia: Mentor só define "ALUNO"
         let tipoFinal = tipo;
         if (isMentor) {
-            tipoFinal = 'ALUNO'; 
+            tipoFinal = 'ALUNO';
         } else if (!['ADMIN', 'MENTOR', 'ALUNO'].includes(tipo)) {
-            tipoFinal = 'ALUNO'; 
+            tipoFinal = 'ALUNO';
         }
 
         // ==========================================
@@ -2578,7 +2642,7 @@ app.post('/admin/usuarios/:id/editar', verificarAdmin, uploadPerfil.single('foto
 
         // 2.2. ASSOCIAR: Cursos que foram arrastados para a coluna de ativos
         for (const cursoId of cursosSelecionados) {
-            
+
             // Proteção final: Garantir que o curso pertence ao mentor
             let temPermissao = true;
             if (isMentor) {
@@ -3919,7 +3983,7 @@ app.get('/admin/notificacoes', verificarAdmin, async (req, res) => {
         const isMentor = req.session.usuario.tipo === 'MENTOR';
         const adminId = req.session.usuario.id;
 
-        const limit = 12; 
+        const limit = 12;
         const currentPage = parseInt(req.query.page) || 1;
         const offset = (currentPage - 1) * limit;
         const search = req.query.search || '';
