@@ -4345,6 +4345,6 @@ app.get('/logout', (req, res) => {
 });
 
 // Inicialização
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Servidor OnStude rodando em http://localhost:${port}`);
 });
