@@ -45,7 +45,7 @@ const renderCursoPublicoView = require('./views/cursoPublicoView');
 const renderAlunoCarrinhoView = require('./views/alunoCarrinhoView');
 
 const app = express();
-const port = 3000;
+const port = 3055;
 
 // ==========================================
 // FUNÇÃO UTILITÁRIA PARA PASTAS
