@@ -8,7 +8,7 @@ const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const PDFDocument = require('pdfkit');
 const { MercadoPagoConfig, Preference } = require('mercadopago');
-const client = new MercadoPagoConfig({ accessToken: 'APP_USR-SEU_ACCESS_TOKEN_AQUI' });
+const client = new MercadoPagoConfig({ accessToken: 'APP_USR-2055640069599483-061408-5dc230eb0d182cc8687b7dcae05def8e-3468883551' });
 // Lembre-se que você já tem o 'fs' e 'path' importados das etapas anteriores.
 
 // Configuração forçada dos caminhos para o ambiente Windows
