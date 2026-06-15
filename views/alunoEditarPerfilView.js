@@ -14,21 +14,23 @@ function renderAlunoEditarPerfilView(aluno) {
         <title>Editar Perfil - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         <style>
-            body { background-color: #f8f9fa; overflow: hidden; height: 100vh; font-family: 'Segoe UI', sans-serif; }
+            body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #212529; background-color: #f8f9fa; margin: 0; overflow-x: hidden; position: relative; }
             
-            /* Estrutura Principal */
-            .main-wrapper { display: flex; height: 100vh; width: 100vw; }
-            .content-area { flex-grow: 1; overflow-y: auto; background-color: #f3f4f6; padding-bottom: 50px; }
+            /* Estrutura Principal Corrigida e Harmonizada */
+            .main-wrapper { display: flex; flex-direction: row; width: 100vw; }
+            .content-area { flex-grow: 1; height: 100vh; overflow-y: auto; background-color: #f3f4f6; padding-bottom: 50px; }
             
             /* Scrollbar Customizada */
             .content-area::-webkit-scrollbar { width: 6px; }
             .content-area::-webkit-scrollbar-thumb { background-color: #ced4da; border-radius: 10px; }
 
-            /* Inputs Padrão OnStude */
+            /* Inputs Compactos OnStude */
             .input-group-custom {
                 background-color: #f8f9fa;
-                border-radius: 14px;
+                border-radius: 10px;
                 border: 2px solid #e9ecef;
                 transition: all 0.3s ease;
                 overflow: hidden;
@@ -41,8 +43,8 @@ function renderAlunoEditarPerfilView(aluno) {
             .form-control-custom {
                 border: none;
                 background: transparent;
-                padding: 0.8rem 1.2rem;
-                font-size: 0.95rem;
+                padding: 0.5rem 1rem;
+                font-size: 0.9rem;
             }
             .form-control-custom:focus { box-shadow: none; background: transparent; }
 
@@ -72,9 +74,8 @@ function renderAlunoEditarPerfilView(aluno) {
             }
 
             @media (max-width: 991.98px) {
-                body { overflow: auto; height: auto; }
-                .main-wrapper { flex-direction: column; height: auto; }
-                .content-area { height: auto; padding: 20px; }
+                .main-wrapper { flex-direction: column; }
+                .content-area { height: calc(100vh - 60px); padding: 20px; }
             }
 
             /* ==========================================
@@ -84,42 +85,34 @@ function renderAlunoEditarPerfilView(aluno) {
                 .content-area { padding: 15px 0 0 0 !important; background-color: #ffffff; }
                 .container-fluid { padding-left: 0 !important; padding-right: 0 !important; }
                 
-                /* Título e botão de voltar */
                 .header-mobile-wrapper { padding: 0 1.5rem; margin-bottom: 1rem !important; }
                 .header-mobile-wrapper h2 { font-size: 1.6rem; }
                 .header-mobile-wrapper p { font-size: 0.85rem; margin-bottom: 0; }
 
-                /* Card e Formulário full width */
                 .card { border-radius: 0 !important; box-shadow: none !important; border: none !important; }
                 .card-body { padding: 1.5rem 1.5rem !important; }
 
                 .form-label { font-size: 0.8rem !important; margin-bottom: 0.2rem !important; }
                 
-                /* Reduz tamanho dos inputs */
                 .form-control-custom {
-                    padding: 0.5rem 0.8rem 0.5rem 0.4rem;
-                    font-size: 0.9rem;
+                    padding: 0.45rem 0.8rem;
+                    font-size: 0.85rem;
                 }
                 .input-group-text-custom {
                     padding-left: 0.8rem;
-                    font-size: 0.9rem;
+                    font-size: 0.85rem;
                 }
                 .input-group-custom { border-radius: 10px; }
 
-                /* Reduz margens */
-                .row.g-4 { --bs-gutter-y: 1rem; --bs-gutter-x: 1rem; }
+                .row.g-3 { --bs-gutter-y: 1rem; --bs-gutter-x: 1rem; }
                 .mb-5 { margin-bottom: 1.5rem !important; }
                 
-                .btn-lg {
-                    padding: 0.7rem; 
-                    font-size: 0.95rem;
-                    border-radius: 10px !important;
-                }
-                
-                /* Diminui a foto no mobile para dar mais espaço à tela */
                 .avatar-preview { width: 100px; height: 100px; font-size: 40px !important; }
                 .btn-camera-float { width: 32px; height: 32px; bottom: 0; right: 0; }
                 .btn-camera-float i { font-size: 0.9rem; }
+                
+                .action-buttons-wrapper { flex-direction: column-reverse; }
+                .action-buttons-wrapper .btn { width: 100%; margin-bottom: 0.5rem; }
             }
         </style>
     </head>
@@ -142,16 +135,13 @@ function renderAlunoEditarPerfilView(aluno) {
                             <h2 class="fw-bold text-dark mb-1">Meu Perfil</h2>
                             <p class="text-secondary">Atualize as suas informações pessoais e foto de exibição.</p>
                         </div>
-                        <a href="/aluno" class="btn btn-outline-secondary rounded-pill fw-bold px-4 shadow-sm d-none d-md-block">
-                            <i class="bi bi-arrow-left me-2"></i> Voltar ao Painel
-                        </a>
                     </div>
 
                     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
                         <div class="card-body p-4 p-md-5 bg-white">
                             <form action="/aluno/perfil" method="POST" enctype="multipart/form-data" id="formEditarPerfil">
                                 
-                                <div class="text-center mb-5">
+                                <div class="text-center mb-4">
                                     <div class="avatar-upload-container">
                                         <div id="imagePreviewWrapper">
                                             ${aluno.foto_perfil_url 
@@ -164,11 +154,11 @@ function renderAlunoEditarPerfilView(aluno) {
                                             <input type="file" id="foto_perfil" name="foto_perfil" accept="image/*" class="d-none">
                                         </label>
                                     </div>
-                                    <p class="text-muted small mt-3">Tamanho recomendado: 500x500px (JPG ou PNG).</p>
+                                    <p class="text-muted small mt-2 mb-0">Tamanho recomendado: 500x500px (JPG ou PNG).</p>
                                 </div>
 
-                                <div class="row g-4">
-                                    <div class="col-12">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
                                         <label class="form-label fw-bold text-dark ms-1 small">Nome Completo</label>
                                         <div class="input-group-custom d-flex align-items-center">
                                             <span class="ps-3 text-muted"><i class="bi bi-person fs-5"></i></span>
@@ -182,33 +172,43 @@ function renderAlunoEditarPerfilView(aluno) {
                                             <span class="ps-3 text-muted"><i class="bi bi-envelope fs-5"></i></span>
                                             <input type="email" class="form-control form-control-custom" value="${aluno.email}" disabled>
                                         </div>
-                                        <small class="text-muted ms-1 mt-1 d-block" style="font-size: 0.75rem;">O e-mail não pode ser alterado.</small>
+                                        <small class="text-muted ms-1 mt-1 d-block" style="font-size: 0.75rem; line-height: 1;">O e-mail não pode ser alterado.</small>
                                     </div>
 
-                                    <div class="row g-4">
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold text-dark ms-1 small">Nova Senha</label>
-                                            <div class="input-group-custom d-flex align-items-center">
-                                                <span class="ps-3 text-muted"><i class="bi bi-shield-lock fs-5"></i></span>
-                                                <input type="password" class="form-control form-control-custom flex-grow-1" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres">
-                                            </div>
-                                            <small class="text-muted ms-1 mt-1 d-block" style="font-size: 0.75rem;">Deixe em branco para manter a atual.</small>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-dark ms-1 small">Nova Senha</label>
+                                        <div class="input-group-custom d-flex align-items-center">
+                                            <span class="ps-3 text-muted"><i class="bi bi-lock fs-5"></i></span>
+                                            <input type="password" class="form-control form-control-custom flex-grow-1" id="nova_senha" name="nova_senha" placeholder="Mínimo 6 caracteres">
+                                            <button type="button" class="btn border-0 text-secondary shadow-none px-3 py-0" onclick="togglePassword('nova_senha', this)" title="Mostrar senha">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
                                         </div>
+                                        <small class="text-muted ms-1 mt-1 d-block" style="font-size: 0.75rem; line-height: 1;">Deixe em branco para manter a atual.</small>
+                                    </div>
 
-                                        <div class="col-md-6">
-                                            <label class="form-label fw-bold text-dark ms-1 small">Confirmar Nova Senha</label>
-                                            <div class="input-group-custom d-flex align-items-center">
-                                                <span class="ps-3 text-muted"><i class="bi bi-check2-circle fs-5"></i></span>
-                                                <input type="password" class="form-control form-control-custom flex-grow-1" id="confirmar_senha" name="confirmar_senha" placeholder="Repita a nova senha">
-                                            </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold text-dark ms-1 small">Confirmar Nova Senha</label>
+                                        <div class="input-group-custom d-flex align-items-center">
+                                            <span class="ps-3 text-muted"><i class="bi bi-check2-circle fs-5"></i></span>
+                                            <input type="password" class="form-control form-control-custom flex-grow-1" id="confirmar_senha" name="confirmar_senha" placeholder="Repita a nova senha">
+                                            <button type="button" class="btn border-0 text-secondary shadow-none px-3 py-0" onclick="togglePassword('confirmar_senha', this)" title="Mostrar senha">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
                                         </div>
                                     </div>
 
-                                    <div class="col-12 mt-5">
-                                        <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold shadow-sm py-3 transition-all">
-                                            <i class="bi bi-cloud-arrow-up me-2 fs-5"></i> Guardar Alterações
-                                        </button>
+                                    <div class="col-12 mt-4 pt-3 border-top border-secondary border-opacity-10">
+                                        <div class="d-flex justify-content-end gap-2 action-buttons-wrapper">
+                                            <a href="/aluno" class="btn btn-outline-secondary rounded-pill fw-bold px-4 py-2 shadow-sm d-flex align-items-center justify-content-center">
+                                                <i class="bi bi-arrow-left me-2"></i> Voltar ao Painel
+                                            </a>
+                                            <button type="submit" class="btn btn-primary rounded-pill fw-bold px-4 py-2 shadow-sm transition-all d-flex align-items-center justify-content-center">
+                                                <i class="bi bi-cloud-arrow-up me-2 fs-5"></i> Guardar Alterações
+                                            </button>
+                                        </div>
                                     </div>
+
                                 </div>
                             </form>
                         </div>
@@ -218,8 +218,23 @@ function renderAlunoEditarPerfilView(aluno) {
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script src="/js/toast.js"></script>
+
         <script>
-            // Lógica do Loader Global
+            window.togglePassword = function(inputId, button) {
+                const input = document.getElementById(inputId);
+                const icon = button.querySelector('i');
+                
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('bi-eye', 'bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('bi-eye-slash', 'bi-eye');
+                }
+            };
+
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {
@@ -237,7 +252,6 @@ function renderAlunoEditarPerfilView(aluno) {
                 if (loader) { loader.style.display = 'flex'; loader.style.opacity = '1'; }
             });
 
-            // Preview de Imagem Dinâmico
             document.getElementById('foto_perfil').addEventListener('change', function(e) {
                 if (e.target.files && e.target.files[0]) {
                     const reader = new FileReader();
@@ -249,16 +263,60 @@ function renderAlunoEditarPerfilView(aluno) {
                 }
             });
 
-            // Validação de senhas no Submit do Perfil
             document.getElementById('formEditarPerfil').addEventListener('submit', function(e) {
+                e.preventDefault(); 
+                
                 const senha = document.getElementById('nova_senha').value;
                 const confSenha = document.getElementById('confirmar_senha').value;
                 
                 if (senha !== '' && senha !== confSenha) {
-                    e.preventDefault(); // Bloqueia o envio
-                    alert('A confirmação de senha não coincide com a nova senha digitada.');
+                    Toast.error('As senhas não coincidem. Por favor, verifique.');
                     document.getElementById('confirmar_senha').focus();
+                    return;
                 }
+
+                const btnSubmit = this.querySelector('button[type="submit"]');
+                const originalHtml = btnSubmit.innerHTML;
+                
+                btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Guardando...';
+                btnSubmit.disabled = true;
+
+                const formData = new FormData(this);
+
+                fetch(this.action, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(async res => {
+                    const contentType = res.headers.get("content-type");
+                    
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const data = await res.json();
+                        if (data.success) {
+                            Toast.success(data.message || 'Perfil atualizado com sucesso!');
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            Toast.error(data.message || 'Erro ao atualizar perfil.');
+                            btnSubmit.innerHTML = originalHtml;
+                            btnSubmit.disabled = false;
+                        }
+                    } else {
+                        if (res.redirected) {
+                            Toast.success('Perfil atualizado com sucesso!');
+                            setTimeout(() => window.location.href = res.url, 1500);
+                        } else {
+                            Toast.error('Ocorreu um erro inesperado.');
+                            btnSubmit.innerHTML = originalHtml;
+                            btnSubmit.disabled = false;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro de conexão:', err);
+                    Toast.error('Erro de conexão ao salvar perfil.');
+                    btnSubmit.innerHTML = originalHtml;
+                    btnSubmit.disabled = false;
+                });
             });
         </script>
     </body>

@@ -10,6 +10,8 @@ function renderCadastroView(erro = null) {
         <title>OnStude - Registo de Aluno</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         <style>
             /* Reset e Configurações Base */
             body, html { height: 100%; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -22,15 +24,15 @@ function renderCadastroView(erro = null) {
                 justify-content: center;
                 transition: background-image 0.5s ease-in-out;
                 background-color: #343a40; 
-                padding: 15px; /* Reduzido o padding geral da tela */
+                padding: 15px; 
             }
 
             /* Card Principal Split Screen */
             .auth-card {
                 width: 100%;
-                max-width: 1000px; /* Reduzido de 1100px para ficar mais compacto */
+                max-width: 1100px; 
                 background-color: #ffffff;
-                border-radius: 20px; /* Bordas um pouco menores */
+                border-radius: 20px; 
                 overflow: hidden;
                 box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
             }
@@ -39,7 +41,7 @@ function renderCadastroView(erro = null) {
             .left-column {
                 background: linear-gradient(135deg, rgba(13, 110, 253, 0.85), rgba(102, 16, 242, 0.9));
                 position: relative;
-                padding: 2.5rem; /* Reduzido de 3rem */
+                padding: 3rem; 
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
@@ -53,14 +55,18 @@ function renderCadastroView(erro = null) {
             .carousel-indicators [data-bs-target] { width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.5); }
             .carousel-indicators .active { background-color: white; }
 
-            /* Coluna da Direita mais compacta */
+            /* Coluna da Direita */
             .right-column {
-                padding: 1.5rem 2.5rem; /* Reduzido de 2rem 3rem */
+                padding: 2rem 3.5rem; 
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
                 max-height: 95vh; 
                 overflow-y: auto;
+            }
+            
+            .right-column-inner {
+                margin: auto 0; 
+                width: 100%;
             }
 
             /* Scrollbar customizada para a coluna direita */
@@ -74,7 +80,7 @@ function renderCadastroView(erro = null) {
                ========================================== */
             .input-group-custom {
                 background-color: #f4f6f9;
-                border-radius: 10px; /* Reduzido de 14px */
+                border-radius: 10px; 
                 border: 2px solid #e9ecef;
                 transition: all 0.3s ease;
                 overflow: hidden;
@@ -83,23 +89,22 @@ function renderCadastroView(erro = null) {
             .input-group-custom:focus-within {
                 background-color: #ffffff;
                 border-color: #0d6efd;
-                box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15); /* Sombra menor */
+                box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15); 
             }
 
             .input-group-text-custom {
                 background-color: transparent;
                 border: none;
                 color: #6c757d;
-                padding-left: 0.8rem; /* Espaço interno menor */
+                padding-left: 0.8rem; 
                 padding-right: 0.4rem;
             }
 
-            /* Inputs com altura reduzida */
             .form-control-custom, .form-select-custom {
                 border: none;
                 background-color: transparent;
-                padding: 0.5rem 0.8rem 0.5rem 0.4rem; /* Bem mais curtos verticalmente */
-                font-size: 0.9rem; /* Fonte levemente menor */
+                padding: 0.45rem 0.8rem 0.45rem 0.4rem; 
+                font-size: 0.85rem; 
                 color: #212529;
                 width: 100%;
             }
@@ -114,15 +119,15 @@ function renderCadastroView(erro = null) {
                 color: #adb5bd;
             }
 
-            /* Botões mais elegantes e menos espessos */
+            /* Botões */
             .btn-custom {
                 border-radius: 10px;
-                padding: 0.5rem; /* Botões mais finos */
+                padding: 0.4rem; 
                 font-weight: 700;
                 letter-spacing: 0.3px;
                 transition: all 0.3s;
-                height: 42px; /* Reduzido de 48px */
-                font-size: 0.95rem;
+                height: 42px; 
+                font-size: 0.9rem;
             }
             .btn-custom:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(25, 135, 84, 0.3); }
             
@@ -132,7 +137,7 @@ function renderCadastroView(erro = null) {
                 border: 2px solid #e9ecef;
                 color: #6c757d;
                 transition: all 0.3s;
-                height: 42px; /* Reduzido de 48px */
+                height: 42px; 
             }
             .btn-reset:hover {
                 background-color: #e9ecef;
@@ -172,18 +177,17 @@ function renderCadastroView(erro = null) {
                 }
                 
                 .right-column { 
-                    padding: 1.5rem 1.2rem; 
+                    padding: 2rem 1.5rem; 
                     max-height: none; 
                     overflow-y: visible; 
-                    justify-content: flex-start; 
                 }
 
                 h3.auth-title { font-size: 1.5rem; }
-                p.auth-subtitle { font-size: 0.85rem; margin-bottom: 1rem !important; }
+                p.auth-subtitle { font-size: 0.85rem; margin-bottom: 1.2rem !important; }
                 
-                .form-label { font-size: 0.8rem !important; margin-bottom: 0.1rem !important; }
+                .form-label { font-size: 0.75rem !important; margin-bottom: 0.1rem !important; }
                 
-                .mobile-back-btn { margin-bottom: 1rem !important; font-size: 0.85rem; }
+                .mobile-back-btn { margin-bottom: 1.2rem !important; font-size: 0.85rem; }
             }
         </style>
     </head>
@@ -198,7 +202,7 @@ function renderCadastroView(erro = null) {
         <div id="bg-wrapper">
             
             <a href="/" class="back-link d-none d-md-flex align-items-center">
-                <i class="bi bi-arrow-left me-1"></i> Voltar ao Início
+                <i class="bi bi-arrow-left me-1"></i> Voltar
             </a>
 
             <div class="auth-card">
@@ -236,129 +240,130 @@ function renderCadastroView(erro = null) {
                     </div>
 
                     <div class="col-md-7 col-lg-7 right-column relative">
-                        
-                        <a href="/" class="text-decoration-none text-muted mobile-back-btn d-md-none fw-semibold">
-                            <i class="bi bi-arrow-left me-1"></i> Voltar
-                        </a>
-
-                        <div class="mb-3">
-                            <h3 class="text-dark fw-bold mb-1 auth-title">Crie a sua conta 🚀</h3>
-                            <p class="text-muted small auth-subtitle mb-2">Preencha os dados abaixo para se registar como aluno.</p>
+                        <div class="right-column-inner">
                             
-                            ${erro ? `
-                            <div id="errorBadge" class="alert alert-danger d-flex align-items-center mt-2 py-2 px-3 border-0 rounded-3 shadow-sm transition-all" role="alert" style="transition: opacity 0.5s ease; padding: 0.5rem;">
-                                <i class="bi bi-exclamation-triangle-fill me-2" style="font-size: 1.1rem;"></i>
-                                <div style="font-size: 0.85rem; font-weight: 600;">${erro}</div>
+                            <a href="/" class="text-decoration-none text-muted mobile-back-btn d-md-none fw-semibold">
+                                <i class="bi bi-arrow-left me-1"></i> Voltar
+                            </a>
+
+                            <div class="mb-3">
+                                <h3 class="text-dark fw-bold mb-1 auth-title">Crie a sua conta 🚀</h3>
+                                <p class="text-muted small auth-subtitle mb-0">Preencha os dados abaixo para se registar como aluno.</p>
                             </div>
-                            ` : ''}
+
+                            <form action="/cadastro" method="POST" id="formCadastro">
+                                
+                                <div class="mb-2">
+                                    <label for="nome" class="form-label fw-bold text-dark small mb-1 ms-1">Nome Completo</label>
+                                    <div class="d-flex align-items-center input-group-custom">
+                                        <span class="input-group-text-custom"><i class="bi bi-person text-secondary"></i></span>
+                                        <input type="text" class="form-control form-control-custom" id="nome" name="nome" placeholder="Nome completo" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <label for="email" class="form-label fw-bold text-dark small mb-1 ms-1">E-mail</label>
+                                    <div class="d-flex align-items-center input-group-custom">
+                                        <span class="input-group-text-custom"><i class="bi bi-envelope text-secondary"></i></span>
+                                        <input type="email" class="form-control form-control-custom" id="email" name="email" placeholder="nome@email.com" required>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-sm-6">
+                                        <label for="senha" class="form-label fw-bold text-dark small mb-1 ms-1">Senha</label>
+                                        <div class="d-flex align-items-center input-group-custom">
+                                            <span class="input-group-text-custom"><i class="bi bi-lock text-secondary"></i></span>
+                                            <input type="password" class="form-control form-control-custom" id="senha" name="senha" placeholder="Senha" required minlength="6">
+                                            <button type="button" class="btn border-0 text-secondary shadow-none px-3 py-0" onclick="togglePassword('senha', this)" title="Mostrar senha">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-6">
+                                        <label for="confirmar_senha" class="form-label fw-bold text-dark small mb-1 ms-1">Confirmar Senha</label>
+                                        <div class="d-flex align-items-center input-group-custom">
+                                            <span class="input-group-text-custom"><i class="bi bi-check2-circle text-secondary"></i></span>
+                                            <input type="password" class="form-control form-control-custom" id="confirmar_senha" name="confirmar_senha" placeholder="Repita a senha" required minlength="6">
+                                            <button type="button" class="btn border-0 text-secondary shadow-none px-3 py-0" onclick="togglePassword('confirmar_senha', this)" title="Mostrar senha">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-sm-6">
+                                        <label for="telefone" class="form-label fw-bold text-dark small mb-1 ms-1">Telefone</label>
+                                        <div class="d-flex align-items-center input-group-custom">
+                                            <span class="input-group-text-custom"><i class="bi bi-telephone text-secondary"></i></span>
+                                            <input type="tel" class="form-control form-control-custom" id="telefone" name="telefone" placeholder="(00) 0 0000-0000" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-6">
+                                        <label for="data_nascimento" class="form-label fw-bold text-dark small mb-1 ms-1">Data de Nasc.</label>
+                                        <div class="d-flex align-items-center input-group-custom">
+                                            <span class="input-group-text-custom"><i class="bi bi-calendar-date text-secondary"></i></span>
+                                            <input type="date" class="form-control form-control-custom" id="data_nascimento" name="data_nascimento" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-2 mb-2">
+                                    <div class="col-sm-8">
+                                        <label for="cidade" class="form-label fw-bold text-dark small mb-1 ms-1">Cidade</label>
+                                        <div class="d-flex align-items-center input-group-custom">
+                                            <span class="input-group-text-custom"><i class="bi bi-buildings text-secondary"></i></span>
+                                            <input type="text" class="form-control form-control-custom" id="cidade" name="cidade" placeholder="Ex: Camaçari" required>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-sm-4">
+                                        <label for="estado" class="form-label fw-bold text-dark small mb-1 ms-1">Estado</label>
+                                        <div class="d-flex align-items-center input-group-custom pe-1">
+                                            <span class="input-group-text-custom"><i class="bi bi-geo-alt text-secondary"></i></span>
+                                            <select class="form-select-custom bg-transparent border-0 px-1" id="estado" name="estado" required style="cursor: pointer;">
+                                                <option value="" selected disabled>UF</option>
+                                                <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
+                                                <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
+                                                <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+                                                <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
+                                                <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
+                                                <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
+                                                <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
+                                                <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
+                                                <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-check mb-2 mt-1 ms-1">
+                                    <input class="form-check-input border-secondary" type="checkbox" id="aceiteTermos" required>
+                                    <label class="form-check-label text-muted" for="aceiteTermos" style="font-size: 0.8rem; padding-top: 2px;">
+                                        Eu li e concordo com os 
+                                        <a href="#" class="text-primary fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalTermos">Termos de Uso</a>.
+                                    </label>
+                                </div>
+                                
+                                <div class="d-flex gap-2 mt-3">
+                                    <button type="reset" class="btn btn-reset px-3 shadow-sm d-flex align-items-center justify-content-center" title="Limpar formulário">
+                                        <i class="bi bi-eraser-fill"></i>
+                                    </button>
+                                    <button type="submit" class="btn btn-success btn-custom shadow-sm flex-grow-1 d-flex align-items-center justify-content-center">
+                                        Finalizar Registo <i class="bi bi-check2-circle ms-2 fs-6"></i>
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="text-center mt-3 pt-2 border-top">
+                                <p class="text-muted small mb-0 d-inline me-1">Já tem uma conta?</p>
+                                <a href="/login" class="text-primary fw-bold text-decoration-none hover-shadow transition small">Faça login aqui</a>
+                            </div>
+
                         </div>
-
-                        <form action="/cadastro" method="POST" id="formCadastro">
-                            
-                            <div class="mb-2">
-                                <label for="nome" class="form-label fw-bold text-dark small mb-1 ms-1">Nome Completo</label>
-                                <div class="d-flex align-items-center input-group-custom">
-                                    <span class="input-group-text-custom"><i class="bi bi-person text-secondary"></i></span>
-                                    <input type="text" class="form-control form-control-custom" id="nome" name="nome" placeholder="O seu nome completo" required>
-                                </div>
-                            </div>
-                            
-                            <div class="mb-2">
-                                <label for="email" class="form-label fw-bold text-dark small mb-1 ms-1">E-mail</label>
-                                <div class="d-flex align-items-center input-group-custom">
-                                    <span class="input-group-text-custom"><i class="bi bi-envelope text-secondary"></i></span>
-                                    <input type="email" class="form-control form-control-custom" id="email" name="email" placeholder="nome@email.com" required>
-                                </div>
-                            </div>
-
-                            <div class="row g-2 mb-2">
-                                <div class="col-sm-6">
-                                    <label for="senha" class="form-label fw-bold text-dark small mb-1 ms-1">Senha</label>
-                                    <div class="d-flex align-items-center input-group-custom">
-                                        <span class="input-group-text-custom"><i class="bi bi-lock text-secondary"></i></span>
-                                        <input type="password" class="form-control form-control-custom" id="senha" name="senha" placeholder="Senha forte" required minlength="6">
-                                    </div>
-                                </div>
-
-                                <div class="col-sm-6">
-                                    <label for="confirmar_senha" class="form-label fw-bold text-dark small mb-1 ms-1">Confirmar Senha</label>
-                                    <div class="d-flex align-items-center input-group-custom">
-                                        <span class="input-group-text-custom"><i class="bi bi-check2-circle text-secondary"></i></span>
-                                        <input type="password" class="form-control form-control-custom" id="confirmar_senha" name="confirmar_senha" placeholder="Repita a senha" required minlength="6">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row g-2 mb-2">
-                                <div class="col-sm-6">
-                                    <label for="telefone" class="form-label fw-bold text-dark small mb-1 ms-1">Telefone</label>
-                                    <div class="d-flex align-items-center input-group-custom">
-                                        <span class="input-group-text-custom"><i class="bi bi-telephone text-secondary"></i></span>
-                                        <input type="tel" class="form-control form-control-custom" id="telefone" name="telefone" placeholder="(00) 00000-0000" required>
-                                    </div>
-                                </div>
-
-                                <div class="col-sm-6">
-                                    <label for="data_nascimento" class="form-label fw-bold text-dark small mb-1 ms-1">Data de Nasc.</label>
-                                    <div class="d-flex align-items-center input-group-custom">
-                                        <span class="input-group-text-custom"><i class="bi bi-calendar-date text-secondary"></i></span>
-                                        <input type="date" class="form-control form-control-custom" id="data_nascimento" name="data_nascimento" required>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row g-2 mb-2">
-                                <div class="col-sm-8">
-                                    <label for="cidade" class="form-label fw-bold text-dark small mb-1 ms-1">Cidade</label>
-                                    <div class="d-flex align-items-center input-group-custom">
-                                        <span class="input-group-text-custom"><i class="bi bi-buildings text-secondary"></i></span>
-                                        <input type="text" class="form-control form-control-custom" id="cidade" name="cidade" placeholder="Ex: Camaçari" required>
-                                    </div>
-                                </div>
-
-                                <div class="col-sm-4">
-                                    <label for="estado" class="form-label fw-bold text-dark small mb-1 ms-1">Estado</label>
-                                    <div class="d-flex align-items-center input-group-custom pe-1">
-                                        <span class="input-group-text-custom"><i class="bi bi-geo-alt text-secondary"></i></span>
-                                        <select class="form-select-custom bg-transparent border-0 px-1" id="estado" name="estado" required style="cursor: pointer;">
-                                            <option value="" selected disabled>UF</option>
-                                            <option value="AC">AC</option><option value="AL">AL</option><option value="AP">AP</option>
-                                            <option value="AM">AM</option><option value="BA">BA</option><option value="CE">CE</option>
-                                            <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
-                                            <option value="MA">MA</option><option value="MT">MT</option><option value="MS">MS</option>
-                                            <option value="MG">MG</option><option value="PA">PA</option><option value="PB">PB</option>
-                                            <option value="PR">PR</option><option value="PE">PE</option><option value="PI">PI</option>
-                                            <option value="RJ">RJ</option><option value="RN">RN</option><option value="RS">RS</option>
-                                            <option value="RO">RO</option><option value="RR">RR</option><option value="SC">SC</option>
-                                            <option value="SP">SP</option><option value="SE">SE</option><option value="TO">TO</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="form-check mb-2 mt-1 ms-1">
-                                <input class="form-check-input border-secondary" type="checkbox" id="aceiteTermos" required>
-                                <label class="form-check-label text-muted" for="aceiteTermos" style="font-size: 0.8rem; padding-top: 2px;">
-                                    Eu li e concordo com os 
-                                    <a href="#" class="text-primary fw-bold text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalTermos">Termos de Uso</a>.
-                                </label>
-                            </div>
-                            
-                            <div class="d-flex gap-2 mt-3">
-                                <button type="reset" class="btn btn-reset px-3 shadow-sm d-flex align-items-center justify-content-center" title="Limpar formulário">
-                                    <i class="bi bi-eraser-fill"></i>
-                                </button>
-                                <button type="submit" class="btn btn-success btn-custom shadow-sm flex-grow-1 d-flex align-items-center justify-content-center">
-                                    Finalizar Registo <i class="bi bi-check2-circle ms-2 fs-6"></i>
-                                </button>
-                            </div>
-                        </form>
-
-                        <div class="text-center mt-3 pt-2 border-top">
-                            <p class="text-muted small mb-0 d-inline me-1">Já tem uma conta?</p>
-                            <a href="/login" class="text-primary fw-bold text-decoration-none hover-shadow transition small">Faça login aqui</a>
-                        </div>
-
                     </div>
                 </div>
             </div>
@@ -399,9 +404,11 @@ function renderCadastroView(erro = null) {
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+        <script src="/js/toast.js"></script>
+
         <script>
             // ==========================================
-            // LÓGICA DE VALIDAÇÃO DE SENHA E TERMOS
+            // LÓGICA DE VALIDAÇÃO E SUBMISSÃO AJAX
             // ==========================================
             
             function aceitarTermosAutomaticamente() {
@@ -409,18 +416,106 @@ function renderCadastroView(erro = null) {
             }
 
             document.getElementById('formCadastro').addEventListener('submit', function(e) {
+                e.preventDefault(); 
+
                 const senha = document.getElementById('senha').value;
                 const confSenha = document.getElementById('confirmar_senha').value;
                 
                 if (senha !== confSenha) {
-                    e.preventDefault(); 
-                    alert('As senhas não coincidem. Por favor, digite senhas idênticas.');
+                    Toast.error('As senhas não coincidem. Por favor, digite senhas idênticas.');
                     document.getElementById('confirmar_senha').focus();
+                    return;
                 }
+
+                const btnSubmit = this.querySelector('button[type="submit"]');
+                const originalHtml = btnSubmit.innerHTML;
+                
+                btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
+                btnSubmit.disabled = true;
+
+                const formData = new FormData(this);
+                const dataObj = Object.fromEntries(formData.entries());
+
+                fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(dataObj)
+                })
+                .then(async res => {
+                    const contentType = res.headers.get("content-type");
+                    
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const data = await res.json();
+                        if (data.success) {
+                            Toast.success(data.message || 'Conta criada com sucesso! Redirecionando...');
+                            setTimeout(() => window.location.href = data.redirectUrl || '/login', 2000);
+                        } else {
+                            Toast.error(data.message || 'Erro ao criar conta. Verifique os dados.');
+                            btnSubmit.innerHTML = originalHtml;
+                            btnSubmit.disabled = false;
+                        }
+                    } else {
+                        if (res.redirected) {
+                            Toast.success('Conta criada com sucesso! Bem-vindo(a).');
+                            setTimeout(() => window.location.href = res.url, 2000);
+                        } else {
+                            Toast.error('Ocorreu um erro inesperado no servidor.');
+                            btnSubmit.innerHTML = originalHtml;
+                            btnSubmit.disabled = false;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro na requisição:', err);
+                    Toast.error('Falha de conexão ao processar o registo.');
+                    btnSubmit.innerHTML = originalHtml;
+                    btnSubmit.disabled = false;
+                });
             });
 
             // ==========================================
-            // LÓGICA DE BACKGROUND DINÂMICO
+            // MÁSCARA DE TELEFONE (00) 0 0000-0000
+            // ==========================================
+            const inputTelefone = document.getElementById('telefone');
+            if (inputTelefone) {
+                inputTelefone.addEventListener('input', function (e) {
+                    let v = e.target.value.replace(/\\D/g, ""); // Remove não-números
+                    v = v.substring(0, 11); // Limita a 11 números
+                    
+                    if (v.length > 2) {
+                        v = '(' + v.substring(0, 2) + ') ' + v.substring(2);
+                    }
+                    if (v.length > 6) {
+                        v = v.substring(0, 6) + ' ' + v.substring(6);
+                    }
+                    if (v.length > 11) {
+                        v = v.substring(0, 11) + '-' + v.substring(11);
+                    }
+                    e.target.value = v;
+                });
+            }
+
+            // ==========================================
+            // LÓGICA DE MOSTRAR/OCULTAR SENHA
+            // ==========================================
+            window.togglePassword = function(inputId, button) {
+                const input = document.getElementById(inputId);
+                const icon = button.querySelector('i');
+                
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('bi-eye', 'bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('bi-eye-slash', 'bi-eye');
+                }
+            };
+
+            // ==========================================
+            // LÓGICA DE BACKGROUND DINÂMICO (MANTIDA)
             // ==========================================
             const imagensEstudo = [
                 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=1920&auto=format&fit=crop', 
@@ -429,7 +524,6 @@ function renderCadastroView(erro = null) {
                 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1920&auto=format&fit=crop'  
             ];
 
-            // Só aplica imagem de fundo no desktop para poupar dados e bateria no mobile
             if (window.innerWidth > 767.98) {
                 const imagemSorteada = imagensEstudo[Math.floor(Math.random() * imagensEstudo.length)];
                 const wrapper = document.getElementById('bg-wrapper');
@@ -440,21 +534,16 @@ function renderCadastroView(erro = null) {
             }
 
             // ==========================================
-            // LÓGICA DE MENSAGEM DE ERRO
+            // TRATAMENTO DO ERRO INICIAL VIA TOAST
             // ==========================================
-            
             ${erro ? `
-                setTimeout(function() {
-                    const badge = document.getElementById('errorBadge');
-                    if (badge) {
-                        badge.style.opacity = '0';
-                        setTimeout(() => badge.remove(), 500); 
-                    }
-                }, 4000);
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(() => Toast.error('${erro}'), 300);
+                });
             ` : ''}
 
             // ==========================================
-            // LÓGICA DE LOADING NO CARREGAMENTO
+            // LÓGICA DE LOADING NO CARREGAMENTO (MANTIDA)
             // ==========================================
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');

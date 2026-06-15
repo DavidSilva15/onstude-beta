@@ -67,6 +67,8 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
         <title>Meus Favoritos - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         <style>
             body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #212529; background-color: transparent; margin: 0; overflow-x: hidden; position: relative; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
@@ -193,8 +195,10 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+        <script src="/js/toast.js"></script>
+
         <script>
-            // Lógica de Remover dos Favoritos com Animação
+            // Lógica de Remover dos Favoritos com Animação e Toast (AJAX)
             document.querySelectorAll('.btn-toggle-favorito').forEach(btn => {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -214,16 +218,39 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
                     .then(res => res.json())
                     .then(data => {
                         if (data.success && data.acao === 'removido') {
+                            
+                            Toast.error('Curso removido dos favoritos.');
+                            
+                            // ATUALIZA O BADGE DO TOPO - LINHA ADICIONADA AQUI
+                            if (typeof window.updateFavBadge === 'function') window.updateFavBadge(false);
+
                             // Faz o card sumir suavemente
                             cardElement.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
                             cardElement.style.opacity = '0';
                             cardElement.style.transform = 'scale(0.9)';
+                            
                             setTimeout(() => {
-                                window.location.reload(); 
+                                // Remove o card do DOM sem recarregar a página inteira
+                                cardElement.remove(); 
+                                
+                                // Verifica se ainda sobrou algum card. Se não, recarrega para mostrar a tela vazia
+                                const remaining = document.querySelectorAll('.btn-toggle-favorito');
+                                if (remaining.length === 0) {
+                                    window.location.reload(); 
+                                }
                             }, 400);
+                        } else {
+                            Toast.error(data.message || 'Erro ao remover curso.');
+                            icon.classList.add('bi-heart-fill', 'text-danger');
+                            icon.classList.remove('bi-heart', 'text-muted');
                         }
                     })
-                    .catch(err => console.error('Erro ao processar favorito:', err));
+                    .catch(err => {
+                        console.error('Erro ao processar favorito:', err);
+                        Toast.error('Erro de conexão ao remover.');
+                        icon.classList.add('bi-heart-fill', 'text-danger');
+                        icon.classList.remove('bi-heart', 'text-muted');
+                    });
                 });
             });
         </script>
@@ -292,7 +319,16 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
             }
 
             window.limparTodasNotificacoes = function() {
-                fetch('/aluno/api/notificacoes/limpar', { method: 'POST' }).then(() => carregarListaNotificacoesSino()).catch(console.error);
+                fetch('/aluno/api/notificacoes/limpar', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    Toast.success('Notificações limpas com sucesso.');
+                    carregarListaNotificacoesSino();
+                })
+                .catch(err => {
+                    console.error(err);
+                    Toast.error('Erro ao limpar notificações.');
+                });
             };
 
             window.abrirLinkExterno = function(id, url) {
@@ -365,13 +401,22 @@ function renderAlunoFavoritosView(aluno, cursosFavoritos) {
 
                 fetch('/aluno/api/notificacoes/' + notificacaoAtualId + '/responder', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-                }).then(response => response.json()).then(data => {
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Toast.success('Feedback enviado com sucesso!'); // Toast Verde de Sucesso
                     bootstrap.Modal.getInstance(document.getElementById('modalNotificacao')).hide();
                     btn.innerHTML = textoOriginal; btn.disabled = false;
                     const notifLocal = listaNotificacoesGlobal.find(x => x.id === notificacaoAtualId);
                     if (notifLocal) { notifLocal.ja_respondeu = 1; notifLocal.status = 'LIDA'; }
                     setTimeout(() => { carregarListaNotificacoesSino(); }, 500); 
-                }).catch(err => { console.error(err); btn.innerHTML = textoOriginal; btn.disabled = false; });
+                })
+                .catch(err => { 
+                    console.error(err); 
+                    Toast.error('Erro ao enviar feedback.'); // Toast Vermelho de Erro
+                    btn.innerHTML = textoOriginal; 
+                    btn.disabled = false; 
+                });
             }
 
             // Loader Global

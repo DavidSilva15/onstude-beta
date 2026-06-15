@@ -5,9 +5,22 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
     const headerHTML = renderMainHeader(usuarioLogado);
     
     const capa = curso.capa_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80';
-    const preco = parseFloat(curso.preco);
-    const isGratuito = preco === 0;
-    const precoFormatado = isGratuito ? 'Gratuito' : `R$ ${preco.toFixed(2).replace('.', ',')}`;
+    
+    // ==========================================
+    // LÓGICA DE PREÇO E DESCONTO
+    // ==========================================
+    const precoReal = parseFloat(curso.preco) || 0;
+    const desc = parseInt(curso.desconto_percentual) || 0;
+    const isGratuito = precoReal === 0;
+    
+    let precoFinal = precoReal;
+    if (desc > 0) {
+        precoFinal = precoReal - (precoReal * (desc / 100));
+    }
+
+    const precoFormatado = isGratuito ? 'Gratuito' : `R$ ${precoFinal.toFixed(2).replace('.', ',')}`;
+    const precoAntigoFormatado = `R$ ${precoReal.toFixed(2).replace('.', ',')}`;
+    
     const duracao = curso.duracao_horas ? `${curso.duracao_horas}h` : '--h';
     const totalAulas = cronograma.reduce((acc, mod) => acc + mod.aulas.length, 0);
 
@@ -43,7 +56,7 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                     <button type="submit" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow w-100 mb-3">Matricular-se Gratuitamente</button>
                 </form>`;
         } else {
-            btnAcaoHTML = `<a href="/carrinho/add/${curso.id}" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow w-100 mb-3"><i class="bi bi-cart-plus me-2"></i> Comprar por ${precoFormatado}</a>`;
+            btnAcaoHTML = `<button id="btnComprarPrincipal" class="btn btn-primary btn-lg fw-bold px-5 py-3 rounded-pill shadow w-100 mb-3"><i class="bi bi-cart-plus me-2"></i> Comprar por ${precoFormatado}</button>`;
         }
     } else {
         // Não está logado
@@ -115,7 +128,8 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
         <title>${curso.titulo} - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-        
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; }
             .transition { transition: all 0.3s ease; }
@@ -166,6 +180,7 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                         <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                             <span class="badge bg-primary px-3 py-2 rounded-pill shadow-sm">Em Alta</span>
                             ${isGratuito ? '<span class="badge bg-success px-3 py-2 rounded-pill shadow-sm">100% Grátis</span>' : ''}
+                            ${desc > 0 && !isGratuito ? `<span class="badge bg-success bg-opacity-75 text-white px-3 py-2 rounded-pill shadow-sm border border-success border-opacity-50">-${desc}% OFF</span>` : ''}
                             
                             <div class="d-flex align-items-center bg-dark bg-opacity-50 px-3 py-1 rounded-pill border border-light border-opacity-25 shadow-sm" style="backdrop-filter: blur(4px);">
                                 <div class="text-warning me-2" style="font-size: 0.8rem; letter-spacing: 1px;">
@@ -213,7 +228,16 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
 
                     <div class="col-lg-4">
                         <div class="card card-flutuante border-0 shadow-lg rounded-4 p-4 text-center">
-                            <h2 class="fw-bold text-dark mb-4">${precoFormatado}</h2>
+                            
+                            ${desc > 0 && !isGratuito ? `
+                                <div class="mb-4 d-flex flex-column align-items-center">
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill mb-1 px-3 py-1 shadow-sm">-${desc}% OFF</span>
+                                    <small class="text-decoration-line-through text-muted">${precoAntigoFormatado}</small>
+                                    <h2 class="fw-bold text-primary mb-0">${precoFormatado}</h2>
+                                </div>
+                            ` : `
+                                <h2 class="fw-bold text-dark mb-4">${precoFormatado}</h2>
+                            `}
                             
                             ${btnAcaoHTML}
                             
@@ -322,6 +346,9 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                                     icon.classList.replace('bi-heart-fill', 'bi-heart');
                                     icon.classList.remove('text-danger');
                                 }
+                            } else {
+                                // SUCESSO - Atualiza o badge global
+                                if (typeof window.updateFavBadge === 'function') window.updateFavBadge(!isFavorited); 
                             }
                         })
                         .catch(err => {
@@ -331,25 +358,63 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                 }
 
                 // ==========================================
-                // LÓGICA DO NOVO BOTÃO: ADICIONAR AO CARRINHO
+                // LÓGICA DO BOTÃO: COMPRAR AGORA (PRINCIPAL)
+                // ==========================================
+                const btnComprarPrincipal = document.getElementById('btnComprarPrincipal');
+                if (btnComprarPrincipal) {
+                    btnComprarPrincipal.addEventListener('click', function(e) {
+                        e.preventDefault();
+
+                        if (!isUsuarioLogado) {
+                            window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
+                            return;
+                        }
+
+                        const originalText = btnComprarPrincipal.innerHTML;
+                        btnComprarPrincipal.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
+                        btnComprarPrincipal.disabled = true;
+
+                        fetch('/aluno/carrinho/adicionar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ curso_id: cursoAtualId })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success || data.message === 'Curso já está no carrinho.') {
+                                window.location.href = '/aluno/carrinho';
+                            } else {
+                                alert(data.message || 'Erro ao processar compra.');
+                                btnComprarPrincipal.innerHTML = originalText;
+                                btnComprarPrincipal.disabled = false;
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Erro:', err);
+                            alert('Erro de conexão ao processar compra.');
+                            btnComprarPrincipal.innerHTML = originalText;
+                            btnComprarPrincipal.disabled = false;
+                        });
+                    });
+                }
+
+                // ==========================================
+                // LÓGICA DO BOTÃO SECUNDÁRIO: ADICIONAR AO CARRINHO
                 // ==========================================
                 const btnCarrinho = document.getElementById('btnAdicionarCarrinhoLateral');
                 if (btnCarrinho) {
                     btnCarrinho.addEventListener('click', function(e) {
                         e.preventDefault();
 
-                        // 1. Verifica login
                         if (!isUsuarioLogado) {
                             window.location.href = '/login?returnTo=/cursos/' + cursoAtualId;
                             return;
                         }
 
-                        // 2. Feedback visual imediato (Loader no botão)
                         const originalText = btnCarrinho.innerHTML;
                         btnCarrinho.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Adicionando...';
                         btnCarrinho.disabled = true;
 
-                        // 3. Chamada à API de Carrinho
                         fetch('/aluno/carrinho/adicionar', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -358,10 +423,8 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                         .then(res => res.json())
                         .then(data => {
                             if (data.success) {
-                                // Apenas recarrega a página para atualizar o contador do carrinho no header
                                 window.location.reload();
                             } else {
-                                // Se houver erro (ex: já possui o curso)
                                 alert(data.message || 'Erro ao adicionar ao carrinho.');
                                 btnCarrinho.innerHTML = originalText;
                                 btnCarrinho.disabled = false;
@@ -374,6 +437,12 @@ function renderCursoPublicoView(usuarioLogado, curso, cronograma, isMatriculado)
                             btnCarrinho.disabled = false;
                         });
                     });
+                }
+            });
+
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted) {
+                    window.location.reload();
                 }
             });
         </script>

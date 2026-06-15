@@ -16,7 +16,7 @@ function renderAlunoCarrinhoView(aluno, cursos) {
                 <i class="bi bi-cart-x text-muted mb-3 d-block" style="font-size: 4rem; opacity: 0.5;"></i>
                 <h4 class="fw-bold text-dark">Seu carrinho está vazio</h4>
                 <p class="text-muted">Parece que você ainda não escolheu nenhum curso para impulsionar a sua carreira.</p>
-                <a href="/aluno" class="btn btn-primary rounded-pill px-4 py-2 fw-bold mt-3 shadow-sm">Explorar Cursos</a>
+                <a href="/categorias" class="btn btn-primary rounded-pill px-4 py-2 fw-bold mt-3 shadow-sm">Explorar Cursos</a>
             </div>
         `;
     } else {
@@ -34,7 +34,7 @@ function renderAlunoCarrinhoView(aluno, cursos) {
             const precoAntigo = precoReal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
             htmlItens += `
-                <div class="card border-0 shadow-sm rounded-4 mb-3 position-relative overflow-hidden glass-card transition-all hover-card">
+                <div class="card border-0 shadow-sm rounded-4 mb-3 position-relative overflow-hidden glass-card transition-all hover-card" id="cursoCard-${curso.id}">
                     <div class="row g-0 align-items-center p-3">
                         <div class="col-md-2 col-4 text-center">
                             <img src="${curso.capa_url || 'https://via.placeholder.com/150'}" class="img-fluid rounded-3 shadow-sm border border-light" style="max-height: 90px; object-fit: cover;" alt="Capa">
@@ -48,7 +48,7 @@ function renderAlunoCarrinhoView(aluno, cursos) {
                             <h5 class="fw-bolder text-primary mb-0">${precoFormatado}</h5>
                         </div>
                         <div class="col-md-1 col-12 text-end mt-2 mt-md-0">
-                            <button class="btn btn-sm btn-light text-danger rounded-circle shadow-sm border border-light transition-all hover-danger" onclick="removerDoCarrinho(${curso.id})" title="Remover curso" style="width: 36px; height: 36px;">
+                            <button class="btn btn-sm btn-light text-danger rounded-circle shadow-sm border border-light transition-all hover-danger btn-remover" onclick="removerDoCarrinho(${curso.id}, this)" title="Remover curso" style="width: 36px; height: 36px;">
                                 <i class="bi bi-trash3-fill"></i>
                             </button>
                         </div>
@@ -71,6 +71,8 @@ function renderAlunoCarrinhoView(aluno, cursos) {
         <title>Meu Carrinho - OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         <style>
             body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #212529; overflow-x: hidden; position: relative; margin: 0; background-color: transparent; }
             .main-content { height: 100vh; overflow-y: auto; overflow-x: hidden; }
@@ -174,7 +176,7 @@ function renderAlunoCarrinhoView(aluno, cursos) {
                                     <span class="fw-bolder text-primary fs-3">${finalFormatado}</span>
                                 </div>
 
-                                <form action="/aluno/checkout" method="POST">
+                                <form id="formCheckout" action="/aluno/checkout" method="POST">
                                     <button type="submit" class="btn btn-success btn-lg w-100 rounded-pill fw-bold shadow-sm d-flex justify-content-center align-items-center gap-2 transition-all hover-card">
                                         Finalizar Compra <i class="bi bi-shield-lock-fill"></i>
                                     </button>
@@ -191,9 +193,34 @@ function renderAlunoCarrinhoView(aluno, cursos) {
             </div>
         </div>
 
+        <div class="modal fade" id="modalCheckoutSucesso" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4 glass-card">
+                    <div class="modal-body py-4">
+                        <i class="bi bi-check-circle-fill text-success mb-3 d-block" style="font-size: 4.5rem; animation: floatAnim 3s infinite ease-in-out alternate;"></i>
+                        <h4 class="fw-bold text-dark">Pedido Gerado!</h4>
+                        <p class="text-muted mb-4">Estamos direcionando você para a tela de pagamento 100% segura do Mercado Pago.</p>
+                        <div class="spinner-border text-success" role="status" style="width: 2rem; height: 2rem; border-width: 0.25em;"></div>
+                        <p class="small text-muted mt-3 mb-0 fw-semibold">Aguarde, redirecionando...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script src="/js/toast.js"></script>
+
         <script>
-            function removerDoCarrinho(cursoId) {
+            // ==========================================
+            // AJAX: REMOVER DO CARRINHO COM NOVO TOAST
+            // ==========================================
+            function removerDoCarrinho(cursoId, btnElement) {
+                if(btnElement) {
+                    btnElement.disabled = true;
+                    btnElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                }
+
                 fetch('/aluno/carrinho/remover', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -202,10 +229,92 @@ function renderAlunoCarrinhoView(aluno, cursos) {
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        window.location.reload(); 
+                        Toast.success('Curso removido com sucesso.');
+                        
+                        const card = document.getElementById('cursoCard-' + cursoId);
+                        if(card) {
+                            card.style.transition = 'all 0.4s ease';
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateX(30px)';
+                            
+                            // Em vez do reload agressivo, apenas removemos do DOM
+                            setTimeout(() => {
+                                card.remove();
+                                
+                                // Verifica se ainda sobrou algum card de curso na tela
+                                const cursosRestantes = document.querySelectorAll('[id^="cursoCard-"]');
+                                
+                                // Se for 0, significa que o carrinho esvaziou. Aí sim damos um reload suave
+                                // para renderizar a tela de "Carrinho Vazio".
+                                if(cursosRestantes.length === 0) {
+                                    window.location.reload();
+                                }
+                            }, 400); 
+                        }
+                        
+                    } else {
+                        Toast.error(data.message || 'Erro ao remover curso.');
+                        if(btnElement) {
+                            btnElement.disabled = false;
+                            btnElement.innerHTML = '<i class="bi bi-trash3-fill"></i>';
+                        }
                     }
                 })
-                .catch(err => console.error('Erro:', err));
+                .catch(err => {
+                    console.error('Erro:', err);
+                    Toast.error('Erro de conexão ao remover.');
+                    if(btnElement) {
+                        btnElement.disabled = false;
+                        btnElement.innerHTML = '<i class="bi bi-trash3-fill"></i>';
+                    }
+                });
+            }
+
+            // ==========================================
+            // AJAX: FINALIZAR COMPRA COM MODAL
+            // ==========================================
+            const formCheckout = document.getElementById('formCheckout');
+            if(formCheckout) {
+                formCheckout.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    const btn = this.querySelector('button');
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
+                    btn.disabled = true;
+
+                    fetch(this.action, {
+                        method: this.method,
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(async res => {
+                        let targetUrl = res.url; 
+                        
+                        const contentType = res.headers.get("content-type");
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            const data = await res.json();
+                            if(data.url) targetUrl = data.url;
+                            else if(data.init_point) targetUrl = data.init_point;
+                            else if(data.redirectUrl) targetUrl = data.redirectUrl;
+                        }
+
+                        // Abre o modal de sucesso
+                        const modalCheckout = new bootstrap.Modal(document.getElementById('modalCheckoutSucesso'));
+                        modalCheckout.show();
+
+                        setTimeout(() => {
+                            window.location.href = targetUrl;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Erro:', err);
+                        Toast.error('Falha de conexão com o meio de pagamento.');
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    });
+                });
             }
 
             // Lógica do Loader Global

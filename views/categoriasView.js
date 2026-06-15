@@ -79,9 +79,28 @@ function renderCategoriasView(usuario, categoriasData = []) {
                     const fallbackCapa = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22200%22%20viewBox%3D%220%200%20400%20200%22%3E%3Crect%20fill%3D%22%23e9ecef%22%20width%3D%22100%25%22%20height%3D%22100%25%22%2F%3E%3Ctext%20fill%3D%22%236c757d%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ECurso%3C%2Ftext%3E%3C%2Fsvg%3E';
                     const capa = (curso.capa_url && curso.capa_url.trim() !== '') ? curso.capa_url : fallbackCapa;
                     
+                    // ==========================================
+                    // NOVA LÓGICA DE PREÇO E DESCONTO
+                    // ==========================================
+                    const precoReal = parseFloat(curso.preco) || 0;
+                    const desc = parseInt(curso.desconto_percentual) || 0;
+                    const precoFinal = precoReal - (precoReal * (desc / 100));
+
                     let precoBadge = '<span class="badge bg-success shadow-sm rounded-pill px-2 py-1 position-absolute top-0 end-0 m-2" style="font-size: 0.7rem;">Gratuito</span>';
-                    if (parseFloat(curso.preco) > 0) {
-                        precoBadge = `<span class="badge bg-dark bg-opacity-75 text-white shadow-sm rounded-pill px-2 py-1 position-absolute top-0 end-0 m-2 backdrop-blur" style="font-size: 0.7rem;">R$ ${parseFloat(curso.preco).toFixed(2).replace('.', ',')}</span>`;
+                    
+                    if (precoReal > 0) {
+                        if (desc > 0) {
+                            precoBadge = `
+                                <div class="position-absolute top-0 end-0 m-2 text-end" style="z-index: 2;">
+                                    <div class="badge bg-dark bg-opacity-75 text-white shadow-sm rounded-pill px-2 py-1 backdrop-blur d-flex flex-column align-items-end lh-1">
+                                        <small class="text-decoration-line-through text-white-50 mb-1" style="font-size: 0.55rem;">R$ ${precoReal.toFixed(2).replace('.', ',')}</small>
+                                        <span style="font-size: 0.7rem;">R$ ${precoFinal.toFixed(2).replace('.', ',')}</span>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            precoBadge = `<span class="badge bg-dark bg-opacity-75 text-white shadow-sm rounded-pill px-2 py-1 position-absolute top-0 end-0 m-2 backdrop-blur" style="font-size: 0.7rem;">R$ ${precoReal.toFixed(2).replace('.', ',')}</span>`;
+                        }
                     }
 
                     const duracao = curso.duracao_horas ? `${curso.duracao_horas}h de conteúdo` : 'Acesso Imediato';
@@ -111,7 +130,12 @@ function renderCategoriasView(usuario, categoriasData = []) {
                                         ${precoBadge}
                                     </div>
                                     <div class="card-body p-3 d-flex flex-column">
-                                        <h6 class="fw-bold text-dark mb-2 lh-sm text-truncate" title="${curso.titulo}">${curso.titulo}</h6>
+                                        
+                                        <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                                            <h6 class="fw-bold text-dark mb-0 lh-sm text-truncate flex-grow-1" title="${curso.titulo}">${curso.titulo}</h6>
+                                            ${desc > 0 ? `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill shadow-sm flex-shrink-0" style="font-size: 0.65rem;">-${desc}% OFF</span>` : ''}
+                                        </div>
+                                        
                                         <p class="text-muted mb-2 flex-grow-1" style="font-size: 0.75rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
                                             ${descricaoCurta}
                                         </p>
@@ -193,6 +217,8 @@ function renderCategoriasView(usuario, categoriasData = []) {
         <title>Categorias de Cursos | OnStude</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         <style>
             body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #212529; overflow-x: hidden; position: relative; }
             .transition-all { transition: all 0.3s ease; }

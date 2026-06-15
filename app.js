@@ -1193,7 +1193,10 @@ app.post('/aluno/checkout', verificarAluno, async (req, res) => {
             WHERE ci.aluno_id = ?
         `, [aluno.id]);
 
-        if (cursosCarrinho.length === 0) return res.redirect('/aluno/carrinho');
+        // AJUSTE 1: Retorna JSON avisando que está vazio em vez de redirecionar direto
+        if (cursosCarrinho.length === 0) {
+            return res.status(400).json({ success: false, message: 'Carrinho vazio', redirectUrl: '/aluno/carrinho' });
+        }
 
         let totalComDesconto = 0;
         let itensParaMercadoPago = [];
@@ -1246,7 +1249,7 @@ app.post('/aluno/checkout', verificarAluno, async (req, res) => {
                 payer: { name: aluno.nome, email: aluno.email },
                 back_urls: {
                     success: `${urlRetornoBase}/aluno/checkout/sucesso?pedido_id=${pedidoId}`,
-                    failure: `${urlRetornoBase}/aluno/carrinho`, // Você pode criar uma rota de falha específica depois
+                    failure: `${urlRetornoBase}/aluno/carrinho`,
                     pending: `${urlRetornoBase}/aluno/checkout/pendente?pedido_id=${pedidoId}`
                 },
                 auto_return: 'approved',
@@ -1257,12 +1260,13 @@ app.post('/aluno/checkout', verificarAluno, async (req, res) => {
         // 5. Atualiza o pedido com o ID do Mercado Pago
         await db.execute('UPDATE pedidos SET mp_preference_id = ? WHERE id = ?', [respostaMP.id, pedidoId]);
 
-        // 6. Redireciona o aluno para a tela de pagamento seguro
-        res.redirect(respostaMP.init_point);
+        // AJUSTE 2: Devolve a URL em formato JSON para o AJAX capturar e disparar o Modal
+        res.json({ url: respostaMP.init_point });
 
     } catch (error) {
         console.error('Erro ao gerar checkout:', error);
-        res.status(500).send('Erro ao processar o checkout.');
+        // AJUSTE 3: Erro genérico retorna JSON com status 500 para não quebrar o fetch do front
+        res.status(500).json({ success: false, message: 'Erro ao processar o checkout.' });
     }
 });
 
@@ -1368,9 +1372,9 @@ app.get('/api/carrinho/count', async (req, res) => {
 
 app.get('/categorias', async (req, res) => {
     try {
-        // Busca todos os cursos publicados com a média de notas e total de avaliações
+        // Busca todos os cursos publicados com a média de notas e total de avaliações (AGORA TRAZENDO O DESCONTO)
         const [cursos] = await db.execute(`
-            SELECT c.id, c.titulo, c.descricao, c.capa_url, c.preco, c.duracao_horas, c.mercado,
+            SELECT c.id, c.titulo, c.descricao, c.capa_url, c.preco, c.desconto_percentual, c.duracao_horas, c.mercado,
                    COALESCE(AVG(a.nota), 0) AS nota_media,
                    COUNT(a.id) AS total_avaliacoes
             FROM cursos c

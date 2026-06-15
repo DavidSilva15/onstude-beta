@@ -24,7 +24,25 @@ function renderHomeView(usuarioLogado, cursos) {
     } else {
         cursos.forEach(curso => {
             const capa = curso.capa_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80';
-            const preco = parseFloat(curso.preco) > 0 ? `R$ ${parseFloat(curso.preco).toFixed(2).replace('.', ',')}` : 'Gratuito';
+            
+            // Lógica de Preço e Desconto (Novo)
+            const precoReal = parseFloat(curso.preco) || 0;
+            const desc = parseInt(curso.desconto_percentual) || 0;
+            let precoHTML = '';
+            
+            if (precoReal === 0) {
+                precoHTML = '<span class="fw-bold text-success m-0">Gratuito</span>';
+            } else if (desc > 0) {
+                const precoFinal = precoReal - (precoReal * (desc / 100));
+                precoHTML = `
+                    <div class="d-flex flex-column align-items-start lh-1">
+                        <small class="text-decoration-line-through text-muted mb-1" style="font-size: 0.7rem;">R$ ${precoReal.toFixed(2).replace('.', ',')}</small>
+                        <span class="fw-bold text-primary m-0">R$ ${precoFinal.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                `;
+            } else {
+                precoHTML = `<span class="fw-bold text-primary m-0">R$ ${precoReal.toFixed(2).replace('.', ',')}</span>`;
+            }
             
             // Lógica da Duração Automática
             const duracao = curso.duracao_total_segundos !== undefined 
@@ -68,7 +86,11 @@ function renderHomeView(usuarioLogado, cursos) {
                             <img src="${capa}" class="card-img-top border-bottom border-light border-opacity-25" alt="${curso.titulo}" style="height: 160px; object-fit: cover;">
                             
                             <div class="card-body d-flex flex-column p-3">
-                                <h6 class="fw-bold text-dark text-truncate mb-2" title="${curso.titulo}">${curso.titulo}</h6>
+                                <div class="d-flex justify-content-between align-items-start mb-2 gap-2">
+                                    <h6 class="fw-bold text-dark text-truncate mb-0 flex-grow-1" title="${curso.titulo}">${curso.titulo}</h6>
+                                    ${desc > 0 ? `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill shadow-sm flex-shrink-0" style="font-size: 0.65rem;">-${desc}% OFF</span>` : ''}
+                                </div>
+                                
                                 <p class="text-muted small mb-2 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.85rem; line-height: 1.4;">
                                     ${curso.descricao || 'Aprenda as melhores práticas e destaque-se no mercado com este curso completo.'}
                                 </p>
@@ -89,7 +111,7 @@ function renderHomeView(usuarioLogado, cursos) {
                                 </div>
                                 
                                 <div class="mt-auto pt-3 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold text-primary">${preco}</span>
+                                    ${precoHTML}
                                     <span class="btn btn-primary btn-sm fw-bold px-3 rounded-pill shadow-sm">Ver Curso</span>
                                 </div>
                             </div>
@@ -120,6 +142,8 @@ function renderHomeView(usuarioLogado, cursos) {
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #212529; overflow-x: hidden; position: relative; }
@@ -127,7 +151,7 @@ function renderHomeView(usuarioLogado, cursos) {
             .transition { transition: all 0.3s ease; }
             
             /* ==========================================
-               GRADIENT MESH BACKGROUND (NOVO)
+               GRADIENT MESH BACKGROUND
                ========================================== */
             .mesh-bg {
                 position: fixed;
@@ -169,7 +193,7 @@ function renderHomeView(usuarioLogado, cursos) {
             }
 
             /* ==========================================
-               GLASSMORPHISM CARDS (HARMONIZAÇÃO)
+               GLASSMORPHISM CARDS
                ========================================== */
             .glass-card {
                 background: rgba(255, 255, 255, 0.65) !important;
@@ -187,7 +211,7 @@ function renderHomeView(usuarioLogado, cursos) {
             
             .search-bar-header { background-color: rgba(241, 243, 244, 0.8); border: 1px solid rgba(255,255,255,0.5); border-radius: 50px; padding-left: 40px; backdrop-filter: blur(4px); }
             
-            .hero-section { padding: 80px 0; } /* Removido o fundo sólido para o mesh aparecer */
+            .hero-section { padding: 80px 0; }
             .hero-title { font-size: 3.2rem; font-weight: 800; color: #1a1a1a; line-height: 1.2; letter-spacing: -1px; }
             .hero-subtitle { font-size: 1.25rem; color: #495057; line-height: 1.6; font-weight: 500; }
             .hero-img { border-radius: 24px; object-fit: cover; height: 450px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.15); border: 4px solid rgba(255,255,255,0.5); }
@@ -215,15 +239,12 @@ function renderHomeView(usuarioLogado, cursos) {
             .reveal-right { opacity: 0; transform: translateX(50px); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
             .reveal-scale { opacity: 0; transform: scale(0.9); transition: all 0.8s cubic-bezier(0.5, 0, 0, 1); }
             
-            /* Estado Ativo */
             .reveal-visible { opacity: 1; transform: translate(0) scale(1); }
             
-            /* Delays para efeito cascata */
             .delay-100 { transition-delay: 100ms; }
             .delay-200 { transition-delay: 200ms; }
             .delay-300 { transition-delay: 300ms; }
 
-            /* Responsive Adjustments */
             @media (max-width: 991.98px) {
                 .search-bar-header { margin-top: 15px; width: 100%; }
             }
@@ -235,8 +256,6 @@ function renderHomeView(usuarioLogado, cursos) {
                 .hero-img { height: 280px; }
                 .btn-lg { padding: 0.6rem 1.5rem; font-size: 1rem; }
                 .career-banner-img { max-height: 200px !important; }
-                
-                /* Reduz animações agressivas no mobile */
                 .reveal-left, .reveal-right { transform: translateY(30px); }
             }
         </style>
@@ -392,17 +411,18 @@ function renderHomeView(usuarioLogado, cursos) {
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
+        <script src="/js/toast.js"></script>
+
         <script>
             const isUsuarioLogado = ${usuarioLogado ? 'true' : 'false'};
 
             document.addEventListener('DOMContentLoaded', function () {
                 
-                // Ativar Tooltips do Bootstrap
                 const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
                 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
                 // ==========================================
-                // LÓGICA DE ANIMAÇÃO DE SCROLL (INTERSECTION OBSERVER)
+                // LÓGICA DE ANIMAÇÃO DE SCROLL
                 // ==========================================
                 const revealElements = document.querySelectorAll('.reveal-up, .reveal-left, .reveal-right, .reveal-scale');
                 
@@ -484,14 +504,14 @@ function renderHomeView(usuarioLogado, cursos) {
                 });
 
                 // ==========================================
-                // LÓGICA DE FAVORITOS
+                // LÓGICA DE FAVORITOS (AJAX + TOAST)
                 // ==========================================
                 document.body.addEventListener('click', function(e) {
                     const btn = e.target.closest('.btn-favoritar');
                     if (!btn) return;
                     
                     e.preventDefault();
-                    e.stopPropagation(); // Evita que clique no coração abra o curso
+                    e.stopPropagation(); 
                     
                     if (!isUsuarioLogado) {
                         window.location.href = '/login?returnTo=/';
@@ -502,6 +522,7 @@ function renderHomeView(usuarioLogado, cursos) {
                     const icon = btn.querySelector('i');
                     
                     const isFavorited = icon.classList.contains('bi-heart-fill');
+                    
                     if (isFavorited) {
                         icon.classList.replace('bi-heart-fill', 'bi-heart');
                     } else {
@@ -515,8 +536,16 @@ function renderHomeView(usuarioLogado, cursos) {
                     })
                     .then(res => res.json())
                     .then(data => {
-                        if (!data.success) {
-                            alert('Ocorreu um erro ao atualizar os favoritos.');
+                        if (data.success) {
+                            if (!isFavorited) {
+                                Toast.success('Curso adicionado aos favoritos!');
+                                if (typeof window.updateFavBadge === 'function') window.updateFavBadge(true); 
+                            } else {
+                                Toast.error('Curso removido dos favoritos.');
+                                if (typeof window.updateFavBadge === 'function') window.updateFavBadge(false); 
+                            }
+                        } else {
+                            Toast.error('Ocorreu um erro ao atualizar os favoritos.');
                             if (isFavorited) {
                                 icon.classList.replace('bi-heart', 'bi-heart-fill');
                             } else {
@@ -526,6 +555,12 @@ function renderHomeView(usuarioLogado, cursos) {
                     })
                     .catch(err => {
                         console.error('Erro de conexão:', err);
+                        Toast.error('Erro de conexão ao atualizar favoritos.');
+                        if (isFavorited) {
+                            icon.classList.replace('bi-heart', 'bi-heart-fill');
+                        } else {
+                            icon.classList.replace('bi-heart-fill', 'bi-heart');
+                        }
                     });
                 });
 

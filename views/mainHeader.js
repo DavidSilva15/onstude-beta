@@ -7,23 +7,27 @@ function renderMainHeader(usuarioLogado) {
 
     return `
         <nav class="navbar navbar-expand-xl navbar-custom sticky-top py-3 bg-white border-bottom position-relative" style="z-index: 1040;">
-            <div class="container">
-                <a class="navbar-brand fw-bold text-primary fs-3" href="/">OnStude<span class="text-dark">.</span></a>
+            <div class="container header-grid-container">
+                
+                <div class="header-left-zone">
+                    <a class="navbar-brand fw-bold text-primary fs-3 me-0" href="/">OnStude<span class="text-dark">.</span></a>
+                </div>
                 
                 <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarMain">
-                    <ul class="navbar-nav ms-xl-4 me-auto align-items-xl-center w-100">
-                        <li class="nav-item me-xl-2">
-                            <a class="nav-link fw-semibold text-dark hover-primary" href="/plano-de-carreira">Plano de Carreira</a>
+                    
+                    <ul class="navbar-nav mx-xl-auto align-items-xl-center gap-xl-3">
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold text-dark hover-primary text-nowrap" href="/plano-de-carreira">Plano de Carreira</a>
                         </li>
-                        <li class="nav-item me-xl-2">
-                            <a class="nav-link fw-semibold text-dark hover-primary" href="/categorias">Categorias</a>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold text-dark hover-primary text-nowrap" href="/categorias">Categorias</a>
                         </li>
-                        <li class="nav-item me-xl-3">
-                            <a class="nav-link fw-semibold text-dark hover-primary" href="/forum">Fórum</a>
+                        <li class="nav-item">
+                            <a class="nav-link fw-semibold text-dark hover-primary text-nowrap" href="/forum">Fórum</a>
                         </li>
                         <li class="nav-item mt-2 mt-xl-0 position-relative header-search-item" style="z-index: 1050;">
                             <form class="position-relative search-form-header" onsubmit="return false;">
@@ -36,11 +40,12 @@ function renderMainHeader(usuarioLogado) {
                         </li>
                     </ul>
 
-                    <div class="d-flex flex-column flex-xl-row align-items-xl-center mt-3 mt-xl-0 gap-3">
+                    <div class="header-right-zone d-flex flex-column flex-xl-row align-items-xl-center mt-3 mt-xl-0 gap-3">
                         
                         <div class="d-none d-xl-flex gap-3 align-items-center me-xl-2">
-                            <a href="${linkFavoritos}" class="text-dark text-decoration-none fs-5 hover-primary transition" title="Meus Favoritos">
+                            <a href="${linkFavoritos}" class="text-dark text-decoration-none position-relative fs-5 hover-primary transition me-1" title="Meus Favoritos">
                                 <i class="bi bi-heart"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger fav-badge-count d-none" style="font-size: 0.55rem; padding: 0.35em 0.5em;">0</span>
                             </a>
                             <a href="${linkCarrinho}" class="text-dark text-decoration-none position-relative fs-5 hover-primary transition" title="Carrinho">
                                 <i class="bi bi-cart3"></i>
@@ -49,7 +54,10 @@ function renderMainHeader(usuarioLogado) {
                         </div>
 
                         <div class="d-flex gap-3 align-items-center d-xl-none mt-2">
-                            <a href="${linkFavoritos}" class="text-dark text-decoration-none fw-semibold hover-primary"><i class="bi bi-heart me-1"></i> Favoritos</a>
+                            <a href="${linkFavoritos}" class="text-dark text-decoration-none fw-semibold hover-primary d-flex align-items-center">
+                                <i class="bi bi-heart me-1"></i> Favoritos
+                                <span class="badge bg-danger rounded-pill ms-2 fav-badge-count d-none" style="font-size: 0.7rem;">0</span>
+                            </a>
                             <a href="${linkCarrinho}" class="text-dark text-decoration-none fw-semibold hover-primary ms-3 d-flex align-items-center">
                                 <i class="bi bi-cart3 me-1"></i> Carrinho
                                 <span class="badge bg-danger rounded-pill ms-2 cart-badge-count d-none" style="font-size: 0.7rem;">0</span>
@@ -63,7 +71,7 @@ function renderMainHeader(usuarioLogado) {
                                         ? `<img src="${usuarioLogado.foto_perfil_url}" alt="Foto" class="rounded-circle me-2 flex-shrink-0" style="width: 32px; height: 32px; object-fit: cover; border: 2px solid #0d6efd;">` 
                                         : `<div class="rounded-circle me-2 flex-shrink-0 d-flex align-items-center justify-content-center bg-primary text-white fw-bold" style="width: 32px; height: 32px; border: 2px solid #0d6efd; font-size: 12px;">${usuarioLogado.nome.charAt(0).toUpperCase()}</div>`
                                     }
-                                    <span class="text-nowrap">Olá, <strong>${usuarioLogado.nome.split(' ')[0]}</strong></span>
+                                    <span class="d-inline-block text-truncate text-nowrap" style="max-width: 140px; vertical-align: middle;" title="Olá, ${usuarioLogado.nome}">Olá, <strong>${usuarioLogado.nome.split(' ')[0]}</strong></span>
                                 </div>
                                 <div class="d-flex gap-2">
                                     <a href="${(usuarioLogado.tipo === 'ADMIN' || usuarioLogado.tipo === 'MENTOR') ? '/admin' : '/aluno'}" class="btn btn-primary btn-sm fw-bold px-3 rounded-pill flex-grow-1 text-nowrap">Meu Painel</a>
@@ -85,9 +93,27 @@ function renderMainHeader(usuarioLogado) {
             .hover-result-item:hover { background-color: #f8f9fa; }
             .search-bar-header:focus { box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15) !important; background-color: #ffffff !important;}
             
-            /* Ajuste Inteligente para a Barra de Pesquisa */
+            /* Ajuste de Grid para Centralização Perfeita no Desktop */
             @media (min-width: 1200px) {
-                .header-search-item { min-width: 300px; }
+                .header-grid-container {
+                    display: grid !important;
+                    grid-template-columns: 1fr auto 1fr;
+                    align-items: center;
+                }
+                .header-left-zone {
+                    display: flex;
+                    justify-content: flex-start;
+                    align-items: center;
+                }
+                .navbar-collapse {
+                    /* Permite que o conteúdo interno obedeça ao Grid do container pai */
+                    display: contents !important;
+                }
+                .header-right-zone {
+                    display: flex !important; 
+                    justify-content: flex-end;
+                }
+                .header-search-item { width: 300px; }
             }
             @media (max-width: 1199.98px) {
                 .header-search-item { width: 100%; margin-top: 15px !important; margin-bottom: 5px !important; }
@@ -95,10 +121,24 @@ function renderMainHeader(usuarioLogado) {
         </style>
 
         <script>
+            // FUNÇÃO GLOBAL: Atualiza o badge de favoritos na tela em tempo real
+            window.updateFavBadge = function(isAdding) {
+                const badges = document.querySelectorAll('.fav-badge-count');
+                badges.forEach(badge => {
+                    let currentCount = parseInt(badge.textContent) || 0;
+                    currentCount = isAdding ? currentCount + 1 : Math.max(0, currentCount - 1);
+                    badge.textContent = currentCount;
+                    if (currentCount > 0) {
+                        badge.classList.remove('d-none');
+                    } else {
+                        badge.classList.add('d-none');
+                    }
+                });
+            };
+
             document.addEventListener('DOMContentLoaded', function() {
-                // ==========================================
+                
                 // LÓGICA DO CARRINHO DE COMPRAS
-                // ==========================================
                 fetch('/api/carrinho/count')
                     .then(res => res.json())
                     .then(data => {
@@ -112,6 +152,20 @@ function renderMainHeader(usuarioLogado) {
                     })
                     .catch(err => console.error('Erro ao buscar quantidade do carrinho:', err));
 
+                // LÓGICA DO BADGE DE FAVORITOS (Carrega contagem inicial da API)
+                fetch('/api/favoritos/count')
+                    .then(res => { if(res.ok) return res.json(); throw new Error('Endpoint pendente'); })
+                    .then(data => {
+                        const badges = document.querySelectorAll('.fav-badge-count');
+                        badges.forEach(badge => {
+                            if (data.count > 0) {
+                                badge.textContent = data.count;
+                                badge.classList.remove('d-none');
+                            }
+                        });
+                    })
+                    .catch(err => { /* Silencioso caso a API ainda não exista */ });
+
                 // ==========================================
                 // LÓGICA DE BUSCA DINÂMICA DE CURSOS
                 // ==========================================
@@ -124,17 +178,14 @@ function renderMainHeader(usuarioLogado) {
                         clearTimeout(debounceTimer);
                         const query = this.value.trim();
 
-                        // Se digitar menos de 2 caracteres, esconde o dropdown
                         if (query.length < 2) {
                             searchResults.style.display = 'none';
                             return;
                         }
 
-                        // Spinner de Carregamento enquanto digita
                         searchResults.style.display = 'block';
                         searchResults.innerHTML = '<div class="p-3 text-center text-primary"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
 
-                        // Aguarda 300ms depois que o utilizador parar de digitar
                         debounceTimer = setTimeout(() => {
                             fetch('/api/cursos/search?q=' + encodeURIComponent(query))
                                 .then(res => res.json())
@@ -170,14 +221,12 @@ function renderMainHeader(usuarioLogado) {
                         }, 300);
                     });
 
-                    // Fecha o dropdown se o utilizador clicar fora da barra de busca
                     document.addEventListener('click', function(e) {
                         if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                             searchResults.style.display = 'none';
                         }
                     });
                     
-                    // Reabre o dropdown se o utilizador clicar no input e já houver texto
                     searchInput.addEventListener('focus', function() {
                         if (this.value.trim().length >= 2 && searchResults.innerHTML.trim() !== '') {
                             searchResults.style.display = 'block';

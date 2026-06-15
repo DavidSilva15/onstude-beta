@@ -39,6 +39,8 @@ function renderAdminCurriculosView(admin, modelosCV = []) {
         <title>Gestão de Currículos - Admin</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+        <link rel="icon" type="image/x-icon" href="/img/favicon-onstude.ico">
+        <link rel="shortcut icon" type="image/x-icon" href="/img/favicon-onstude.ico">
         <style>
             /* Ajuste da área de conteúdo principal para rolar independentemente do menu */
             body { background-color: #f8f9fa; margin: 0; overflow-x: hidden; }
