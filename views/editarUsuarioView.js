@@ -80,6 +80,11 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
             .sortable-drag { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; cursor: grabbing !important; }
             .container-dnd { min-height: 150px; background-color: #f1f3f5; }
             .border-dashed { border-style: dashed !important; border-width: 2px !important; }
+            
+            /* Inputs Group - Olho Senha */
+            .input-group:focus-within { box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1); border-radius: 0.375rem; }
+            .input-group .form-control:focus { box-shadow: none; border-color: #dee2e6; }
+            .input-group .btn:focus { box-shadow: none; border-color: #dee2e6; }
         </style>
     </head>
     <body class="bg-light">
@@ -140,9 +145,25 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
                                                     <option value="INATIVO" ${usuario.status === 'INATIVO' ? 'selected' : ''}>Inativo</option>
                                                 </select>
                                             </div>
-                                            <div class="col-md-12 mt-3">
+                                            
+                                            <div class="col-md-6 mt-3">
                                                 <label class="form-label fw-semibold small">Nova Senha</label>
-                                                <input type="password" class="form-control bg-light" name="nova_senha" placeholder="Deixe em branco para manter a senha atual...">
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control bg-light border-end-0" id="nova_senha" name="nova_senha" placeholder="Deixe em branco para manter a atual...">
+                                                    <button type="button" class="btn bg-light border border-start-0 text-secondary" onclick="togglePassword('nova_senha', this)" title="Mostrar senha">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="col-md-6 mt-3">
+                                                <label class="form-label fw-semibold small">Confirmar Nova Senha</label>
+                                                <div class="input-group">
+                                                    <input type="password" class="form-control bg-light border-end-0" id="confirmar_senha" name="confirmar_senha" placeholder="Repita a nova senha...">
+                                                    <button type="button" class="btn bg-light border border-start-0 text-secondary" onclick="togglePassword('confirmar_senha', this)" title="Mostrar senha">
+                                                        <i class="bi bi-eye"></i>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -152,7 +173,7 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
                                         <div class="row g-3 mb-4">
                                             <div class="col-md-4">
                                                 <label class="form-label fw-semibold small">WhatsApp / Telefone</label>
-                                                <input type="tel" class="form-control bg-light" name="telefone" value="${usuario.telefone || ''}">
+                                                <input type="tel" class="form-control bg-light" id="telefone" name="telefone" placeholder="(00) 0 0000-0000" value="${usuario.telefone || ''}">
                                             </div>
                                             <div class="col-md-5">
                                                 <label class="form-label fw-semibold small">Cidade</label>
@@ -229,8 +250,48 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+        
+        <script src="/js/toast.js"></script>
 
         <script>
+            // ==========================================
+            // LÓGICA DE MOSTRAR/OCULTAR SENHA
+            // ==========================================
+            window.togglePassword = function(inputId, button) {
+                const input = document.getElementById(inputId);
+                const icon = button.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('bi-eye', 'bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('bi-eye-slash', 'bi-eye');
+                }
+            };
+
+            // ==========================================
+            // MÁSCARA DE TELEFONE (00) 0 0000-0000
+            // ==========================================
+            const inputTelefone = document.getElementById('telefone');
+            if (inputTelefone) {
+                inputTelefone.addEventListener('input', function (e) {
+                    let v = e.target.value.replace(/\\D/g, ""); 
+                    v = v.substring(0, 11); 
+                    if (v.length > 2) { v = '(' + v.substring(0, 2) + ') ' + v.substring(2); }
+                    if (v.length > 6) { v = v.substring(0, 6) + ' ' + v.substring(6); }
+                    if (v.length > 11) { v = v.substring(0, 11) + '-' + v.substring(11); }
+                    e.target.value = v;
+                });
+                
+                // Formata o número automaticamente se ele vier preenchido do banco de dados
+                if(inputTelefone.value) {
+                    inputTelefone.dispatchEvent(new Event('input'));
+                }
+            }
+
+            // ==========================================
+            // LÓGICA DE ARRASTAR CURSOS E SALVAR (AJAX)
+            // ==========================================
             document.addEventListener('DOMContentLoaded', function () {
                 const listDisp = document.getElementById('listaDisponiveis');
                 const listMatr = document.getElementById('listaMatriculados');
@@ -249,12 +310,25 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
                 new Sortable(listDisp, sortableOptions);
                 new Sortable(listMatr, sortableOptions);
 
+                // Submissão do Form via AJAX
                 document.getElementById('formEditarUsuario').addEventListener('submit', function(e) {
+                    e.preventDefault(); // Impede o envio tradicional
+
+                    // Validação de Senha
+                    const senha = document.getElementById('nova_senha').value;
+                    const confSenha = document.getElementById('confirmar_senha').value;
+                    
+                    if (senha !== '' && senha !== confSenha) {
+                        Toast.error('As senhas não coincidem. Por favor, verifique.');
+                        document.getElementById('confirmar_senha').focus();
+                        return;
+                    }
+
+                    // 1. Gera os inputs ocultos dos cursos arrastados
                     const hiddenContainer = document.getElementById('hiddenInputsCursos');
                     hiddenContainer.innerHTML = '';
                     
                     const cursosAtivos = listMatr.querySelectorAll('.curso-card');
-                    
                     cursosAtivos.forEach(card => {
                         const cursoId = card.getAttribute('data-id');
                         const input = document.createElement('input');
@@ -263,9 +337,58 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
                         input.value = cursoId;
                         hiddenContainer.appendChild(input);
                     });
+
+                    // 2. Animação de Carregamento no Botão
+                    const btnSubmit = this.querySelector('button[type="submit"]');
+                    const originalHtml = btnSubmit.innerHTML;
+                    btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Salvando...';
+                    btnSubmit.disabled = true;
+
+                    // 3. Empacota o formulário (incluindo arquivo de imagem e os cursos dinâmicos)
+                    const formData = new FormData(this);
+
+                    // 4. Envia via AJAX (Fetch)
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(async res => {
+                        const contentType = res.headers.get("content-type");
+                        
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            const data = await res.json();
+                            if (data.success) {
+                                Toast.success(data.message || 'Usuário atualizado com sucesso!');
+                                setTimeout(() => window.location.reload(), 1500);
+                            } else {
+                                Toast.error(data.message || 'Erro ao atualizar usuário.');
+                                btnSubmit.innerHTML = originalHtml;
+                                btnSubmit.disabled = false;
+                            }
+                        } else {
+                            // Suporte caso a rota backend ainda devolva res.redirect tradicional
+                            if (res.redirected) {
+                                Toast.success('Usuário atualizado com sucesso!');
+                                setTimeout(() => window.location.href = res.url, 1500);
+                            } else {
+                                Toast.error('Ocorreu um erro inesperado.');
+                                btnSubmit.innerHTML = originalHtml;
+                                btnSubmit.disabled = false;
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Erro de conexão:', err);
+                        Toast.error('Erro de conexão ao salvar alterações.');
+                        btnSubmit.innerHTML = originalHtml;
+                        btnSubmit.disabled = false;
+                    });
                 });
             });
 
+            // ==========================================
+            // LÓGICA DE LOADING NO CARREGAMENTO
+            // ==========================================
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {
