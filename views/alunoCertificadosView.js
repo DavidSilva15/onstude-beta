@@ -41,7 +41,7 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                             <strong class="text-dark user-select-all" style="font-size: 0.85rem;">${cert.token}</strong>
                         </div>
                         <div class="d-grid">
-                            <a href="/aluno/certificados/${cert.certificado_id}/download" class="btn btn-success fw-bold rounded-pill shadow-sm"><i class="bi bi-download me-1"></i> Baixar PDF</a>
+                            <button type="button" onclick="baixarCertificado('${cert.certificado_id}', this)" class="btn btn-success fw-bold rounded-pill shadow-sm"><i class="bi bi-download me-1"></i> Baixar PDF</button>
                         </div>
                     </div>
                 `
@@ -195,12 +195,21 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                 <div class="container-fluid p-4 p-md-5">
 
                     <div class="row mb-5 align-items-center">
-                        <div class="col-md-5 mb-3 mb-md-0">
+                        <div class="col-md-6 mb-3 mb-md-0">
                             <h2 class="fw-bold text-dark mb-1"><i class="bi bi-award-fill text-primary me-2"></i>Certificados</h2>
-                            <p class="text-muted small mt-1 mb-0 fw-medium">Página ${currentPage} de ${totalPages}.</p>
+                            
+                            <div class="d-flex align-items-center flex-wrap gap-3 mt-2">
+                                <p class="text-muted small mb-0 fw-medium">Página ${currentPage} de ${totalPages}.</p>
+                                <div class="d-flex align-items-center gap-2">
+                                    <a href="/validar" class="btn btn-outline-secondary bg-white btn-sm rounded-pill fw-bold px-3 shadow-sm border border-light">
+                                        <i class="bi bi-shield-check me-1 text-primary"></i> Validar um Certificado
+                                    </a>
+                                    <i class="bi bi-info-circle-fill text-secondary opacity-75 fs-5" style="cursor: help;" data-bs-toggle="tooltip" data-bs-placement="top" title="Para validar um certificado, acesse a página e digite o Código de Validação impresso no rodapé do documento."></i>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div class="col-md-7 mb-3 mb-md-0">
+                        <div class="col-md-6 mb-3 mb-md-0">
                             <form action="/aluno/certificados" method="GET" class="d-flex shadow-sm rounded-pill overflow-hidden bg-white bg-opacity-75 border border-secondary border-opacity-10" style="backdrop-filter: blur(4px);">
                                 <input type="text" name="search" class="form-control bg-transparent border-0 shadow-none ps-4" placeholder="Buscar por nome do curso..." value="${searchQuery}">
                                 <button type="submit" class="btn btn-primary fw-bold px-4 rounded-end-pill">Buscar</button>
@@ -260,7 +269,74 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         
+        <script src="/js/toast.js"></script>
+
         <script>
+            // Ativa tooltips (Necessário para o ícone de informação funcionar)
+            document.addEventListener('DOMContentLoaded', function () {
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            });
+
+            // Flag Global para evitar loop do Loader durante downloads
+            window.isDownloading = false;
+
+            // ==========================================
+            // AJAX: FORÇAR DOWNLOAD DO PDF E EXIBIR TOAST
+            // ==========================================
+            window.baixarCertificado = function(certificadoId, btnElement) {
+                const originalHtml = btnElement.innerHTML;
+                
+                // Feedback visual de carregamento
+                btnElement.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
+                btnElement.disabled = true;
+                
+                // Impede que a tela de loading global cubra tudo
+                window.isDownloading = true;
+
+                // Busca o arquivo PDF como blob (dados brutos) via AJAX
+                fetch('/aluno/certificados/' + certificadoId + '/download')
+                    .then(res => {
+                        if (!res.ok) {
+                            throw new Error('Falha ao obter o arquivo.');
+                        }
+                        return res.blob();
+                    })
+                    .then(blob => {
+                        // Cria um link temporário oculto para forçar o navegador a baixar
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = 'Certificado_OnStude_' + certificadoId + '.pdf';
+                        
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        // Limpeza
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+
+                        Toast.success('Seu certificado está sendo baixado!');
+                        
+                        // Restaura o botão
+                        btnElement.innerHTML = originalHtml;
+                        btnElement.disabled = false;
+                        
+                        setTimeout(() => window.isDownloading = false, 1000);
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Toast.error('Erro ao baixar o certificado. Tente novamente.');
+                        
+                        // Restaura o botão
+                        btnElement.innerHTML = originalHtml;
+                        btnElement.disabled = false;
+                        
+                        setTimeout(() => window.isDownloading = false, 1000);
+                    });
+            };
+
             let listaNotificacoesGlobal = [];
             let notificacaoAtualId = null;
 
@@ -330,8 +406,14 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
 
             window.limparTodasNotificacoes = function() {
                 fetch('/aluno/api/notificacoes/limpar', { method: 'POST' })
-                    .then(() => carregarListaNotificacoesSino())
-                    .catch(console.error);
+                    .then(() => {
+                        Toast.success('Notificações limpas com sucesso.');
+                        carregarListaNotificacoesSino();
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Toast.error('Erro ao limpar notificações.');
+                    });
             };
 
             window.abrirLinkExterno = function(id, url) {
@@ -439,6 +521,7 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                 })
                 .then(response => response.json())
                 .then(data => {
+                    Toast.success('Feedback enviado com sucesso!'); // Toast de Sucesso
                     bootstrap.Modal.getInstance(document.getElementById('modalNotificacao')).hide();
                     btn.innerHTML = textoOriginal;
                     btn.disabled = false;
@@ -453,6 +536,7 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                 })
                 .catch(err => {
                     console.error(err);
+                    Toast.error('Erro ao enviar feedback.'); // Toast de Erro
                     btn.innerHTML = textoOriginal;
                     btn.disabled = false;
                 });
@@ -471,7 +555,10 @@ function renderAlunoCertificadosView(aluno, certificados, currentPage = 1, total
                 }
             });
 
+            // LOADING GLOBAL IGNORADO PARA DOWNLOADS
             window.addEventListener('beforeunload', function() {
+                if (window.isDownloading) return; 
+                
                 const loader = document.getElementById('globalLoader');
                 if (loader) {
                     loader.style.display = 'flex';
