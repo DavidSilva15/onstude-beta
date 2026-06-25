@@ -122,18 +122,17 @@ function renderEditarCursoView(admin, curso) {
                                             </select>
                                         </div>
 
-                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-5 pt-4 border-top">
-                                            <button type="button" class="btn btn-outline-danger fw-bold rounded-pill px-4 mb-3 mb-md-0 shadow-sm" onclick="if(confirm('Tem certeza absoluta? Isso apagará o curso, TODOS os módulos e TODAS as aulas vinculadas a ele. Esta ação não pode ser desfeita.')) { document.getElementById('form-excluir-curso').submit(); }">
+                                        <div class="d-flex flex-column-reverse flex-md-row justify-content-between align-items-center mt-5 pt-4 border-top gap-3">
+    
+                                            <button type="button" class="btn btn-outline-danger fw-bold rounded-pill px-4 shadow-sm w-100 w-md-auto" onclick="if(confirm('Tem certeza absoluta? Isso apagará o curso, TODOS os módulos e TODAS as aulas vinculadas a ele. Esta ação não pode ser desfeita.')) { document.getElementById('form-excluir-curso').submit(); }">
                                                 <i class="bi bi-trash3 me-1"></i> Excluir Curso
                                             </button>
                                             
-                                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                                                <button type="submit" class="btn btn-primary btn-lg fw-bold rounded-pill px-5 shadow">
-                                                    <i class="bi bi-floppy me-2"></i> Atualizar Curso
-                                                </button>
-                                            </div>
+                                            <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm w-100 w-md-auto">
+                                                <i class="bi bi-floppy me-2"></i> Atualizar Curso
+                                            </button>
+                                            
                                         </div>
-
                                     </form>
 
                                     <form id="form-excluir-curso" action="/admin/cursos/${curso.id}/excluir" method="POST" style="display: none;"></form>
@@ -149,8 +148,29 @@ function renderEditarCursoView(admin, curso) {
         ${require('./toastProcessamento')()}
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script src="/js/toast.js"></script>
 
         <script>
+            // Lógica para capturar mensagens de sucesso/erro vindas do backend via URL (Redirecionamento)
+            document.addEventListener('DOMContentLoaded', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const msgSucesso = urlParams.get('sucesso') || urlParams.get('success');
+                const msgErro = urlParams.get('erro') || urlParams.get('error');
+                
+                if (msgSucesso) {
+                    if (typeof Toast !== 'undefined') Toast.success(msgSucesso);
+                    // Remove o parâmetro da URL sem recarregar a página, garantindo que o Toast não repita no F5
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+                if (msgErro) {
+                    if (typeof Toast !== 'undefined') Toast.error(msgErro);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            });
+
+            // Loader global da página
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {

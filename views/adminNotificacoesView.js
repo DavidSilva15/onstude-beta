@@ -124,7 +124,7 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
             // ==========================================
             htmlNotificacoes += `
                 <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
-                    <div class="card shadow-sm rounded-4 h-100 hover-card transition-all ${cardCustomClass}">
+                    <div class="card shadow-sm rounded-4 h-100 transition-all ${cardCustomClass}">
                         <div class="card-body p-3 d-flex flex-column">
                             
                             <div class="d-flex justify-content-between align-items-start mb-2">
@@ -173,7 +173,7 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
             `;
 
             // ==========================================
-            // MODAIS MANTIDOS INTACTOS
+            // MODAIS 
             // ==========================================
             htmlModais += `
                 <div class="modal fade" id="${modalDetalhesId}" tabindex="-1" aria-hidden="true">
@@ -192,7 +192,7 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
                                             <p class="mb-3 text-dark lh-lg" style="font-size: 0.95rem;">${n.mensagem.replace(/\\n/g, '<br>')}</p>
                                             ${imagemUrlTratada ? `<img src="${imagemUrlTratada}" class="img-fluid rounded-3 border shadow-sm" style="max-height: 200px; object-fit: cover;">` : ''}
                                         </div>
-                                        <form action="/admin/notificacoes/${n.id}/excluir" method="POST" onsubmit="return confirm('Tem certeza? Isso apagará as respostas e removerá o aviso dos alunos.');">
+                                        <form onsubmit="excluirNotificacao(event, '${n.id}')">
                                             <button type="submit" class="btn btn-outline-danger fw-bold rounded-pill w-100"><i class="bi bi-trash3 me-1"></i> Excluir Notificação</button>
                                         </form>
                                     </div>
@@ -216,7 +216,7 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
                                 <h5 class="modal-title text-white fw-bold"><i class="bi bi-pencil-square me-2"></i>Editar Notificação</h5>
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                             </div>
-                            <form action="/admin/notificacoes/${n.id}/editar" method="POST">
+                            <form onsubmit="editarNotificacao(event, this, '${n.id}')">
                                 <div class="modal-body p-4">
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold">Título</label>
@@ -313,7 +313,6 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
                 .main-content { height: calc(100vh - 60px); }
             }
             .transition-all { transition: all 0.3s ease; }
-            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
         </style>
     </head>
     <body class="bg-light">
@@ -368,8 +367,87 @@ function renderAdminNotificacoesView(admin, notificacoes, currentPage = 1, total
         ${require('./toastProcessamento')()}
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="/js/toast.js"></script>
         
         <script>
+            // Escuta os parâmetros da URL para os Toasts e os remove sem quebrar paginações ativas
+            document.addEventListener('DOMContentLoaded', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const msgSucesso = urlParams.get('sucesso') || urlParams.get('success');
+                const msgErro = urlParams.get('erro') || urlParams.get('error');
+                
+                if (msgSucesso) {
+                    if (typeof Toast !== 'undefined') Toast.success(msgSucesso);
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.delete('sucesso');
+                    newUrl.searchParams.delete('success');
+                    window.history.replaceState({}, document.title, newUrl.toString());
+                }
+                
+                if (msgErro) {
+                    if (typeof Toast !== 'undefined') Toast.error(msgErro);
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.delete('erro');
+                    newUrl.searchParams.delete('error');
+                    window.history.replaceState({}, document.title, newUrl.toString());
+                }
+            });
+
+            // AJAX para editar a notificação
+            async function editarNotificacao(event, form, id) {
+                event.preventDefault();
+                const btn = form.querySelector('button[type="submit"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Salvando...';
+                btn.disabled = true;
+
+                const data = new URLSearchParams(new FormData(form));
+
+                try {
+                    const response = await fetch('/admin/notificacoes/' + id + '/editar', {
+                        method: 'POST',
+                        body: data,
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                    });
+                    
+                    if (response.ok) {
+                        const currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.set('sucesso', 'Notificação atualizada com sucesso!');
+                        window.location.href = currentUrl.toString();
+                    } else {
+                        if (typeof Toast !== 'undefined') Toast.error('Erro ao atualizar a notificação.');
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                } catch (error) {
+                    if (typeof Toast !== 'undefined') Toast.error('Erro de conexão com o servidor.');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            }
+
+            // AJAX para excluir a notificação
+            async function excluirNotificacao(event, id) {
+                event.preventDefault();
+                if(!confirm('Tem certeza? Isso apagará as respostas e removerá o aviso dos alunos.')) return;
+                
+                try {
+                    const response = await fetch('/admin/notificacoes/' + id + '/excluir', {
+                        method: 'POST'
+                    });
+                    
+                    if (response.ok) {
+                        const currentUrl = new URL(window.location.href);
+                        currentUrl.searchParams.set('sucesso', 'Notificação excluída com sucesso!');
+                        window.location.href = currentUrl.toString();
+                    } else {
+                        if (typeof Toast !== 'undefined') Toast.error('Erro ao excluir a notificação.');
+                    }
+                } catch (error) {
+                    if (typeof Toast !== 'undefined') Toast.error('Erro de conexão com o servidor.');
+                }
+            }
+
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {

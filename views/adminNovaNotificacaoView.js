@@ -122,11 +122,16 @@ function renderAdminNovaNotificacaoView(admin, cursos) {
                                             ${checkboxesCursos}
                                         </div>
 
-                                        <div class="d-flex justify-content-between align-items-center mt-5 pt-4 border-top">
-                                            <a href="/admin/notificacoes" class="btn btn-light fw-bold rounded-pill px-4 shadow-sm text-secondary">Cancelar</a>
-                                            <button type="submit" class="btn btn-success btn-lg fw-bold rounded-pill px-5 shadow">
+                                        <div class="d-flex flex-column-reverse flex-md-row justify-content-between align-items-center mt-5 pt-4 border-top gap-3">
+    
+                                            <a href="/admin/notificacoes" class="btn btn-light fw-bold rounded-pill px-4 shadow-sm text-secondary w-100 w-md-auto">
+                                                Cancelar
+                                            </a>
+                                            
+                                            <button type="submit" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm w-100 w-md-auto">
                                                 <i class="bi bi-send-fill me-2"></i> Disparar Notificação
                                             </button>
+                                            
                                         </div>
                                     </form>
                                 </div>

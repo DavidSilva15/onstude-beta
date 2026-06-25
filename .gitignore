@@ -1,0 +1,16 @@
+# Dependências do Node
+node_modules/
+
+# Variáveis de Ambiente e Senhas
+.env
+
+# Arquivos de log e sistema operacional
+npm-debug.log
+.DS_Store
+Thumbs.db
+
+# Uploads locais (para não lotar o GitHub com vídeos e imagens de teste)
+public/uploads/
+public/img/perfil/
+public/img/forum/
+public/img/notificacoes/

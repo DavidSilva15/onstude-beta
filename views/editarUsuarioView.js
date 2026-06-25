@@ -224,14 +224,16 @@ function renderEditarUsuarioView(admin, usuario, cursosDisponiveis) {
 
                                         <div id="hiddenInputsCursos"></div>
 
-                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mt-5 pt-4 border-top">
-                                            <button type="button" class="btn btn-outline-danger fw-bold rounded-pill px-4 mb-3 mb-md-0 shadow-sm" onclick="if(confirm('Tem certeza? Se o usuário tiver histórico (certificados ou compras), é mais seguro alterar o Status para INATIVO no topo da página. Confirma a exclusão definitiva?')) { document.getElementById('form-excluir-usuario').submit(); }">
+                                        <div class="d-flex flex-column-reverse flex-md-row justify-content-between align-items-center mt-5 pt-4 border-top gap-3">
+    
+                                            <button type="button" class="btn btn-outline-danger fw-bold rounded-pill px-4 shadow-sm w-100 w-md-auto" onclick="if(confirm('Tem certeza? Se o usuário tiver histórico (certificados ou compras), é mais seguro alterar o Status para INATIVO no topo da página. Confirma a exclusão definitiva?')) { document.getElementById('form-excluir-usuario').submit(); }">
                                                 <i class="bi bi-trash3 me-1"></i> Excluir Usuário
                                             </button>
                                             
-                                            <button type="submit" class="btn btn-primary btn-lg fw-bold rounded-pill px-5 shadow">
+                                            <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm w-100 w-md-auto">
                                                 <i class="bi bi-floppy me-2"></i> Salvar Alterações
                                             </button>
+                                            
                                         </div>
                                     </form>
 

@@ -121,13 +121,14 @@ function renderCursoDetalhesView(admin, curso, modulos) {
                                     <span class="badge bg-light text-dark border mb-2"><i class="bi bi-upc-scan me-1"></i>${curso.codigo_unico}</span>
                                     <h5 class="card-title fw-bold mb-3 text-dark">${curso.titulo}</h5>
                                     
-                                    <p class="card-text text-secondary small mb-4 lh-lg">
+                                    <p class="card-text text-secondary small mb-4 lh-sm">
                                         ${curso.descricao ? curso.descricao : '<em>Nenhuma descrição foi fornecida para este curso.</em>'}
                                     </p>
 
-                                    <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-3">
-                                        <span class="badge ${badgeClass} fs-6 px-3 py-2 rounded-pill">${curso.status}</span>
-                                        <a href="/admin/cursos/${curso.id}/editar" class="btn btn-primary fw-bold rounded-pill px-3 shadow-sm">
+                                    <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-3 gap-2">
+                                        <span class="badge ${badgeClass} px-3 py-1 rounded-pill shadow-sm" style="font-size: 0.75rem;">${curso.status}</span>
+                                        
+                                        <a href="/admin/cursos/${curso.id}/editar" class="btn btn-primary btn-sm fw-bold rounded-pill px-3 shadow-sm text-nowrap">
                                             <i class="bi bi-gear me-1"></i> Editar Curso
                                         </a>
                                     </div>
@@ -158,7 +159,27 @@ function renderCursoDetalhesView(admin, curso, modulos) {
         
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         
+        <script src="/js/toast.js"></script>
+
         <script>
+            // Lógica para capturar mensagens de sucesso/erro vindas do backend via URL (Redirecionamento)
+            document.addEventListener('DOMContentLoaded', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const msgSucesso = urlParams.get('sucesso') || urlParams.get('success');
+                const msgErro = urlParams.get('erro') || urlParams.get('error');
+                
+                if (msgSucesso) {
+                    if (typeof Toast !== 'undefined') Toast.success(msgSucesso);
+                    // Limpa a URL sem recarregar a página
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+                if (msgErro) {
+                    if (typeof Toast !== 'undefined') Toast.error(msgErro);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            });
+
             window.addEventListener('pageshow', function(event) {
                 const loader = document.getElementById('globalLoader');
                 if (loader) {

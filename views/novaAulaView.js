@@ -164,7 +164,7 @@ function renderNovaAulaView(admin, curso, modulo, proximaOrdem) {
                                         <div class="d-flex justify-content-between align-items-center pt-4 border-top mt-5">
                                             <a href="/admin/cursos/${curso.id}" class="btn btn-light fw-bold rounded-pill px-4 shadow-sm text-secondary">Cancelar</a>
                                             <button type="submit" id="btnSubmit" class="btn btn-success fw-bold rounded-pill px-5 shadow">
-                                                <i class="bi bi-floppy me-2"></i> Salvar Aula e Conteúdos
+                                                <i class="bi bi-floppy me-2"></i> Salvar Aula
                                             </button>
                                         </div>
 

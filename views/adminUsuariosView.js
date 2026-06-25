@@ -91,8 +91,8 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
                         const linkWhats = `https://wa.me/${numeroFormatado}?text=${encodeURIComponent(msgWhats)}`;
                         
                         htmlWhatsAppBtn = `
-                            <a href="${linkWhats}" target="_blank" class="btn btn-success w-100 fw-bold rounded-pill shadow-sm mt-2">
-                                <i class="bi bi-whatsapp me-1"></i> Lembrar no WhatsApp
+                            <a href="${linkWhats}" target="_blank" class="btn btn-success btn-sm w-100 fw-bold rounded-pill shadow-sm mt-2" style="font-size: 0.75rem;">
+                                <i class="bi bi-whatsapp me-1"></i> Lembrar
                             </a>
                         `;
                     }
@@ -102,19 +102,19 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
             const cursosTooltip = u.cursos_lista ? u.cursos_lista : 'Nenhum curso';
             const qtdCursos = u.total_cursos || 0;
 
-            let dataUltimoAcesso = '<span class="text-danger fw-semibold small">Nunca acessou</span>';
+            let dataUltimoAcesso = '<span class="text-danger fw-semibold" style="font-size: 0.7rem;">Nunca acessou</span>';
             if (u.ultimo_acesso) {
                 const dataAcesso = new Date(u.ultimo_acesso);
-                dataUltimoAcesso = `<span class="small fw-semibold text-dark">${dataAcesso.toLocaleDateString('pt-BR')} <span class="text-muted fw-normal">às ${dataAcesso.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></span>`;
+                dataUltimoAcesso = `<span class="fw-semibold text-dark" style="font-size: 0.7rem;">${dataAcesso.toLocaleDateString('pt-BR')} <span class="text-muted fw-normal">às ${dataAcesso.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></span>`;
             }
 
-            let ultimaAulaVisual = '<span class="text-muted small">Nenhuma atividade</span>';
+            let ultimaAulaVisual = '<span class="text-muted" style="font-size: 0.7rem;">Nenhuma atividade</span>';
             if (u.ultima_aula_info) {
                 const [aulaTitulo, cursoTitulo] = u.ultima_aula_info.split('|||');
                 ultimaAulaVisual = `
                     <div class="text-truncate" style="max-width: 100%;">
-                        <strong class="d-block text-truncate small text-dark" title="${aulaTitulo}">${aulaTitulo}</strong>
-                        <small class="d-block text-truncate text-muted" title="${cursoTitulo}" style="font-size: 0.75rem;">${cursoTitulo}</small>
+                        <strong class="d-block text-truncate text-dark" title="${aulaTitulo}" style="font-size: 0.75rem;">${aulaTitulo}</strong>
+                        <small class="d-block text-truncate text-muted" title="${cursoTitulo}" style="font-size: 0.65rem;">${cursoTitulo}</small>
                     </div>
                 `;
             }
@@ -124,64 +124,65 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
             const aulasConcluidas = u.aulas_concluidas || 0;
             const melhorCurso = u.melhor_curso || '-';
 
+            // ATUALIZAÇÃO DO GRID: xl-3 = 4 colunas em monitores grandes
             cardsUsuarios += `
-                <div class="col-md-6 col-xl-4 mb-4">
-                    <div class="card shadow-sm rounded-4 h-100 hover-card transition-all position-relative ${cardCustomClass}">
-                        <div class="card-body p-4 d-flex flex-column">
+                <div class="col-md-6 col-xl-3 mb-4">
+                    <div class="card shadow-sm rounded-4 h-100 transition-all position-relative ${cardCustomClass}">
+                        <div class="card-body p-3 d-flex flex-column">
                             
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div class="d-flex align-items-center">
-                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-bold shadow-sm me-3" style="width: 45px; height: 45px; font-size: 1.1rem;">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="d-flex align-items-center flex-grow-1 overflow-hidden pe-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary text-white fw-bold shadow-sm me-2 flex-shrink-0" style="width: 35px; height: 35px; font-size: 0.9rem;">
                                         ${iniciais}
                                     </div>
-                                    <div style="max-width: 160px;">
-                                        <h6 class="fw-bold text-dark mb-0 text-truncate" title="${u.nome}">${u.nome}</h6>
-                                        <small class="text-muted text-truncate d-block" title="${u.email}">${u.email}</small>
+                                    <div class="overflow-hidden">
+                                        <h6 class="fw-bold text-dark mb-0 text-truncate" title="${u.nome}" style="font-size: 0.85rem;">${u.nome}</h6>
+                                        <small class="text-muted text-truncate d-block" title="${u.email}" style="font-size: 0.7rem;">${u.email}</small>
                                     </div>
                                 </div>
-                                <div class="text-end">
-                                    <span class="badge ${badgeTipo} d-block mb-1">${u.tipo}</span>
-                                    <span class="badge ${badgeStatus} d-block">${statusVisual}</span>
+                                <div class="text-end flex-shrink-0">
+                                    <span class="badge ${badgeTipo} d-block mb-1" style="font-size: 0.6rem;">${u.tipo}</span>
+                                    <span class="badge ${badgeStatus} d-block" style="font-size: 0.6rem;">${statusVisual}</span>
                                 </div>
                             </div>
 
                             <hr class="opacity-10 my-2">
 
-                            <div class="mb-3 mt-2">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Último Acesso:</small>
+                            <div class="mb-2 mt-1">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="text-muted" style="font-size: 0.7rem;"><i class="bi bi-clock-history me-1"></i>Acesso:</small>
                                     <div class="text-end">${dataUltimoAcesso}</div>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <small class="text-muted"><i class="bi bi-play-circle me-1"></i>Última Aula:</small>
-                                    <div class="text-end flex-grow-1 ms-2">${ultimaAulaVisual}</div>
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;"><i class="bi bi-play-circle me-1"></i>Aula:</small>
+                                    <div class="text-end flex-grow-1 ms-2 overflow-hidden">${ultimaAulaVisual}</div>
                                 </div>
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <small class="text-muted"><i class="bi bi-journal-bookmark me-1"></i>Matrículas:</small>
-                                    <span class="badge bg-white border text-dark shadow-sm" style="cursor: help;" data-bs-toggle="tooltip" title="${cursosTooltip}">
-                                        ${qtdCursos} Cursos
+                                    <small class="text-muted" style="font-size: 0.7rem;"><i class="bi bi-journal-bookmark me-1"></i>Cursos:</small>
+                                    <span class="badge bg-white border text-dark shadow-sm" style="cursor: help; font-size: 0.65rem;" data-bs-toggle="tooltip" title="${cursosTooltip}">
+                                        ${qtdCursos}
                                     </span>
                                 </div>
                             </div>
 
-                            <div class="row g-2 mt-auto mb-4 p-2 bg-white bg-opacity-75 rounded-3 border border-light shadow-sm">
-                                <div class="col-4 text-center border-end border-light">
-                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Nota Média</small>
-                                    <strong class="text-dark"><i class="bi bi-star-fill text-warning me-1 small"></i>${notaMedia}</strong>
+                            <div class="row g-2 mt-auto mb-3 p-2 bg-white bg-opacity-75 rounded-3 border border-light shadow-sm">
+                                <div class="col-4 text-center border-end border-light px-1">
+                                    <small class="d-block text-muted text-truncate" style="font-size: 0.65rem;">Média</small>
+                                    <strong class="text-dark d-block text-truncate" style="font-size: 0.8rem;"><i class="bi bi-star-fill text-warning me-1" style="font-size: 0.7rem;"></i>${notaMedia}</strong>
                                 </div>
-                                <div class="col-4 text-center border-end border-light">
-                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Aulas Feitas</small>
-                                    <strong class="text-dark"><i class="bi bi-check-circle-fill text-success me-1 small"></i>${aulasConcluidas}</strong>
+                                <div class="col-4 text-center border-end border-light px-1">
+                                    <small class="d-block text-muted text-truncate" style="font-size: 0.65rem;">Feitas</small>
+                                    <strong class="text-dark d-block text-truncate" style="font-size: 0.8rem;"><i class="bi bi-check-circle-fill text-success me-1" style="font-size: 0.7rem;"></i>${aulasConcluidas}</strong>
                                 </div>
-                                <div class="col-4 text-center">
-                                    <small class="d-block text-muted" style="font-size: 0.7rem;">Destaque</small>
-                                    <strong class="text-dark text-truncate d-block px-1" title="${melhorCurso}" style="font-size: 0.85rem;">${melhorCurso}</strong>
+                                <div class="col-4 text-center px-1">
+                                    <small class="d-block text-muted text-truncate" style="font-size: 0.65rem;">Top Curso</small>
+                                    <strong class="text-dark text-truncate d-block" title="${melhorCurso}" style="font-size: 0.8rem;">${melhorCurso}</strong>
                                 </div>
                             </div>
 
-                            <div class="mt-auto">
-                                <a href="/admin/usuarios/${u.id}/editar" class="btn btn-outline-primary bg-white w-100 fw-bold rounded-pill shadow-sm">
-                                    <i class="bi bi-pencil-square me-1"></i> Editar Usuário
+                            <div class="mt-auto d-flex flex-column gap-2">
+                                <a href="/admin/usuarios/${u.id}/editar" class="btn btn-outline-primary bg-white btn-sm w-100 fw-bold rounded-pill shadow-sm" style="font-size: 0.75rem;">
+                                    <i class="bi bi-pencil-square me-1"></i> Editar
                                 </a>
                                 ${htmlWhatsAppBtn}
                             </div>
@@ -256,7 +257,6 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
                 .main-content { height: calc(100vh - 60px); }
             }
             .transition-all { transition: all 0.3s ease; }
-            .hover-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
             
             /* Oculta scrollbar horizontal dos filtros no Windows/Mac, mas mantém funcionalidade */
             .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -315,8 +315,33 @@ function renderAdminUsuariosView(admin, usuarios, currentPage = 1, totalPages = 
         ${require('./toastProcessamento')()}
         
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script src="/js/toast.js"></script>
 
         <script>
+            // Lógica para capturar mensagens de sucesso/erro vindas do backend via URL (Redirecionamento)
+            document.addEventListener('DOMContentLoaded', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const msgSucesso = urlParams.get('sucesso') || urlParams.get('success');
+                const msgErro = urlParams.get('erro') || urlParams.get('error');
+                
+                if (msgSucesso) {
+                    if (typeof Toast !== 'undefined') Toast.success(msgSucesso);
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.delete('sucesso');
+                    newUrl.searchParams.delete('success');
+                    window.history.replaceState({}, document.title, newUrl.toString());
+                }
+                
+                if (msgErro) {
+                    if (typeof Toast !== 'undefined') Toast.error(msgErro);
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.delete('erro');
+                    newUrl.searchParams.delete('error');
+                    window.history.replaceState({}, document.title, newUrl.toString());
+                }
+            });
+
             document.addEventListener('DOMContentLoaded', function () {
                 var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
                 var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {

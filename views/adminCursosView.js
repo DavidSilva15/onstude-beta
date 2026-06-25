@@ -68,7 +68,7 @@ function renderAdminCursosView(admin, cursos, currentPage = 1, totalPages = 1, s
 
             htmlCursos += `
                 <div class="col-md-6 col-xl-4 col-xxl-3 mb-4">
-                    <div class="card shadow-sm rounded-4 h-100 hover-card transition-all overflow-hidden border-0" style="cursor: pointer;" onclick="window.location.href='/admin/cursos/${curso.id}'">
+                    <div class="card shadow-sm rounded-4 h-100 transition-all overflow-hidden border-0" style="cursor: pointer;" onclick="window.location.href='/admin/cursos/${curso.id}'">
                         
                         <div class="position-relative bg-dark">
                             <img src="${capa}" onerror="this.onerror=null;this.src='${fallbackCapa}';" class="card-img-top border-bottom" alt="Capa" style="height: 140px; object-fit: cover; width: 100%;">
