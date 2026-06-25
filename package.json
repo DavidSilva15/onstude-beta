@@ -1,6 +1,6 @@
 {
   "name": "onstude-beta",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OnStude Beta Application",
   "main": "app.js",
   "scripts": {
